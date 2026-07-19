@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>💕 浪漫表白 💕</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Dancing+Script:wght@700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    min-height: 100vh;
+    overflow-x: hidden;
+    font-family: 'Ma Shan Zheng', cursive, sans-serif;
+    background: #0a0a1a;
+    color: #fff;
+  }
+
+  /* ===== 星空背景 ===== */
+  #stars-canvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 0;
+  }
+
+  /* ===== 漂浮爱心 ===== */
+  .floating-hearts {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 1;
+    overflow: hidden;
+  }
+
+  .heart {
+    position: absolute;
+    bottom: -50px;
+    animation: floatUp linear infinite;
+    opacity: 0.6;
+    font-size: 20px;
+  }
+
+  @keyframes floatUp {
+    0%   { transform: translateY(0) rotate(0deg) scale(1); opacity: 0.6; }
+    50%  { opacity: 0.8; }
+    100% { transform: translateY(-110vh) rotate(360deg) scale(0.3); opacity: 0; }
+  }
+
+  /* ===== 设置面板 ===== */
+  .settings-panel {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+  }
+
+  .settings-btn {
+    background: rgba(255, 182, 193, 0.3);
+    border: 1px solid rgba(255, 182, 193, 0.5);
+    color: #ffb6c1;
+    padding: 8px 16px;
+    border-radius: 25px;
+    cursor: pointer;
+    font-size: 14px;
+    font-family: inherit;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+  }
+
+  .settings-btn:hover {
+    background: rgba(255, 182, 193, 0.5);
+    transform: scale(1.05);
+  }
+
+  .settings-modal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 1001;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(5px);
+  }
+
+  .settings-modal.active {
+    display: flex;
+  }
+
+  .modal-content {
+    background: linear-gradient(135deg, #1a1a3e, #2d1b4e);
+    border: 2px solid rgba(255, 105, 180, 0.4);
+    border-radius: 20px;
+    padding: 40px;
+    max-width: 400px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(255, 105, 180, 0.2);
+    animation: modalIn 0.4s ease;
+  }
+
+  @keyframes modalIn {
+    from { transform: scale(0.8); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  .modal-content h3 {
+    color: #ff69b4;
+    margin-bottom: 25px;
+    font-size: 24px;
+  }
+
+  .modal-content input {
+    width: 100%;
+    padding: 12px 20px;
+    margin: 10px 0;
+    border: 2px solid rgba(255, 105, 180, 0.3);
+    border-radius: 15px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-size: 16px;
+    font-family: inherit;
+    outline: none;
+    transition: all 0.3s ease;
+  }
+
+  .modal-content input:focus {
+    border-color: #ff69b4;
+    box-shadow: 0 0 15px rgba(255, 105, 180, 0.3);
+  }
+
+  .modal-content input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+  }
+
+  .modal-buttons {
+    display: flex;
+    gap: 15px;
+    margin-top: 25px;
+  }
+
+  .modal-buttons button {
+    flex: 1;
+    padding: 12px;
+    border-radius: 15px;
+    border: none;
+    font-size: 16px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .btn-save {
+    background: linear-gradient(135deg, #ff69b4, #ff1493);
+    color: #fff;
+  }
+
+  .btn-save:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(255, 105, 180, 0.4); }
+
+  .btn-cancel {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  }
+
+  .btn-cancel:hover { background: rgba(255, 255, 255, 0.2); }
+
+  /* ===== 主内容 ===== */
+  .main-content {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+
+  /* ===== 入场动画容器 ===== */
+  .intro-screen {
+    text-align: center;
+    animation: fadeInUp 1s ease;
+  }
+
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(40px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ===== 跳动心脏动画 ===== */
+  .heart-container {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    margin: 0 auto 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .heart-container svg {
+    width: 160px;
+    height: 160px;
+    animation: heartbeatReal 1.2s ease-in-out infinite;
+    filter: drop-shadow(0 0 25px rgba(255, 20, 147, 0.6)) drop-shadow(0 0 50px rgba(255, 20, 147, 0.3));
+  }
+
+  /* 心脏呼吸光环 */
+  .heart-glow {
+    position: absolute;
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 20, 147, 0.25) 0%, transparent 70%);
+    animation: heartGlow 1.2s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  /* 心脏周围小粒子 */
+  .heart-particles {
+    position: absolute;
+    width: 200px;
+    height: 200px;
+    pointer-events: none;
+  }
+
+  .heart-particle {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: rgba(255, 105, 180, 0.8);
+    animation: particleFloat 2s ease-in-out infinite;
+  }
+
+  .heart-particle:nth-child(1) { left: 20%; top: 10%; animation-delay: 0s; }
+  .heart-particle:nth-child(2) { right: 15%; top: 15%; animation-delay: 0.3s; width: 3px; height: 3px; }
+  .heart-particle:nth-child(3) { left: 10%; bottom: 25%; animation-delay: 0.6s; }
+  .heart-particle:nth-child(4) { right: 10%; bottom: 20%; animation-delay: 0.9s; width: 5px; height: 5px; }
+  .heart-particle:nth-child(5) { left: 30%; top: 5%; animation-delay: 1.2s; width: 3px; height: 3px; }
+  .heart-particle:nth-child(6) { right: 25%; bottom: 35%; animation-delay: 0.4s; }
+  .heart-particle:nth-child(7) { left: 5%; top: 40%; animation-delay: 0.8s; width: 3px; height: 3px; }
+  .heart-particle:nth-child(8) { right: 5%; top: 35%; animation-delay: 1.0s; width: 5px; height: 5px; }
+
+  @keyframes heartbeatReal {
+    0%   { transform: scale(1); }
+    5%   { transform: scale(1.12); }
+    10%  { transform: scale(1.02); }
+    15%  { transform: scale(1.18); }
+    25%  { transform: scale(1); }
+    100% { transform: scale(1); }
+  }
+
+  @keyframes heartGlow {
+    0%   { transform: scale(1); opacity: 0.5; }
+    5%   { transform: scale(1.15); opacity: 0.8; }
+    10%  { transform: scale(1.05); opacity: 0.6; }
+    15%  { transform: scale(1.2); opacity: 0.9; }
+    25%  { transform: scale(1); opacity: 0.5; }
+    100% { transform: scale(1); opacity: 0.5; }
+  }
+
+  @keyframes particleFloat {
+    0%, 100% { transform: translateY(0) scale(1); opacity: 0.8; }
+    50%      { transform: translateY(-12px) scale(1.3); opacity: 0.3; }
+  }
+
+  .subtitle {
+    font-size: 18px;
+    color: rgba(255, 182, 193, 0.8);
+    margin-bottom: 50px;
+    letter-spacing: 4px;
+  }
+
+  /* ===== 爱情信封 ===== */
+  .love-letter {
+    background: linear-gradient(135deg, rgba(255, 105, 180, 0.1), rgba(138, 43, 226, 0.1));
+    border: 2px solid rgba(255, 105, 180, 0.3);
+    border-radius: 25px;
+    padding: 40px 50px;
+    max-width: 600px;
+    width: 100%;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 20px 60px rgba(255, 105, 180, 0.15);
+    animation: fadeInUp 1s ease 0.3s both;
+  }
+
+  .love-letter .greeting {
+    font-size: 28px;
+    color: #ff69b4;
+    margin-bottom: 25px;
+    text-shadow: 0 0 15px rgba(255, 105, 180, 0.4);
+  }
+
+  .love-letter .body-text {
+    font-size: 18px;
+    line-height: 2;
+    color: rgba(255, 255, 255, 0.85);
+    text-align: left;
+    text-indent: 2em;
+  }
+
+  .love-letter .signature {
+    margin-top: 30px;
+    text-align: right;
+    font-size: 22px;
+    color: #ff69b4;
+    font-family: 'Dancing Script', cursive;
+  }
+
+  .love-letter .date {
+    text-align: right;
+    font-size: 14px;
+    color: rgba(255, 182, 193, 0.6);
+    margin-top: 8px;
+  }
+
+  /* ===== 爱心连线 ===== */
+  .love-animation {
+    margin: 50px auto;
+    text-align: center;
+    animation: fadeInUp 1s ease 0.6s both;
+  }
+
+  .two-hearts {
+    font-size: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .two-hearts .name-label {
+    font-size: 20px;
+    color: #ffb6c1;
+    text-shadow: 0 0 10px rgba(255, 105, 180, 0.3);
+  }
+
+  .beating-heart-middle {
+    animation: heartbeat 1.2s ease-in-out infinite;
+    font-size: 35px;
+  }
+
+  /* ===== 倒计时 / 在一起多久 ===== */
+  .together-section {
+    margin-top: 40px;
+    text-align: center;
+    animation: fadeInUp 1s ease 0.9s both;
+  }
+
+  .together-section h3 {
+    color: rgba(255, 182, 193, 0.8);
+    font-size: 18px;
+    margin-bottom: 15px;
+  }
+
+  .date-input-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .date-input-row label {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 14px;
+  }
+
+  .date-input-row input[type="date"] {
+    padding: 8px 16px;
+    border: 2px solid rgba(255, 105, 180, 0.3);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    transition: all 0.3s ease;
+  }
+
+  .date-input-row input[type="date"]:focus {
+    border-color: #ff69b4;
+    box-shadow: 0 0 15px rgba(255, 105, 180, 0.3);
+  }
+
+  .date-input-row button {
+    padding: 8px 20px;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #ff69b4, #ff1493);
+    color: #fff;
+    font-size: 14px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .date-input-row button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(255, 105, 180, 0.4);
+  }
+
+  .counter-display {
+    margin-top: 25px;
+    display: none;
+  }
+
+  .counter-display.active {
+    display: block;
+    animation: fadeInUp 0.6s ease;
+  }
+
+  .counter-grid {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    flex-wrap: wrap;
+  }
+
+  .counter-item {
+    text-align: center;
+  }
+
+  .counter-item .number {
+    font-size: 48px;
+    font-weight: bold;
+    background: linear-gradient(135deg, #ff69b4, #da70d6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: none;
+    filter: drop-shadow(0 0 10px rgba(255, 105, 180, 0.4));
+  }
+
+  .counter-item .label {
+    font-size: 14px;
+    color: rgba(255, 182, 193, 0.7);
+    margin-top: 5px;
+  }
+
+  /* ===== 答应按钮 ===== */
+  .response-section {
+    margin-top: 50px;
+    text-align: center;
+    animation: fadeInUp 1s ease 1.2s both;
+  }
+
+  .response-section p {
+    font-size: 24px;
+    color: #ffb6c1;
+    margin-bottom: 30px;
+  }
+
+  .btn-group {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+
+  .btn-yes {
+    background: linear-gradient(135deg, #ff69b4, #ff1493);
+    color: #fff;
+    border: none;
+    padding: 15px 50px;
+    border-radius: 50px;
+    font-size: 22px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 10px 30px rgba(255, 105, 180, 0.3);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-yes::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    animation: shimmer 2s infinite;
+  }
+
+  @keyframes shimmer {
+    0% { transform: translateX(-100%) rotate(45deg); }
+    100% { transform: translateX(100%) rotate(45deg); }
+  }
+
+  .btn-yes:hover {
+    transform: scale(1.1);
+    box-shadow: 0 15px 40px rgba(255, 105, 180, 0.5);
+  }
+
+  .btn-no {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 15px 40px;
+    border-radius: 50px;
+    font-size: 16px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  /* ===== 成功页面 ===== */
+  .success-screen {
+    display: none;
+    text-align: center;
+    animation: celebrateIn 1s ease;
+  }
+
+  @keyframes celebrateIn {
+    0% { opacity: 0; transform: scale(0.5) rotate(-10deg); }
+    50% { transform: scale(1.1) rotate(5deg); }
+    100% { opacity: 1; transform: scale(1) rotate(0deg); }
+  }
+
+  .success-screen .big-heart {
+    font-size: 100px;
+    animation: heartbeat 0.8s ease-in-out infinite;
+    filter: drop-shadow(0 0 30px rgba(255, 105, 180, 0.8));
+  }
+
+  .success-screen h1 {
+    font-size: 48px;
+    margin: 20px 0;
+    background: linear-gradient(135deg, #ff69b4, #ffd700);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    filter: drop-shadow(0 0 15px rgba(255, 105, 180, 0.5));
+  }
+
+  .success-screen .couple-names {
+    font-size: 32px;
+    color: #ffb6c1;
+    margin: 20px 0;
+    font-family: 'Dancing Script', cursive;
+  }
+
+  .success-screen .message {
+    font-size: 20px;
+    color: rgba(255, 255, 255, 0.8);
+    line-height: 1.8;
+    max-width: 500px;
+    margin: 20px auto;
+  }
+
+  .btn-reset {
+    margin-top: 40px;
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 12px 30px;
+    border-radius: 25px;
+    font-size: 14px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .btn-reset:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+  }
+
+  /* ===== 五彩纸屑 ===== */
+  .confetti-container {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 999;
+    overflow: hidden;
+  }
+
+  .confetti {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    top: -10px;
+    animation: confettiFall linear infinite;
+  }
+
+  @keyframes confettiFall {
+    0%   { transform: translateY(-10px) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+  }
+
+  /* ===== 背景音乐按钮 ===== */
+  .music-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: rgba(255, 105, 180, 0.2);
+    border: 1px solid rgba(255, 105, 180, 0.4);
+    color: #ffb6c1;
+    font-size: 22px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+  }
+
+  .music-btn:hover {
+    background: rgba(255, 105, 180, 0.4);
+    transform: scale(1.1);
+  }
+
+  .music-btn.playing {
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255, 105, 180, 0.4); }
+    50% { box-shadow: 0 0 0 15px rgba(255, 105, 180, 0); }
+  }
+
+  /* ===== 响应式 ===== */
+  @media (max-width: 600px) {
+    .love-letter { padding: 25px 20px; }
+    .love-letter .greeting { font-size: 22px; }
+    .love-letter .body-text { font-size: 15px; }
+    .heart-container { width: 140px; height: 140px; }
+    .heart-container svg { width: 110px; height: 110px; }
+    .heart-glow { width: 130px; height: 130px; }
+    .heart-particles { width: 140px; height: 140px; }
+    .counter-item .number { font-size: 36px; }
+    .two-hearts { font-size: 35px; gap: 5px; }
+    .two-hearts .name-label { font-size: 16px; }
+    .success-screen h1 { font-size: 32px; }
+    .success-screen .big-heart { font-size: 70px; }
+    .success-screen .couple-names { font-size: 24px; }
+    .counter-grid { gap: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 星空画布 -->
+<canvas id="stars-canvas"></canvas>
+
+<!-- 漂浮爱心 -->
+<div class="floating-hearts" id="floatingHearts"></div>
+
+<!-- 五彩纸屑容器 -->
+<div class="confetti-container" id="confettiContainer"></div>
+
+<!-- 设置按钮 -->
+<div class="settings-panel">
+  <button class="settings-btn" onclick="openSettings()">✏️ 修改名字</button>
+</div>
+
+<!-- 设置弹窗 -->
+<div class="settings-modal" id="settingsModal">
+  <div class="modal-content">
+    <h3>💕 设置名字</h3>
+    <input type="text" id="inputFrom" placeholder="表白者名字（你的名字）" />
+    <input type="text" id="inputTo" placeholder="被表白者名字（Ta的名字）" />
+    <div class="modal-buttons">
+      <button class="btn-cancel" onclick="closeSettings()">取消</button>
+      <button class="btn-save" onclick="saveSettings()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 主内容 -->
+<div class="main-content">
+  <!-- 表白页面 -->
+  <div class="intro-screen" id="introScreen">
+    <div class="heart-container">
+      <div class="heart-glow"></div>
+      <div class="heart-particles">
+        <div class="heart-particle"></div>
+        <div class="heart-particle"></div>
+        <div class="heart-particle"></div>
+        <div class="heart-particle"></div>
+        <div class="heart-particle"></div>
+        <div class="heart-particle"></div>
+        <div class="heart-particle"></div>
+        <div class="heart-particle"></div>
+      </div>
+      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="heartGrad" cx="40%" cy="35%" r="60%">
+            <stop offset="0%" stop-color="#ff4d8d"/>
+            <stop offset="50%" stop-color="#ff1493"/>
+            <stop offset="100%" stop-color="#c71585"/>
+          </radialGradient>
+          <radialGradient id="heartShine" cx="35%" cy="30%" r="30%">
+            <stop offset="0%" stop-color="rgba(255,255,255,0.4)"/>
+            <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+          </radialGradient>
+          <filter id="heartShadow">
+            <feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="#ff1493" flood-opacity="0.5"/>
+          </filter>
+        </defs>
+        <path d="M50 88 C25 65, 2 45, 12 28 C18 18, 30 15, 38 22 C43 26, 47 32, 50 38 C53 32, 57 26, 62 22 C70 15, 82 18, 88 28 C98 45, 75 65, 50 88Z"
+              fill="url(#heartGrad)" filter="url(#heartShadow)"/>
+        <path d="M50 88 C25 65, 2 45, 12 28 C18 18, 30 15, 38 22 C43 26, 47 32, 50 38 C53 32, 57 26, 62 22 C70 15, 82 18, 88 28 C98 45, 75 65, 50 88Z"
+              fill="url(#heartShine)"/>
+      </svg>
+    </div>
+    <div class="subtitle">致 最 懂 我 的 你</div>
+
+    <div class="love-letter">
+      <div class="greeting">亲爱的 <span id="targetName">宝贝</span>：</div>
+      <div class="body-text">
+        不知道从什么时候开始，你的笑容成了我每天最期待的风景。遇见你的那一天，我的世界突然有了色彩，平淡的日子也变得闪闪发光。
+      </div>
+      <div class="body-text" style="margin-top: 15px;">
+        我想牵着你的手，走过四季，走过余生。不管未来有多少风雨，只要有你在身边，就是最好的时光。你愿意让我成为你生命中最温暖的依靠吗？
+      </div>
+      <div class="signature">永远爱你的 <span id="senderName">我</span></div>
+      <div class="date" id="letterDate"></div>
+    </div>
+
+    <!-- 爱心连线 -->
+    <div class="love-animation">
+      <div class="two-hearts">
+        <span class="name-label" id="nameLeft">我</span>
+        <span class="beating-heart-middle">💕</span>
+        <span class="name-label" id="nameRight">宝贝</span>
+      </div>
+    </div>
+
+    <!-- 在一起计时 -->
+    <div class="together-section">
+      <h3>💫 在一起已经多久了？</h3>
+      <div class="date-input-row">
+        <label>选择纪念日：</label>
+        <input type="date" id="anniversaryDate" />
+        <button onclick="startCounter()">开始计时</button>
+      </div>
+      <div class="counter-display" id="counterDisplay">
+        <div class="counter-grid">
+          <div class="counter-item">
+            <div class="number" id="countDays">0</div>
+            <div class="label">天</div>
+          </div>
+          <div class="counter-item">
+            <div class="number" id="countHours">0</div>
+            <div class="label">时</div>
+          </div>
+          <div class="counter-item">
+            <div class="number" id="countMinutes">0</div>
+            <div class="label">分</div>
+          </div>
+          <div class="counter-item">
+            <div class="number" id="countSeconds">0</div>
+            <div class="label">秒</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 回应按钮 -->
+    <div class="response-section">
+      <p>你愿意做我的另一半吗？</p>
+      <div class="btn-group">
+        <button class="btn-yes" onclick="sayYes()">❤️ 我愿意</button>
+        <button class="btn-no" id="btnNo" onmouseover="dodgeButton()">让我再想想...</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 成功页面 -->
+  <div class="success-screen" id="successScreen">
+    <div class="big-heart">💖</div>
+    <h1>太好了！我好开心！</h1>
+    <div class="couple-names">
+      <span id="successNameLeft">我</span> 💕 <span id="successNameRight">宝贝</span>
+    </div>
+    <div class="message">
+      从今天起，我们一起写下属于我们的故事。<br>
+      每一天，都是我们爱情篇章中美好的一页。<br>
+      我会用一辈子来证明这个选择是对的！
+    </div>
+    <button class="btn-reset" onclick="resetPage()">🔄 返回</button>
+  </div>
+</div>
+
+<!-- 背景音乐 -->
+<audio id="bgMusic" loop preload="auto">
+  <source src="bgm.mp3" type="audio/mpeg">
+</audio>
+<button class="music-btn" id="musicBtn" onclick="toggleMusic()">🎵</button>
+
+<script>
+// ===== 配置 =====
+let config = {
+  from: localStorage.getItem('love_from') || '我',
+  to: localStorage.getItem('love_to') || '宝贝'
+};
+
+// ===== 初始化名字 =====
+function applyNames() {
+  document.getElementById('targetName').textContent = config.to;
+  document.getElementById('senderName').textContent = config.from;
+  document.getElementById('nameLeft').textContent = config.from;
+  document.getElementById('nameRight').textContent = config.to;
+  document.getElementById('successNameLeft').textContent = config.from;
+  document.getElementById('successNameRight').textContent = config.to;
+  document.getElementById('inputFrom').value = config.from;
+  document.getElementById('inputTo').value = config.to;
+}
+
+// ===== 设置弹窗 =====
+function openSettings() {
+  document.getElementById('inputFrom').value = config.from;
+  document.getElementById('inputTo').value = config.to;
+  document.getElementById('settingsModal').classList.add('active');
+}
+
+function closeSettings() {
+  document.getElementById('settingsModal').classList.remove('active');
+}
+
+function saveSettings() {
+  const from = document.getElementById('inputFrom').value.trim() || '我';
+  const to = document.getElementById('inputTo').value.trim() || '宝贝';
+  config.from = from;
+  config.to = to;
+  localStorage.setItem('love_from', from);
+  localStorage.setItem('love_to', to);
+  applyNames();
+  closeSettings();
+}
+
+// ===== 星空效果 =====
+const canvas = document.getElementById('stars-canvas');
+const ctx = canvas.getContext('2d');
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+const stars = [];
+for (let i = 0; i < 200; i++) {
+  stars.push({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    radius: Math.random() * 1.5 + 0.5,
+    alpha: Math.random(),
+    alphaSpeed: Math.random() * 0.02 + 0.005,
+    alphaDir: Math.random() > 0.5 ? 1 : -1
+  });
+}
+
+function drawStars() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  
+  // 背景渐变
+  const gradient = ctx.createRadialGradient(
+    canvas.width / 2, canvas.height / 2, 0,
+    canvas.width / 2, canvas.height / 2, canvas.width / 2
+  );
+  gradient.addColorStop(0, '#1a1a3e');
+  gradient.addColorStop(1, '#0a0a1a');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  stars.forEach(star => {
+    star.alpha += star.alphaSpeed * star.alphaDir;
+    if (star.alpha >= 1 || star.alpha <= 0.1) star.alphaDir *= -1;
+    
+    ctx.beginPath();
+    ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha})`;
+    ctx.fill();
+    
+    // 星光
+    if (star.radius > 1) {
+      ctx.beginPath();
+      ctx.arc(star.x, star.y, star.radius * 3, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255, 182, 193, ${star.alpha * 0.1})`;
+      ctx.fill();
+    }
+  });
+  
+  requestAnimationFrame(drawStars);
+}
+
+drawStars();
+
+// ===== 漂浮爱心 =====
+function createFloatingHeart() {
+  const container = document.getElementById('floatingHearts');
+  const heart = document.createElement('div');
+  heart.className = 'heart';
+  heart.innerHTML = ['❤️', '💕', '💖', '💗', '✨', '💝'][Math.floor(Math.random() * 6)];
+  heart.style.left = Math.random() * 100 + '%';
+  heart.style.fontSize = (Math.random() * 20 + 12) + 'px';
+  heart.style.animationDuration = (Math.random() * 6 + 6) + 's';
+  heart.style.animationDelay = (Math.random() * 2) + 's';
+  container.appendChild(heart);
+  
+  setTimeout(() => heart.remove(), 14000);
+}
+
+setInterval(createFloatingHeart, 800);
+
+// ===== "不愿"按钮躲避 =====
+let dodgeCount = 0;
+function dodgeButton() {
+  dodgeCount++;
+  const btn = document.getElementById('btnNo');
+  
+  if (dodgeCount >= 3) {
+    btn.style.display = 'none';
+    return;
+  }
+  
+  const maxX = window.innerWidth - btn.offsetWidth - 50;
+  const maxY = 300;
+  const randomX = Math.random() * maxX;
+  const randomY = Math.random() * maxY - 150;
+  
+  btn.style.position = 'relative';
+  btn.style.left = (Math.random() - 0.5) * 300 + 'px';
+  btn.style.top = randomY + 'px';
+  btn.style.transition = 'all 0.3s ease';
+  
+  const texts = ['再想想？', '真的不要吗？', '别犹豫啦~', '你会后悔的哦'];
+  btn.textContent = texts[Math.min(dodgeCount - 1, texts.length - 1)];
+}
+
+// ===== 点击"愿意" =====
+function sayYes() {
+  document.getElementById('introScreen').style.display = 'none';
+  document.getElementById('successScreen').style.display = 'block';
+  document.getElementById('settings-panel').style.display = 'none';
+  launchConfetti();
+  
+  // 加速爱心
+  for (let i = 0; i < 20; i++) {
+    setTimeout(createFloatingHeart, i * 100);
+  }
+}
+
+// ===== 五彩纸屑 =====
+function launchConfetti() {
+  const container = document.getElementById('confettiContainer');
+  const colors = ['#ff69b4', '#ff1493', '#ffd700', '#ff6b6b', '#da70d6', '#87ceeb', '#98fb98'];
+  
+  for (let i = 0; i < 100; i++) {
+    setTimeout(() => {
+      const confetti = document.createElement('div');
+      confetti.className = 'confetti';
+      confetti.style.left = Math.random() * 100 + '%';
+      confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+      confetti.style.width = (Math.random() * 10 + 5) + 'px';
+      confetti.style.height = (Math.random() * 10 + 5) + 'px';
+      confetti.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+      confetti.style.animationDuration = (Math.random() * 3 + 2) + 's';
+      container.appendChild(confetti);
+      
+      setTimeout(() => confetti.remove(), 5000);
+    }, i * 30);
+  }
+}
+
+// ===== 重置 =====
+function resetPage() {
+  document.getElementById('successScreen').style.display = 'none';
+  document.getElementById('introScreen').style.display = 'block';
+  document.getElementById('settings-panel').style.display = 'block';
+  dodgeCount = 0;
+  const btn = document.getElementById('btnNo');
+  btn.style.display = 'inline-block';
+  btn.style.left = '0';
+  btn.style.top = '0';
+  btn.textContent = '让我再想想...';
+}
+
+// ===== 在一起计时器 =====
+let counterInterval = null;
+
+function startCounter() {
+  const dateInput = document.getElementById('anniversaryDate').value;
+  if (!dateInput) {
+    alert('请选择你们的纪念日哦~');
+    return;
+  }
+  
+  const anniversary = new Date(dateInput + 'T00:00:00');
+  document.getElementById('counterDisplay').classList.add('active');
+  
+  if (counterInterval) clearInterval(counterInterval);
+  
+  function updateCounter() {
+    const now = new Date();
+    const diff = now - anniversary;
+    
+    if (diff < 0) {
+      document.getElementById('countDays').textContent = '0';
+      document.getElementById('countHours').textContent = '0';
+      document.getElementById('countMinutes').textContent = '0';
+      document.getElementById('countSeconds').textContent = '0';
+      return;
+    }
+    
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+    
+    document.getElementById('countDays').textContent = days;
+    document.getElementById('countHours').textContent = hours;
+    document.getElementById('countMinutes').textContent = minutes;
+    document.getElementById('countSeconds').textContent = seconds;
+  }
+  
+  updateCounter();
+  counterInterval = setInterval(updateCounter, 1000);
+}
+
+// ===== 日期显示 =====
+function updateDate() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  document.getElementById('letterDate').textContent = `${year}年${month}月${day}日`;
+}
+
+// ===== 背景音乐 =====
+let musicPlaying = false;
+const bgMusic = document.getElementById('bgMusic');
+
+function toggleMusic() {
+  const btn = document.getElementById('musicBtn');
+  
+  if (!musicPlaying) {
+    bgMusic.volume = 0.6;
+    bgMusic.play();
+    btn.classList.add('playing');
+    btn.textContent = '🎶';
+    musicPlaying = true;
+  } else {
+    bgMusic.pause();
+    btn.classList.remove('playing');
+    btn.textContent = '🎵';
+    musicPlaying = false;
+  }
+}
+
+// ===== 初始化 =====
+applyNames();
+updateDate();
+
+// 自动从2026-06-30开始计时
+document.getElementById('anniversaryDate').value = '2026-06-30';
+startCounter();
+</script>
+
+</body>
+</html>
