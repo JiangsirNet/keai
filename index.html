@@ -152,6 +152,28 @@
             opacity: 1;
         }
 
+        .img-card img.error {
+            opacity: 1;
+            filter: grayscale(1) brightness(0.85);
+        }
+
+        .img-error-tip {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            color: #ff6b8b;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .img-error-tip i {
+            font-size: 22px;
+        }
+
         .journal-item {
             transition: all 0.2s ease;
         }
@@ -361,11 +383,436 @@
         .music-upload:hover {
             text-decoration: underline;
         }
+
+        /* 哈士奇宠物 */
+        .husky-pet {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 90;
+            width: 100px;
+            height: 100px;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            user-select: none;
+        }
+
+        .husky-pet svg {
+            width: 100%;
+            height: 100%;
+            filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.15));
+        }
+
+        .husky-pet.walking {
+            animation: husky-bounce 0.4s ease infinite alternate;
+        }
+
+        @keyframes husky-bounce {
+            from { transform: translateY(0); }
+            to { transform: translateY(-4px); }
+        }
+
+        .husky-pet.happy {
+            animation: husky-happy 0.5s ease;
+        }
+
+        @keyframes husky-happy {
+            0%, 100% { transform: scale(1) rotate(0); }
+            25% { transform: scale(1.15) rotate(-5deg); }
+            75% { transform: scale(1.15) rotate(5deg); }
+        }
+
+        .husky-tail {
+            transform-origin: 70px 65px;
+            animation: tail-wag 0.5s ease infinite alternate;
+        }
+
+        @keyframes tail-wag {
+            from { transform: rotate(-15deg); }
+            to { transform: rotate(20deg); }
+        }
+
+        .husky-ear-l {
+            transform-origin: 38px 28px;
+            animation: ear-twitch 3s ease infinite;
+        }
+
+        @keyframes ear-twitch {
+            0%, 90%, 100% { transform: rotate(0); }
+            93% { transform: rotate(-10deg); }
+            96% { transform: rotate(5deg); }
+        }
+
+        .husky-bubble {
+            position: absolute;
+            top: -35px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            color: #ff6b8b;
+            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            white-space: nowrap;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+
+        .husky-bubble:after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: white;
+            border-bottom: 0;
+        }
+
+        .husky-bubble.show {
+            opacity: 1;
+        }
+
+        .husky-heart {
+            position: absolute;
+            color: #ff6b8b;
+            font-size: 20px;
+            pointer-events: none;
+            opacity: 0;
+        }
+
+        @keyframes heart-float {
+            0% { opacity: 1; transform: translate(0, 0) scale(0.5); }
+            100% { opacity: 0; transform: translate(var(--dx), -80px) scale(1.2); }
+        }
+
+        /* 暹罗猫宠物 */
+        .cat-pet {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 90;
+            width: 100px;
+            height: 100px;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            user-select: none;
+        }
+
+        .cat-pet svg {
+            width: 100%;
+            height: 100%;
+            filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.15));
+        }
+
+        .cat-pet.walking {
+            animation: cat-sneak 0.5s ease infinite alternate;
+        }
+
+        @keyframes cat-sneak {
+            from { transform: translateY(0); }
+            to { transform: translateY(-3px); }
+        }
+
+        .cat-pet.happy {
+            animation: cat-happy 0.5s ease;
+        }
+
+        @keyframes cat-happy {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.15); }
+        }
+
+        .cat-tail {
+            transform-origin: 72px 58px;
+            animation: cat-tail-swish 1.2s ease infinite alternate;
+        }
+
+        @keyframes cat-tail-swish {
+            from { transform: rotate(-5deg); }
+            to { transform: rotate(25deg); }
+        }
+
+        .cat-ear-l {
+            transform-origin: 30px 30px;
+            animation: cat-ear-twitch 4s ease infinite;
+        }
+
+        @keyframes cat-ear-twitch {
+            0%, 85%, 100% { transform: rotate(0); }
+            88% { transform: rotate(-8deg); }
+            91% { transform: rotate(3deg); }
+        }
+
+        .cat-bubble {
+            position: absolute;
+            top: -35px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            color: #a78bfa;
+            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            white-space: nowrap;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+
+        .cat-bubble:after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: white;
+            border-bottom: 0;
+        }
+
+        .cat-bubble.show {
+            opacity: 1;
+        }
+
+        /* ==================== 手机端适配 ==================== */
+        @media (max-width: 768px) {
+            /* 主容器减小内边距 */
+            .container {
+                padding: 12px 12px 80px 12px !important;
+            }
+
+            /* 卡片减小内边距 */
+            .bg-white\/80 {
+                padding: 16px !important;
+                border-radius: 20px !important;
+            }
+
+            /* 标题缩小 */
+            .bg-white\/80 h2 {
+                font-size: 1.05rem !important;
+            }
+
+            /* 相册网格单列 */
+            #galleryWrap {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px !important;
+            }
+
+            /* 日志标题和日期改为纵向排列 */
+            #journalTitle,
+            #journalDate {
+                width: 100% !important;
+                flex: none !important;
+            }
+
+            .flex.gap-2.mb-3 {
+                flex-direction: column;
+                gap: 8px !important;
+            }
+
+            /* 留言和日志高度适配 */
+            #msgInput {
+                height: 80px !important;
+            }
+
+            #journalContent {
+                height: 100px !important;
+            }
+
+            /* 日志列表高度限制 */
+            #journalList {
+                max-height: 350px !important;
+            }
+
+            /* 音乐面板适配 */
+            .music-panel {
+                width: calc(100vw - 24px) !important;
+                right: 12px !important;
+                top: 60px !important;
+                padding: 14px !important;
+            }
+
+            /* 音乐按钮和退出登录不重叠 */
+            .music-toggle {
+                top: 12px !important;
+                right: 12px !important;
+                width: 38px !important;
+                height: 38px !important;
+                font-size: 15px !important;
+            }
+
+            /* 退出登录按钮左移避免遮挡 */
+            #mainPage > .flex.justify-end {
+                padding-right: 50px;
+            }
+
+            /* 宠物缩小 */
+            .husky-pet,
+            .cat-pet {
+                width: 70px !important;
+                height: 70px !important;
+                bottom: 10px !important;
+            }
+
+            .husky-pet {
+                left: 10px !important;
+            }
+
+            .cat-pet {
+                right: 10px !important;
+            }
+
+            /* 大图预览 */
+            .img-preview-modal img {
+                max-width: 95vw !important;
+                max-height: 80vh !important;
+            }
+
+            /* 登录面板 */
+            #loginPanel > div {
+                padding: 20px !important;
+            }
+
+            /* 留言列表项优化 */
+            #msgList > div {
+                padding: 10px 12px !important;
+                font-size: 0.85rem !important;
+            }
+
+            /* 日志项优化 */
+            .journal-item {
+                padding: 12px !important;
+            }
+
+            .journal-item h3 {
+                font-size: 0.9rem !important;
+            }
+
+            .journal-item p {
+                font-size: 0.8rem !important;
+            }
+
+            /* 按钮触摸友好 */
+            button {
+                min-height: 40px;
+            }
+
+            /* 底部留白给宠物 */
+            #mainPage {
+                padding-bottom: 90px !important;
+            }
+        }
+
+        /* 超小屏幕（<375px） */
+        @media (max-width: 374px) {
+            .container {
+                padding: 8px 8px 80px 8px !important;
+            }
+
+            .bg-white\/80 {
+                padding: 12px !important;
+            }
+
+            #galleryWrap {
+                grid-template-columns: 1fr !important;
+            }
+
+            .husky-pet,
+            .cat-pet {
+                width: 56px !important;
+                height: 56px !important;
+            }
+        }
     </style>
 </head>
 
 <body>
     <div id="heartBox"></div>
+
+    <!-- 哈士奇宠物 -->
+    <div id="huskyPet" class="husky-pet hidden" onclick="petHusky()" onmousedown="startDragHusky(event)" ontouchstart="startDragHusky(event)">
+        <div class="husky-bubble" id="huskyBubble"></div>
+        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <!-- 尾巴 -->
+            <path class="husky-tail" d="M70 65 Q82 55 80 42" stroke="#5a6b7a" stroke-width="6" fill="none" stroke-linecap="round"/>
+            <!-- 身体 -->
+            <ellipse cx="55" cy="62" rx="22" ry="16" fill="#dfe7ee"/>
+            <!-- 腿 -->
+            <rect x="40" y="68" width="7" height="18" rx="3" fill="#5a6b7a"/>
+            <rect x="50" y="68" width="7" height="18" rx="3" fill="#c8d3dc"/>
+            <rect x="60" y="68" width="7" height="18" rx="3" fill="#5a6b7a"/>
+            <rect x="70" y="68" width="7" height="18" rx="3" fill="#c8d3dc"/>
+            <!-- 头 -->
+            <circle cx="35" cy="42" r="18" fill="#dfe7ee"/>
+            <!-- 左耳 -->
+            <path class="husky-ear-l" d="M25 28 L22 16 L32 24 Z" fill="#5a6b7a"/>
+            <!-- 右耳 -->
+            <path d="M45 28 L48 16 L38 24 Z" fill="#5a6b7a"/>
+            <!-- 面部白纹 -->
+            <path d="M35 30 L30 42 L35 50 L40 42 Z" fill="white"/>
+            <!-- 左眼 -->
+            <circle cx="29" cy="40" r="3" fill="#1a1a2e"/>
+            <circle cx="30" cy="39" r="1" fill="white"/>
+            <!-- 右眼 -->
+            <circle cx="41" cy="40" r="3" fill="#1a1a2e"/>
+            <circle cx="42" cy="39" r="1" fill="white"/>
+            <!-- 鼻子 -->
+            <ellipse cx="35" cy="47" rx="3" ry="2" fill="#1a1a2e"/>
+            <!-- 嘴 -->
+            <path id="huskyMouth" d="M35 49 Q35 53 32 53 M35 49 Q35 53 38 53" stroke="#1a1a2e" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+            <!-- 舌头（隐藏） -->
+            <ellipse id="huskyTongue" cx="35" cy="54" rx="3" ry="4" fill="#ff6b8b" style="display:none"/>
+        </svg>
+    </div>
+
+    <!-- 暹罗猫宠物 -->
+    <div id="catPet" class="cat-pet hidden" onclick="petCat()" onmousedown="startDragCat(event)" ontouchstart="startDragCat(event)">
+        <div class="cat-bubble" id="catBubble"></div>
+        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <!-- 尾巴 -->
+            <path class="cat-tail" d="M72 58 Q88 48 82 30" stroke="#6b5444" stroke-width="5" fill="none" stroke-linecap="round"/>
+            <!-- 身体 -->
+            <ellipse cx="55" cy="60" rx="20" ry="15" fill="#f0e6dc"/>
+            <!-- 腿 -->
+            <rect x="42" y="66" width="6" height="18" rx="3" fill="#6b5444"/>
+            <rect x="50" y="66" width="6" height="18" rx="3" fill="#f0e6dc"/>
+            <rect x="60" y="66" width="6" height="18" rx="3" fill="#6b5444"/>
+            <rect x="68" y="66" width="6" height="18" rx="3" fill="#f0e6dc"/>
+            <!-- 头 -->
+            <circle cx="35" cy="42" r="17" fill="#f0e6dc"/>
+            <!-- 暹罗猫面部深色面具 -->
+            <ellipse cx="35" cy="44" rx="13" ry="11" fill="#6b5444"/>
+            <!-- 左耳 -->
+            <path class="cat-ear-l" d="M22 30 L18 14 L30 24 Z" fill="#6b5444"/>
+            <path d="M24 27 L22 18 L28 24 Z" fill="#f0b8c0"/>
+            <!-- 右耳 -->
+            <path d="M48 30 L52 14 L40 24 Z" fill="#6b5444"/>
+            <path d="M46 27 L48 18 L42 24 Z" fill="#f0b8c0"/>
+            <!-- 左眼（蓝色） -->
+            <ellipse cx="29" cy="42" rx="3.5" ry="3" fill="#4fc3f7"/>
+            <ellipse cx="29" cy="42" rx="1.5" ry="2.5" fill="#1a1a2e"/>
+            <circle cx="30" cy="41" r="0.8" fill="white"/>
+            <!-- 右眼（蓝色） -->
+            <ellipse cx="41" cy="42" rx="3.5" ry="3" fill="#4fc3f7"/>
+            <ellipse cx="41" cy="42" rx="1.5" ry="2.5" fill="#1a1a2e"/>
+            <circle cx="42" cy="41" r="0.8" fill="white"/>
+            <!-- 鼻子 -->
+            <path d="M33 47 L37 47 L35 49 Z" fill="#f0b8c0"/>
+            <!-- 嘴 -->
+            <path id="catMouth" d="M35 49 Q35 52 32 52 M35 49 Q35 52 38 52" stroke="#3a2a1e" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+            <!-- 胡须 -->
+            <line x1="20" y1="46" x2="12" y2="44" stroke="#3a2a1e" stroke-width="0.8"/>
+            <line x1="20" y1="48" x2="12" y2="49" stroke="#3a2a1e" stroke-width="0.8"/>
+            <line x1="50" y1="46" x2="58" y2="44" stroke="#3a2a1e" stroke-width="0.8"/>
+            <line x1="50" y1="48" x2="58" y2="49" stroke="#3a2a1e" stroke-width="0.8"/>
+            <!-- 舌头（隐藏） -->
+            <ellipse id="catTongue" cx="35" cy="53" rx="2.5" ry="3.5" fill="#ff9ec4" style="display:none"/>
+        </svg>
+    </div>
 
     <!-- 音乐播放器 -->
     <button id="musicToggle" class="music-toggle hidden" onclick="toggleMusicPanel()">
@@ -564,6 +1011,10 @@
             document.getElementById("musicToggle").classList.add("hidden");
             document.getElementById("musicPanel").classList.add("hidden-panel");
             document.getElementById("musicAudio").pause();
+            document.getElementById("huskyPet").classList.add("hidden");
+            if (huskyWalkingTimer) clearInterval(huskyWalkingTimer);
+            document.getElementById("catPet").classList.add("hidden");
+            if (catWalkingTimer) clearInterval(catWalkingTimer);
         }
 
         // 从数据库 app_config 表读取所有配置
@@ -611,6 +1062,8 @@
             document.getElementById("fileInput").onchange = uploadImageToImgBB;
             document.getElementById("musicToggle").classList.remove("hidden");
             loadMusicList();
+            initHusky();
+            initCat();
         }
 
         //相恋天数
@@ -714,14 +1167,61 @@
                 const div = document.createElement("div");
                 div.className = "img-card relative group";
                 div.innerHTML = `
-            <div class="img-loading absolute inset-0 z-10"><div class="spinner"></div></div>
-            <img src="${item.img_url}" class="loading aspect-square rounded-xl object-cover w-full cursor-pointer hover:opacity-90" onclick="openPreview('${item.img_url}')" onload="this.classList.replace('loading','loaded');this.previousElementSibling.style.display='none'">
+            <div class="img-loading absolute inset-0 z-10" id="loading-${item.id}"><div class="spinner"></div></div>
+            <img src="${item.img_url}" class="loading aspect-square rounded-xl object-cover w-full cursor-pointer hover:opacity-90"
+                onclick="openPreview('${item.img_url}')"
+                onload="onImgLoaded(this,'${item.id}')"
+                onerror="onImgError(this,'${item.id}','${item.img_url}')">
+            <div class="img-error-tip hidden" id="err-${item.id}" onclick="retryImg('${item.id}','${item.img_url}')">
+                <i class="fa fa-refresh"></i><span>点击重试</span>
+            </div>
             <button onclick="deletePhoto('${item.id}','${item.delete_url}')" class="absolute top-2 right-2 bg-red-500 text-white w-7 h-7 rounded-full text-sm flex items-center justify-center shadow-lg opacity-80 hover:opacity-100 z-20">
                 <i class="fa fa-trash"></i>
             </button>
         `;
                 wrap.appendChild(div);
+                // 60秒超时检测
+                checkImgTimeout(item.id);
             })
+        }
+
+        function onImgLoaded(img, id) {
+            img.classList.replace('loading', 'loaded');
+            const loader = document.getElementById('loading-' + id);
+            if (loader) loader.style.display = 'none';
+            const errTip = document.getElementById('err-' + id);
+            if (errTip) errTip.classList.add('hidden');
+        }
+
+        function onImgError(img, id, url) {
+            img.classList.remove('loading');
+            img.classList.add('error');
+            img.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%23fde8ee'/%3E%3Ctext x='100' y='105' font-size='14' fill='%23ff6b8b' text-anchor='middle'%3E加载失败%3C/text%3E%3C/svg%3E";
+            const loader = document.getElementById('loading-' + id);
+            if (loader) loader.style.display = 'none';
+            const errTip = document.getElementById('err-' + id);
+            if (errTip) errTip.classList.remove('hidden');
+        }
+
+        function retryImg(id, url) {
+            const loader = document.getElementById('loading-' + id);
+            if (loader) loader.style.display = 'flex';
+            const errTip = document.getElementById('err-' + id);
+            if (errTip) errTip.classList.add('hidden');
+            const img = loader.parentElement.querySelector('img');
+            img.classList.remove('error');
+            img.classList.add('loading');
+            img.src = url + (url.includes('?') ? '&' : '?') + '_t=' + Date.now();
+        }
+
+        function checkImgTimeout(id) {
+            setTimeout(() => {
+                const loader = document.getElementById('loading-' + id);
+                const img = loader ? loader.parentElement.querySelector('img') : null;
+                if (loader && img && img.classList.contains('loading') && !img.complete) {
+                    onImgError(img, id, img.src);
+                }
+            }, 60000);
         }
 
         //留言
@@ -960,6 +1460,198 @@
             const m = Math.floor(s / 60);
             const sec = Math.floor(s % 60);
             return `${m}:${String(sec).padStart(2, '0')}`;
+        }
+
+        // ==================== 哈士奇宠物 ====================
+        const huskyPhrases = ["汪汪！", "陪我玩嘛~", "摸摸我！", "好开心！", "汪~", "爱你哟", "今天也元气满满！", "主人最好了"];
+        let huskyWalkingTimer = null;
+        let huskyDragging = false;
+
+        function initHusky() {
+            document.getElementById("huskyPet").classList.remove("hidden");
+            startHuskyWalking();
+        }
+
+        function startHuskyWalking() {
+            if (huskyWalkingTimer) clearInterval(huskyWalkingTimer);
+            huskyWalkingTimer = setInterval(() => {
+                if (huskyDragging) return;
+                const pet = document.getElementById("huskyPet");
+                const curLeft = parseInt(pet.style.left) || 20;
+                const move = Math.random() > 0.5 ? 30 : -30;
+                let newLeft = curLeft + move;
+                newLeft = Math.max(10, Math.min(window.innerWidth - 110, newLeft));
+                pet.style.left = newLeft + "px";
+                pet.classList.add("walking");
+                pet.style.transform = move < 0 ? "scaleX(-1)" : "scaleX(1)";
+                setTimeout(() => pet.classList.remove("walking"), 2000);
+            }, 8000);
+        }
+
+        function petHusky() {
+            if (huskyDragging) return;
+            const pet = document.getElementById("huskyPet");
+            pet.classList.add("happy");
+            setTimeout(() => pet.classList.remove("happy"), 500);
+
+            // 随机对话
+            const bubble = document.getElementById("huskyBubble");
+            bubble.innerText = huskyPhrases[Math.floor(Math.random() * huskyPhrases.length)];
+            bubble.classList.add("show");
+            setTimeout(() => bubble.classList.remove("show"), 2000);
+
+            // 吐舌头
+            const tongue = document.getElementById("huskyTongue");
+            tongue.style.display = "block";
+            setTimeout(() => tongue.style.display = "none", 1500);
+
+            // 冒爱心
+            for (let i = 0; i < 3; i++) {
+                setTimeout(() => spawnHuskyHeart(), i * 150);
+            }
+        }
+
+        function spawnHuskyHeart() {
+            const pet = document.getElementById("huskyPet");
+            const heart = document.createElement("i");
+            heart.className = "fa fa-heart husky-heart";
+            heart.style.left = (40 + Math.random() * 20) + "px";
+            heart.style.top = "20px";
+            heart.style.setProperty("--dx", (Math.random() * 60 - 30) + "px");
+            heart.style.animation = "heart-float 1.2s ease-out forwards";
+            pet.appendChild(heart);
+            setTimeout(() => heart.remove(), 1200);
+        }
+
+        // 拖拽
+        function startDragHusky(e) {
+            e.preventDefault();
+            huskyDragging = true;
+            const pet = document.getElementById("huskyPet");
+            const rect = pet.getBoundingClientRect();
+            const point = e.touches ? e.touches[0] : e;
+            const offsetX = point.clientX - rect.left;
+            const offsetY = point.clientY - rect.top;
+            pet.style.transition = "none";
+
+            function onMove(ev) {
+                const pt = ev.touches ? ev.touches[0] : ev;
+                let x = pt.clientX - offsetX;
+                let y = pt.clientY - offsetY;
+                x = Math.max(0, Math.min(window.innerWidth - pet.offsetWidth, x));
+                y = Math.max(0, Math.min(window.innerHeight - pet.offsetHeight, y));
+                pet.style.left = x + "px";
+                pet.style.top = y + "px";
+                pet.style.bottom = "auto";
+                pet.style.transform = "scaleX(1)";
+            }
+            function onUp() {
+                huskyDragging = false;
+                pet.style.transition = "";
+                document.removeEventListener("mousemove", onMove);
+                document.removeEventListener("mouseup", onUp);
+                document.removeEventListener("touchmove", onMove);
+                document.removeEventListener("touchend", onUp);
+            }
+            document.addEventListener("mousemove", onMove);
+            document.addEventListener("mouseup", onUp);
+            document.addEventListener("touchmove", onMove, { passive: false });
+            document.addEventListener("touchend", onUp);
+        }
+
+        // ==================== 暹罗猫宠物 ====================
+        const catPhrases = ["喵~", "呼噜呼噜", "别摸我！", "喵喵喵！", "本喵饿了", "喜欢你", "蹭蹭你", "喵呜~"];
+        let catWalkingTimer = null;
+        let catDragging = false;
+
+        function initCat() {
+            document.getElementById("catPet").classList.remove("hidden");
+            startCatWalking();
+        }
+
+        function startCatWalking() {
+            if (catWalkingTimer) clearInterval(catWalkingTimer);
+            catWalkingTimer = setInterval(() => {
+                if (catDragging) return;
+                const pet = document.getElementById("catPet");
+                const curRight = window.innerWidth - (parseInt(pet.style.right) || 20) - 100;
+                const move = Math.random() > 0.5 ? 30 : -30;
+                let newRight = (parseInt(pet.style.right) || 20) - move;
+                newRight = Math.max(10, Math.min(window.innerWidth - 110, newRight));
+                pet.style.right = newRight + "px";
+                pet.classList.add("walking");
+                pet.style.transform = move > 0 ? "scaleX(-1)" : "scaleX(1)";
+                setTimeout(() => pet.classList.remove("walking"), 2000);
+            }, 9000);
+        }
+
+        function petCat() {
+            if (catDragging) return;
+            const pet = document.getElementById("catPet");
+            pet.classList.add("happy");
+            setTimeout(() => pet.classList.remove("happy"), 500);
+
+            const bubble = document.getElementById("catBubble");
+            bubble.innerText = catPhrases[Math.floor(Math.random() * catPhrases.length)];
+            bubble.classList.add("show");
+            setTimeout(() => bubble.classList.remove("show"), 2000);
+
+            const tongue = document.getElementById("catTongue");
+            tongue.style.display = "block";
+            setTimeout(() => tongue.style.display = "none", 1500);
+
+            for (let i = 0; i < 3; i++) {
+                setTimeout(() => spawnCatHeart(), i * 150);
+            }
+        }
+
+        function spawnCatHeart() {
+            const pet = document.getElementById("catPet");
+            const heart = document.createElement("i");
+            heart.className = "fa fa-heart husky-heart";
+            heart.style.color = "#a78bfa";
+            heart.style.left = (40 + Math.random() * 20) + "px";
+            heart.style.top = "20px";
+            heart.style.setProperty("--dx", (Math.random() * 60 - 30) + "px");
+            heart.style.animation = "heart-float 1.2s ease-out forwards";
+            pet.appendChild(heart);
+            setTimeout(() => heart.remove(), 1200);
+        }
+
+        function startDragCat(e) {
+            e.preventDefault();
+            catDragging = true;
+            const pet = document.getElementById("catPet");
+            const rect = pet.getBoundingClientRect();
+            const point = e.touches ? e.touches[0] : e;
+            const offsetX = point.clientX - rect.left;
+            const offsetY = point.clientY - rect.top;
+            pet.style.transition = "none";
+
+            function onMove(ev) {
+                const pt = ev.touches ? ev.touches[0] : ev;
+                let x = pt.clientX - offsetX;
+                let y = pt.clientY - offsetY;
+                x = Math.max(0, Math.min(window.innerWidth - pet.offsetWidth, x));
+                y = Math.max(0, Math.min(window.innerHeight - pet.offsetHeight, y));
+                pet.style.left = x + "px";
+                pet.style.top = y + "px";
+                pet.style.right = "auto";
+                pet.style.bottom = "auto";
+                pet.style.transform = "scaleX(1)";
+            }
+            function onUp() {
+                catDragging = false;
+                pet.style.transition = "";
+                document.removeEventListener("mousemove", onMove);
+                document.removeEventListener("mouseup", onUp);
+                document.removeEventListener("touchmove", onMove);
+                document.removeEventListener("touchend", onUp);
+            }
+            document.addEventListener("mousemove", onMove);
+            document.addEventListener("mouseup", onUp);
+            document.addEventListener("touchmove", onMove, { passive: false });
+            document.addEventListener("touchend", onUp);
         }
     </script>
 </body>
