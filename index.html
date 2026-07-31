@@ -395,6 +395,7 @@
             cursor: pointer;
             transition: transform 0.3s ease;
             user-select: none;
+            touch-action: none;
         }
 
         .husky-pet svg {
@@ -499,6 +500,7 @@
             cursor: pointer;
             transition: transform 0.3s ease;
             user-select: none;
+            touch-action: none;
         }
 
         .cat-pet svg {
@@ -655,15 +657,14 @@
             .cat-pet {
                 width: 70px !important;
                 height: 70px !important;
-                bottom: 10px !important;
             }
 
             .husky-pet {
-                left: 10px !important;
+                left: 10px;
             }
 
             .cat-pet {
-                right: 10px !important;
+                right: 10px;
             }
 
             /* 大图预览 */
@@ -1525,17 +1526,27 @@
 
         // 拖拽
         function startDragHusky(e) {
-            e.preventDefault();
-            huskyDragging = true;
             const pet = document.getElementById("huskyPet");
             const rect = pet.getBoundingClientRect();
-            const point = e.touches ? e.touches[0] : e;
+            const isTouch = !!e.touches;
+            const point = isTouch ? e.touches[0] : e;
+            const startX = point.clientX;
+            const startY = point.clientY;
             const offsetX = point.clientX - rect.left;
             const offsetY = point.clientY - rect.top;
+            let hasMoved = false;
             pet.style.transition = "none";
 
             function onMove(ev) {
                 const pt = ev.touches ? ev.touches[0] : ev;
+                if (ev.touches) ev.preventDefault();
+                const dx = pt.clientX - startX;
+                const dy = pt.clientY - startY;
+                if (!hasMoved && Math.abs(dx) + Math.abs(dy) > 5) {
+                    hasMoved = true;
+                    huskyDragging = true;
+                }
+                if (!hasMoved) return;
                 let x = pt.clientX - offsetX;
                 let y = pt.clientY - offsetY;
                 x = Math.max(0, Math.min(window.innerWidth - pet.offsetWidth, x));
@@ -1552,7 +1563,9 @@
                 document.removeEventListener("mouseup", onUp);
                 document.removeEventListener("touchmove", onMove);
                 document.removeEventListener("touchend", onUp);
+                if (!hasMoved) petHusky();
             }
+            if (isTouch) e.preventDefault();
             document.addEventListener("mousemove", onMove);
             document.addEventListener("mouseup", onUp);
             document.addEventListener("touchmove", onMove, { passive: false });
@@ -1619,17 +1632,27 @@
         }
 
         function startDragCat(e) {
-            e.preventDefault();
-            catDragging = true;
             const pet = document.getElementById("catPet");
             const rect = pet.getBoundingClientRect();
-            const point = e.touches ? e.touches[0] : e;
+            const isTouch = !!e.touches;
+            const point = isTouch ? e.touches[0] : e;
+            const startX = point.clientX;
+            const startY = point.clientY;
             const offsetX = point.clientX - rect.left;
             const offsetY = point.clientY - rect.top;
+            let hasMoved = false;
             pet.style.transition = "none";
 
             function onMove(ev) {
                 const pt = ev.touches ? ev.touches[0] : ev;
+                if (ev.touches) ev.preventDefault();
+                const dx = pt.clientX - startX;
+                const dy = pt.clientY - startY;
+                if (!hasMoved && Math.abs(dx) + Math.abs(dy) > 5) {
+                    hasMoved = true;
+                    catDragging = true;
+                }
+                if (!hasMoved) return;
                 let x = pt.clientX - offsetX;
                 let y = pt.clientY - offsetY;
                 x = Math.max(0, Math.min(window.innerWidth - pet.offsetWidth, x));
@@ -1647,7 +1670,9 @@
                 document.removeEventListener("mouseup", onUp);
                 document.removeEventListener("touchmove", onMove);
                 document.removeEventListener("touchend", onUp);
+                if (!hasMoved) petCat();
             }
+            if (isTouch) e.preventDefault();
             document.addEventListener("mousemove", onMove);
             document.addEventListener("mouseup", onUp);
             document.addEventListener("touchmove", onMove, { passive: false });
