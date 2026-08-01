@@ -1804,7 +1804,7 @@
         let lbChannel = null;
         let lbPhase = "idle"; // idle, inviting, playing, gameOver
         let lbMyHP = 1, lbPartnerHP = 1;
-        let lbBulletPos = 0;   // 子弹位置 1-6
+        let lbBulletPos = 0;   // 子弹位置 1-3
         let lbChamber = 1;     // 当前弹巢位置
         let lbMyCards = [];
         let lbTargetRank = "";
@@ -1970,8 +1970,8 @@
         function lbBeginGame(iStart) {
             lbPhase = "playing";
             lbMyHP = 1; lbPartnerHP = 1;
-            // 初始化左轮手枪：6个弹巢，1颗子弹
-            lbBulletPos = Math.floor(Math.random() * 6) + 1;
+            // 初始化水枪：3个弹巢，1颗子弹，中弹概率 1/3
+            lbBulletPos = Math.floor(Math.random() * 3) + 1;
             lbChamber = 1;
             lbChannel.send({ type: "broadcast", event: "revolver", payload: { bullet: lbBulletPos, from: myRpsEmail } });
             lbTargetRank = lbRanks[Math.floor(Math.random() * lbRanks.length)];
@@ -2155,7 +2155,7 @@
                 actions.innerHTML = `<span class="text-4xl">🔫💦</span>`;
                 sfxWaterHit();
                 // 重置弹巢
-                lbBulletPos = Math.floor(Math.random() * 6) + 1;
+                lbBulletPos = Math.floor(Math.random() * 3) + 1;
                 lbChamber = 1;
                 lbChannel.send({ type: "broadcast", event: "revolver", payload: { bullet: lbBulletPos, from: myRpsEmail } });
             } else {
