@@ -371,6 +371,40 @@
             50% { box-shadow: 0 4px 25px rgba(255, 107, 139, 0.7); }
         }
 
+        /* BGM 开关按钮 */
+        .bgm-toggle {
+            position: fixed;
+            top: 20px;
+            right: 74px;
+            z-index: 99;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #a78bfa, #c4b5fd);
+            color: white;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(167, 139, 250, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: transform 0.3s;
+        }
+
+        .bgm-toggle:hover {
+            transform: scale(1.1);
+        }
+
+        .bgm-toggle.playing {
+            animation: pulse-glow-purple 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-glow-purple {
+            0%, 100% { box-shadow: 0 4px 15px rgba(167, 139, 250, 0.4); }
+            50% { box-shadow: 0 4px 25px rgba(167, 139, 250, 0.7); }
+        }
+
         .music-upload {
             font-size: 11px;
             color: #ff6b8b;
@@ -383,6 +417,38 @@
         .music-upload:hover {
             text-decoration: underline;
         }
+
+        /* 骗子酒馆卡牌 */
+        .lb-card {
+            width: 44px; height: 62px;
+            border-radius: 6px;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            font-size: 14px; font-weight: bold;
+            cursor: pointer; user-select: none;
+            transition: all 0.2s;
+            position: relative;
+        }
+        .lb-card.face-up {
+            background: #fff;
+            border: 2px solid #e5e7eb;
+            color: #1f2937;
+        }
+        .lb-card.face-up.red { color: #dc2626; }
+        .lb-card.face-down {
+            background: linear-gradient(135deg, #f43f5e, #be123c);
+            border: 2px solid #9f1239;
+            color: rgba(255,255,255,0.3);
+        }
+        .lb-card.face-down::after {
+            content: "🂠"; font-size: 28px; color: rgba(255,255,255,0.5);
+        }
+        .lb-card.selected {
+            transform: translateY(-12px);
+            box-shadow: 0 -4px 8px rgba(244,63,94,0.3);
+            border-color: #f43f5e;
+        }
+        .lb-card.played { cursor: default; }
 
         /* 语音录制按钮动画 */
         #voiceBtn.recording {
@@ -659,6 +725,14 @@
                 font-size: 15px !important;
             }
 
+            .bgm-toggle {
+                top: 12px !important;
+                right: 54px !important;
+                width: 38px !important;
+                height: 38px !important;
+                font-size: 15px !important;
+            }
+
             /* 退出登录按钮左移避免遮挡 */
             #mainPage > .flex.justify-end {
                 padding-right: 50px;
@@ -826,6 +900,11 @@
             <ellipse id="catTongue" cx="35" cy="53" rx="2.5" ry="3.5" fill="#ff9ec4" style="display:none"/>
         </svg>
     </div>
+
+    <!-- BGM 开关 -->
+    <button id="bgmToggle" class="bgm-toggle" onclick="toggleBgm()">
+        <i class="fa fa-volume-off"></i>
+    </button>
 
     <!-- 音乐播放器 -->
     <button id="musicToggle" class="music-toggle hidden" onclick="toggleMusicPanel()">
@@ -1008,6 +1087,34 @@
                 <div class="text-center mt-3">
                     <button onclick="rpsReset()" class="text-sm text-gray-400 hover:text-love">重置比分</button>
                 </div>
+            </div>
+
+            <!--骗子酒馆-->
+            <div class="md:col-span-2 bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow">
+                <h2 class="text-xl font-bold text-love flex items-center mb-4">
+                    <i class="fa fa-clone mr-2"></i>骗子酒馆
+                    <span id="lbStatus" class="ml-auto text-sm font-normal text-gray-400">空闲</span>
+                </h2>
+                <div class="flex justify-between items-center mb-4 px-4">
+                    <div class="text-center">
+                        <span class="text-sm font-bold text-love" id="lbMyName">我</span>
+                        <div id="lbMyHP" class="text-xl">💧</div>
+                    </div>
+                    <div class="text-center">
+                        <div id="lbTargetRank" class="text-3xl font-bold text-gray-300">?</div>
+                        <div class="text-xs text-gray-400">目标牌型</div>
+                    </div>
+                    <div class="text-center">
+                        <span class="text-sm font-bold text-gray-400" id="lbPartnerName">TA</span>
+                        <div id="lbPartnerHP" class="text-xl">💧</div>
+                    </div>
+                </div>
+                <div id="lbPartnerPlayed" class="flex justify-center gap-2 min-h-[70px] mb-2"></div>
+                <div id="lbMyHand" class="flex justify-center gap-2 flex-wrap min-h-[70px] mb-3"></div>
+                <div id="lbActions" class="flex justify-center gap-3 flex-wrap">
+                    <button onclick="lbStart()" id="lbStartBtn" class="bg-love hover:bg-loveDark text-white px-6 py-2 rounded-full transition-all">邀请对方开始</button>
+                </div>
+                <div id="lbMessage" class="text-center text-gray-500 mt-3 min-h-[24px] text-sm"></div>
             </div>
         </div>
 
@@ -1580,10 +1687,16 @@
 
         function initRpsGame() {
             sb.auth.getUser().then(({ data: { user } }) => {
-                myRpsEmail = user?.email || "";
-                const isBoy = myRpsEmail === CONFIG.boyEmail;
-                document.getElementById("myNameLabel").textContent = isBoy ? CONFIG.boyName : CONFIG.girlName;
-                document.getElementById("partnerNameLabel").textContent = isBoy ? CONFIG.girlName : CONFIG.boyName;
+                myRpsEmail = (user?.email || "").toLowerCase();
+                const boyEmail = (CONFIG.boyEmail || "").toLowerCase();
+                const girlEmail = (CONFIG.girlEmail || "").toLowerCase();
+                const isBoy = myRpsEmail && myRpsEmail === boyEmail;
+                const isGirl = myRpsEmail && myRpsEmail === girlEmail;
+                // 如果匹配到某一方，显示对应名字；都没匹配则默认显示 boyName
+                const myName = isGirl ? CONFIG.girlName : CONFIG.boyName;
+                const partnerName = isGirl ? CONFIG.boyName : CONFIG.girlName;
+                document.getElementById("myNameLabel").textContent = myName;
+                document.getElementById("partnerNameLabel").textContent = partnerName;
 
                 // 加载比分
                 const saved = JSON.parse(localStorage.getItem("rpsScore") || "{}");
@@ -1606,9 +1719,11 @@
                     })
                     .on("presence", { event: "sync" }, () => {
                         const state = rpsChannel.presenceState();
-                        const keys = Object.keys(state);
                         const el = document.getElementById("partnerOnline");
-                        const partnerOnline = keys.some(k => k !== myRpsEmail);
+                        // presence 的 key 是客户端 UUID，需要检查数据中的 user 字段
+                        const partnerOnline = Object.values(state).some(
+                            arr => arr.some(p => p.user && p.user.toLowerCase() !== myRpsEmail)
+                        );
                         if (partnerOnline) {
                             el.textContent = "对方在线";
                             el.className = "ml-auto text-sm font-normal text-green-500";
@@ -1624,6 +1739,8 @@
                             console.error("RPS频道连接失败:", status);
                         }
                     });
+                // 邮箱就绪后初始化骗子酒馆
+                lbInit();
             });
         }
 
@@ -1681,6 +1798,652 @@
             saveRpsScore(); updateRpsScore();
             if (rpsChannel) rpsChannel.send({ type: "broadcast", event: "reset", payload: {} });
             document.getElementById("gameStatus").textContent = "比分已重置！";
+        }
+
+        // ==================== 骗子酒馆 ====================
+        let lbChannel = null;
+        let lbPhase = "idle"; // idle, inviting, playing, gameOver
+        let lbMyHP = 1, lbPartnerHP = 1;
+        let lbBulletPos = 0;   // 子弹位置 1-6
+        let lbChamber = 1;     // 当前弹巢位置
+        let lbMyCards = [];
+        let lbTargetRank = "";
+        let lbSelected = [];
+        let lbPartnerPlayedCards = [];
+        let lbMyPlayedCards = []; // 我这回合出的牌（用于被揭穿时展示）
+        let lbMyTurn = false;
+        let lbIsInitiator = false;
+        // 会话 ID：每次页面加载生成新的，用于区分对方旧/新会话，避免陈旧 quit 信号终止新游戏
+        let lbSessionId = Date.now() + "-" + Math.random().toString(36).substr(2, 9);
+        let partnerLbSession = null;
+        const lbRanks = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
+        const lbSuits = ["♠","♥","♦","♣"];
+        const lbRedSuits = ["♥","♦"];
+
+        function lbInit() {
+            // 设置名字
+            const isGirl = myRpsEmail === (CONFIG.girlEmail || "").toLowerCase();
+            document.getElementById("lbMyName").textContent = isGirl ? CONFIG.girlName : CONFIG.boyName;
+            document.getElementById("lbPartnerName").textContent = isGirl ? CONFIG.boyName : CONFIG.girlName;
+
+            lbChannel = sb.channel("liar-bar", { config: { broadcast: { self: false } } });
+            lbChannel
+                .on("broadcast", { event: "invite" }, ({ payload }) => {
+                    if (payload.from === myRpsEmail) return;
+                    // 记录对方最新会话 ID（新会话表示对方已重连，旧的 quit 应被忽略）
+                    if (payload.sid) partnerLbSession = payload.sid;
+                    document.getElementById("lbMessage").textContent = "收到对方邀请！";
+                    const a = document.getElementById("lbActions");
+                    a.innerHTML = "";
+                    const btn = lbEnsureStartBtn();
+                    btn.textContent = "接受邀请";
+                    btn.onclick = lbAccept;
+                    btn.classList.remove("hidden");
+                    btn.disabled = false;
+                    a.appendChild(btn);
+                    lbIsInitiator = false;
+                })
+                .on("broadcast", { event: "accept" }, ({ payload }) => {
+                    if (payload.from === myRpsEmail) return;
+                    lbBeginGame(true);
+                })
+                .on("broadcast", { event: "play" }, ({ payload }) => {
+                    if (payload.from === myRpsEmail) return;
+                    lbPartnerPlayedCards = payload.cards;
+                    lbRenderPartnerPlayed(false);
+                    document.getElementById("lbMessage").textContent = `对方出了${payload.cards.length}张牌，声称都是「${lbTargetRank}」`;
+                    lbShowRespondButtons();
+                })
+                .on("broadcast", { event: "call" }, ({ payload }) => {
+                    if (payload.from === myRpsEmail) return;
+                    lbDoReveal("partner");
+                })
+                .on("broadcast", { event: "believe" }, ({ payload }) => {
+                    if (payload.from === myRpsEmail) return;
+                    lbPartnerPlayedCards = [];
+                    lbRenderPartnerPlayed(false);
+                    lbMyTurn = false;
+                    document.getElementById("lbMessage").textContent = "对方相信了，等待对方出牌...";
+                    lbShowWaitButtons();
+                })
+                .on("broadcast", { event: "newRound" }, ({ payload }) => {
+                    if (payload.from === myRpsEmail) return;
+                    lbTargetRank = payload.rank;
+                    lbMyTurn = !payload.first;
+                    lbPartnerPlayedCards = [];
+                    lbSelected = [];
+                    // 重新发牌（保证至少一张目标牌型）
+                    lbMyCards = lbDealCardsWithTarget(5, lbTargetRank);
+                    lbUpdateTargetRank();
+                    lbRenderHand();
+                    lbRenderPartnerPlayed(false);
+                    if (lbMyTurn) {
+                        document.getElementById("lbMessage").textContent = `新一轮！目标：${lbTargetRank}，轮到你出牌`;
+                        lbShowPlayButtons();
+                    } else {
+                        document.getElementById("lbMessage").textContent = `新一轮！目标：${lbTargetRank}，等待对方出牌...`;
+                        lbShowWaitButtons();
+                    }
+                })
+                .on("broadcast", { event: "gameOver" }, ({ payload }) => {
+                    if (payload.from === myRpsEmail) return;
+                    lbPhase = "gameOver";
+                    document.getElementById("lbMessage").textContent = "你赢了！🎉";
+                    const a = document.getElementById("lbActions");
+                    a.innerHTML = "";
+                    const btn = lbEnsureStartBtn();
+                    btn.textContent = "再来一局";
+                    btn.onclick = lbStart;
+                    btn.classList.remove("hidden");
+                    btn.disabled = false;
+                    a.appendChild(btn);
+                })
+                .on("broadcast", { event: "trigger" }, ({ payload }) => {
+                    if (payload.from === myRpsEmail) return;
+                    lbChamber = payload.chamber + 1;
+                    // emptyWin=true 表示对方打完牌，我方受罚；否则是揭穿受罚
+                    const isMe = payload.emptyWin ? true : false;
+                    lbShowTriggerAnim(payload.hit, isMe);
+                })
+                .on("broadcast", { event: "revolver" }, ({ payload }) => {
+                    if (payload.from === myRpsEmail) return;
+                    lbBulletPos = payload.bullet;
+                    lbChamber = 1;
+                })
+                .on("presence", { event: "sync" }, () => {
+                    const state = lbChannel.presenceState();
+                    let partnerOnline = false;
+                    let latestPartnerSid = null;
+                    Object.values(state).forEach(arr => {
+                        arr.forEach(p => {
+                            if (p.user && p.user.toLowerCase() !== myRpsEmail) {
+                                partnerOnline = true;
+                                if (p.sid) latestPartnerSid = p.sid;
+                            }
+                        });
+                    });
+                    // 更新对方最新会话 ID
+                    if (latestPartnerSid) partnerLbSession = latestPartnerSid;
+                    // 任意非空闲阶段对方掉线，终止并重置
+                    if (!partnerOnline && lbPhase !== "idle") {
+                        const wasPlaying = lbPhase === "playing";
+                        lbResetToIdle(wasPlaying ? "对方已掉线，游戏终止" : "对方已掉线");
+                    }
+                })
+                .on("broadcast", { event: "quit" }, ({ payload }) => {
+                    if (payload.from === myRpsEmail) return;
+                    // 仅当 quit 来自对方当前会话时才终止；若会话 ID 不匹配，说明是陈旧信号（对方已重连）
+                    if (partnerLbSession && payload.sid !== partnerLbSession) return;
+                    if (lbPhase !== "idle") {
+                        const wasPlaying = lbPhase === "playing";
+                        lbResetToIdle(wasPlaying ? "对方已离开，游戏终止" : "对方已离开");
+                    }
+                })
+                .subscribe(async (status) => {
+                    if (status === "SUBSCRIBED") await lbChannel.track({ user: myRpsEmail, sid: lbSessionId });
+                });
+
+            // 页面刷新/关闭时主动通知对方退出
+            window.addEventListener("beforeunload", () => {
+                if (lbChannel && lbPhase !== "idle") {
+                    try {
+                        lbChannel.send({ type: "broadcast", event: "quit", payload: { from: myRpsEmail, sid: lbSessionId } });
+                    } catch (e) {}
+                }
+            });
+        }
+
+        function lbStart() {
+            lbChannel.send({ type: "broadcast", event: "invite", payload: { from: myRpsEmail, sid: lbSessionId } });
+            document.getElementById("lbMessage").textContent = "已发送邀请，等待对方接受...";
+            document.getElementById("lbStartBtn").textContent = "等待中...";
+            document.getElementById("lbStartBtn").disabled = true;
+            lbIsInitiator = true;
+            lbPhase = "inviting";
+        }
+
+        function lbAccept() {
+            lbChannel.send({ type: "broadcast", event: "accept", payload: { from: myRpsEmail } });
+            lbBeginGame(false);
+        }
+
+        function lbBeginGame(iStart) {
+            lbPhase = "playing";
+            lbMyHP = 1; lbPartnerHP = 1;
+            // 初始化左轮手枪：6个弹巢，1颗子弹
+            lbBulletPos = Math.floor(Math.random() * 6) + 1;
+            lbChamber = 1;
+            lbChannel.send({ type: "broadcast", event: "revolver", payload: { bullet: lbBulletPos, from: myRpsEmail } });
+            lbTargetRank = lbRanks[Math.floor(Math.random() * lbRanks.length)];
+            lbMyCards = lbDealCardsWithTarget(5, lbTargetRank);
+            lbMyTurn = iStart;
+            lbSelected = [];
+            lbPartnerPlayedCards = [];
+            document.getElementById("lbStartBtn").classList.add("hidden");
+            lbUpdateHP();
+            lbUpdateTargetRank();
+            lbRenderHand();
+            lbRenderPartnerPlayed(false);
+            if (lbMyTurn) {
+                document.getElementById("lbMessage").textContent = `游戏开始！目标：${lbTargetRank}，你先出牌`;
+                lbShowPlayButtons();
+            } else {
+                document.getElementById("lbMessage").textContent = `游戏开始！目标：${lbTargetRank}，等待对方出牌...`;
+                lbShowWaitButtons();
+            }
+            // 发送目标牌型给对方
+            if (iStart) {
+                lbChannel.send({ type: "broadcast", event: "newRound", payload: { rank: lbTargetRank, first: true, from: myRpsEmail } });
+            }
+        }
+
+        function lbDealCards(n) {
+            const cards = [];
+            for (let i = 0; i < n; i++) {
+                cards.push({
+                    rank: lbRanks[Math.floor(Math.random() * lbRanks.length)],
+                    suit: lbSuits[Math.floor(Math.random() * 4)]
+                });
+            }
+            return cards;
+        }
+
+        // 发牌时保证至少一张目标牌型，且提高出现概率，最多4张
+        function lbDealCardsWithTarget(n, targetRank) {
+            const cards = lbDealCards(n);
+            // 30% 概率每张牌变成目标牌型
+            cards.forEach(c => {
+                if (Math.random() < 0.3) {
+                    c.rank = targetRank;
+                    c.suit = lbSuits[Math.floor(Math.random() * 4)];
+                }
+            });
+            // 限制目标牌型最多4张，超过则改回随机牌
+            let targetCount = cards.filter(c => c.rank === targetRank).length;
+            while (targetCount > 4) {
+                const idx = cards.findIndex(c => c.rank === targetRank);
+                cards[idx].rank = lbRanks[Math.floor(Math.random() * lbRanks.length)];
+                cards[idx].suit = lbSuits[Math.floor(Math.random() * 4)];
+                if (cards[idx].rank === targetRank) cards[idx].rank = lbRanks[0];
+                targetCount = cards.filter(c => c.rank === targetRank).length;
+            }
+            // 保证至少一张目标牌型
+            const hasTarget = cards.some(c => c.rank === targetRank);
+            if (!hasTarget) {
+                const idx = Math.floor(Math.random() * n);
+                cards[idx].rank = targetRank;
+                cards[idx].suit = lbSuits[Math.floor(Math.random() * 4)];
+            }
+            return cards;
+        }
+
+        function lbRenderHand() {
+            const wrap = document.getElementById("lbMyHand");
+            wrap.innerHTML = "";
+            lbMyCards.forEach((c, i) => {
+                const div = document.createElement("div");
+                const isRed = lbRedSuits.includes(c.suit);
+                div.className = `lb-card face-up ${isRed ? "red" : ""} ${lbSelected.includes(i) ? "selected" : ""}`;
+                div.innerHTML = `<span>${c.suit}</span><span>${c.rank}</span>`;
+                div.onclick = () => {
+                    if (!lbMyTurn || lbPhase !== "playing") return;
+                    const idx = lbSelected.indexOf(i);
+                    if (idx >= 0) lbSelected.splice(idx, 1);
+                    else if (lbSelected.length < 3) lbSelected.push(i);
+                    lbRenderHand();
+                };
+                wrap.appendChild(div);
+            });
+        }
+
+        function lbRenderPartnerPlayed(reveal) {
+            const wrap = document.getElementById("lbPartnerPlayed");
+            wrap.innerHTML = "";
+            if (lbPartnerPlayedCards.length === 0) return;
+            lbPartnerPlayedCards.forEach(c => {
+                const div = document.createElement("div");
+                if (reveal) {
+                    const isRed = lbRedSuits.includes(c.suit);
+                    div.className = `lb-card face-up played ${isRed ? "red" : ""}`;
+                    div.innerHTML = `<span>${c.suit}</span><span>${c.rank}</span>`;
+                } else {
+                    div.className = "lb-card face-down played";
+                }
+                wrap.appendChild(div);
+            });
+        }
+
+        function lbPlay() {
+            if (lbSelected.length === 0) return alert("请选择1-3张牌");
+            sfxPlay();
+            const played = lbSelected.map(i => lbMyCards[i]);
+            lbMyPlayedCards = played;
+            lbChannel.send({ type: "broadcast", event: "play", payload: { cards: played, from: myRpsEmail } });
+            lbSelected.sort((a, b) => b - a).forEach(i => lbMyCards.splice(i, 1));
+            lbSelected = [];
+            lbRenderHand();
+            // 手牌打完了，对方接受水枪惩罚
+            if (lbMyCards.length === 0) {
+                lbMyTurn = false;
+                document.getElementById("lbMessage").textContent = "你打完所有牌！对方接受水枪惩罚 🔫";
+                lbShowWaitButtons();
+                setTimeout(() => {
+                    const hit = lbChamber === lbBulletPos;
+                    lbChannel.send({ type: "broadcast", event: "trigger", payload: { from: myRpsEmail, chamber: lbChamber, hit, emptyWin: true } });
+                    lbShowTriggerAnim(hit, false); // false = 对方受罚
+                }, 1200);
+                return;
+            }
+            lbMyTurn = false;
+            document.getElementById("lbMessage").textContent = "已出牌，等待对方回应...";
+            lbShowWaitButtons();
+        }
+
+        function lbCall() {
+            lbChannel.send({ type: "broadcast", event: "call", payload: { from: myRpsEmail } });
+            lbDoReveal("me");
+        }
+
+        function lbBelieve() {
+            lbChannel.send({ type: "broadcast", event: "believe", payload: { from: myRpsEmail } });
+            lbPartnerPlayedCards = [];
+            lbRenderPartnerPlayed(false);
+            lbMyTurn = true;
+            document.getElementById("lbMessage").textContent = "你相信了，现在轮到你出牌！";
+            lbShowPlayButtons();
+        }
+
+        function lbDoReveal(caller) {
+            let allMatch, loserIsMe, iStartNext;
+            if (caller === "me") {
+                lbRenderPartnerPlayed(true);
+                allMatch = lbPartnerPlayedCards.every(c => c.rank === lbTargetRank);
+                loserIsMe = allMatch; // 我揭穿失败→我受罚
+                iStartNext = !allMatch; // 骗子输了→赢家先出
+                document.getElementById("lbMessage").textContent = allMatch
+                    ? "对方说真话！你被水枪瞄准..." : "对方在骗人！TA被水枪瞄准...";
+            } else {
+                lbShowMyPlayedRevealed();
+                allMatch = lbMyPlayedCards.every(c => c.rank === lbTargetRank);
+                loserIsMe = !allMatch; // 我撒谎→我受罚
+                iStartNext = allMatch; // 我说真话→我先出
+                document.getElementById("lbMessage").textContent = allMatch
+                    ? "我说了真话！对方被水枪瞄准..." : "我撒谎了！我被水枪瞄准...";
+            }
+            lbMyPlayedCards = [];
+            document.getElementById("lbActions").innerHTML = `<span class="text-gray-400 text-sm py-2">🔫 等待扣扳机...</span>`;
+
+            // 输的人扣扳机
+            if (loserIsMe) {
+                setTimeout(() => {
+                    const hit = lbChamber === lbBulletPos;
+                    lbChannel.send({ type: "broadcast", event: "trigger", payload: { from: myRpsEmail, chamber: lbChamber, hit } });
+                    lbShowTriggerAnim(hit, true);
+                }, 1200);
+            }
+            // 对方输时，等待对方的 trigger 广播
+        }
+
+        function lbShowTriggerAnim(hit, isMe) {
+            const msg = document.getElementById("lbMessage");
+            const actions = document.getElementById("lbActions");
+            if (hit) {
+                // 射中！掉1血
+                if (isMe) { lbMyHP--; } else { lbPartnerHP--; }
+                lbUpdateHP();
+                msg.innerHTML = `💥 <span class="text-blue-500 font-bold">滋！被水枪射中了！</span> 掉1血`;
+                actions.innerHTML = `<span class="text-4xl">🔫💦</span>`;
+                sfxWaterHit();
+                // 重置弹巢
+                lbBulletPos = Math.floor(Math.random() * 6) + 1;
+                lbChamber = 1;
+                lbChannel.send({ type: "broadcast", event: "revolver", payload: { bullet: lbBulletPos, from: myRpsEmail } });
+            } else {
+                // 没射中
+                lbChamber++;
+                msg.innerHTML = `😤 <span class="text-gray-500">咔！空弹，逃过一劫~</span>`;
+                actions.innerHTML = `<span class="text-4xl">🔫</span>`;
+                sfxEmptyClick();
+            }
+            // 检查游戏结束
+            if (lbMyHP <= 0 || lbPartnerHP <= 0) {
+                setTimeout(() => {
+                    const iWon = lbPartnerHP <= 0;
+                    lbChannel.send({ type: "broadcast", event: "gameOver", payload: { from: myRpsEmail } });
+                    lbPhase = "gameOver";
+                    document.getElementById("lbMessage").textContent = iWon ? "你赢了！🎉" : "你输了 💔";
+                    const a = document.getElementById("lbActions");
+                    a.innerHTML = "";
+                    const btn = lbEnsureStartBtn();
+                    btn.textContent = "再来一局";
+                    btn.onclick = lbStart;
+                    btn.classList.remove("hidden");
+                    btn.disabled = false;
+                    a.appendChild(btn);
+                }, 1500);
+            } else {
+                // 被惩罚的人下一轮先发（赢的人下一轮后手）
+                const iStartNext = isMe ? true : false;
+                // 只有受罚方（本地扣扳机）调用 lbNewRound 并广播，另一方通过 newRound 广播接收
+                if (isMe) {
+                    setTimeout(() => lbNewRound(iStartNext), 2500);
+                }
+            }
+        }
+
+        function lbShowMyPlayedRevealed() {
+            // 在对手出牌区域展示我出的牌（翻面）
+            const wrap = document.getElementById("lbPartnerPlayed");
+            wrap.innerHTML = '<span class="text-xs text-gray-400 mr-2">我的牌:</span>';
+            lbMyPlayedCards.forEach(c => {
+                const div = document.createElement("div");
+                const isRed = lbRedSuits.includes(c.suit);
+                div.className = `lb-card face-up played ${isRed ? "red" : ""}`;
+                div.innerHTML = `<span>${c.suit}</span><span>${c.rank}</span>`;
+                wrap.appendChild(div);
+            });
+        }
+
+        function lbNewRound(iStart) {
+            lbTargetRank = lbRanks[Math.floor(Math.random() * lbRanks.length)];
+            lbMyTurn = iStart;
+            lbPartnerPlayedCards = [];
+            lbSelected = [];
+            // 重新发牌（每人5张，保证至少一张目标牌型）
+            lbMyCards = lbDealCardsWithTarget(5, lbTargetRank);
+            lbUpdateTargetRank();
+            lbRenderHand();
+            lbRenderPartnerPlayed(false);
+            lbChannel.send({ type: "broadcast", event: "newRound", payload: { rank: lbTargetRank, first: iStart, from: myRpsEmail } });
+            if (iStart) {
+                document.getElementById("lbMessage").textContent = `新一轮！目标：${lbTargetRank}，轮到你出牌`;
+                lbShowPlayButtons();
+            } else {
+                document.getElementById("lbMessage").textContent = `新一轮！目标：${lbTargetRank}，等待对方出牌...`;
+                lbShowWaitButtons();
+            }
+        }
+
+        function lbUpdateHP() {
+            document.getElementById("lbMyHP").textContent = lbMyHP > 0 ? "💧" : "🫧";
+            document.getElementById("lbPartnerHP").textContent = lbPartnerHP > 0 ? "💧" : "🫧";
+        }
+
+        // 获取/重建开始按钮（lbShow* 函数会用 innerHTML 清空 lbActions，导致按钮从 DOM 移除）
+        function lbEnsureStartBtn() {
+            let btn = document.getElementById("lbStartBtn");
+            if (!btn) {
+                btn = document.createElement("button");
+                btn.id = "lbStartBtn";
+                btn.className = "bg-love hover:bg-loveDark text-white px-6 py-2 rounded-full transition-all";
+            }
+            return btn;
+        }
+
+        // 重置到空闲状态，msg 为提示文案
+        function lbResetToIdle(msg) {
+            lbPhase = "idle";
+            lbMyCards = [];
+            lbSelected = [];
+            lbPartnerPlayedCards = [];
+            lbMyPlayedCards = [];
+            lbMyTurn = false;
+            lbTargetRank = "";
+            document.getElementById("lbMessage").textContent = msg || "游戏已终止";
+            document.getElementById("lbMyHand").innerHTML = "";
+            document.getElementById("lbPartnerPlayed").innerHTML = "";
+            const a = document.getElementById("lbActions");
+            a.innerHTML = "";
+            const btn = lbEnsureStartBtn();
+            btn.textContent = "邀请对方开始";
+            btn.onclick = lbStart;
+            btn.classList.remove("hidden");
+            btn.disabled = false;
+            a.appendChild(btn);
+            document.getElementById("lbTargetRank").textContent = "?";
+            document.getElementById("lbTargetRank").className = "text-3xl font-bold text-gray-300";
+        }
+
+        function lbUpdateTargetRank() {
+            const el = document.getElementById("lbTargetRank");
+            el.textContent = lbTargetRank;
+            el.className = "text-3xl font-bold " + (lbPhase === "playing" ? "text-love" : "text-gray-300");
+        }
+
+        function lbShowPlayButtons() {
+            const a = document.getElementById("lbActions");
+            a.innerHTML = `<button onclick="lbPlay()" class="bg-love hover:bg-loveDark text-white px-6 py-2 rounded-full transition">出牌</button>`;
+        }
+        function lbShowRespondButtons() {
+            const a = document.getElementById("lbActions");
+            a.innerHTML = `
+                <button onclick="lbCall()" class="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-full transition">揭穿！</button>
+                <button onclick="lbBelieve()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-2 rounded-full transition">相信</button>`;
+        }
+        function lbShowWaitButtons() {
+            document.getElementById("lbActions").innerHTML = `<span class="text-gray-400 text-sm py-2">等待对方...</span>`;
+        }
+
+        // ==================== 音效与 BGM ====================
+        let audioCtx = null;
+        let bgmPlaying = false;
+        let bgmTimer = null;
+        let bgmGain = null;
+        let bgmNoteIndex = 0;
+        let bgmBassIndex = 0;
+        let bgmNextNoteTime = 0;
+        let bgmNextBassTime = 0;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                bgmGain = audioCtx.createGain();
+                bgmGain.gain.value = 0.12;
+                bgmGain.connect(audioCtx.destination);
+            }
+            if (audioCtx.state === "suspended") audioCtx.resume();
+        }
+
+        // BGM 旋律（温柔的八音盒风格）
+        const bgmMelody = [
+            [523.25, 0.4], [659.25, 0.4], [783.99, 0.4], [1046.5, 0.6],
+            [783.99, 0.4], [659.25, 0.4], [587.33, 0.4], [659.25, 0.6],
+            [523.25, 0.4], [587.33, 0.4], [659.25, 0.4], [880.0, 0.6],
+            [783.99, 0.4], [659.25, 0.4], [587.33, 0.4], [523.25, 0.8],
+        ];
+        const bgmBass = [
+            [130.81, 1.6], [196.0, 1.6], [174.61, 1.6], [130.81, 1.6],
+        ];
+
+        function playBgmNote(freq, time, duration, gainNode, type) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type || "triangle";
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0, time);
+            gain.gain.linearRampToValueAtTime(0.3, time + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + duration);
+            osc.connect(gain);
+            gain.connect(gainNode);
+            osc.start(time);
+            osc.stop(time + duration);
+        }
+
+        function scheduleBgm() {
+            if (!bgmPlaying) return;
+            const now = audioCtx.currentTime;
+            while (bgmNextNoteTime < now + 0.5) {
+                const [freq, dur] = bgmMelody[bgmNoteIndex % bgmMelody.length];
+                playBgmNote(freq, bgmNextNoteTime, dur, bgmGain, "triangle");
+                bgmNextNoteTime += dur;
+                bgmNoteIndex++;
+            }
+            while (bgmNextBassTime < now + 0.5) {
+                const [freq, dur] = bgmBass[bgmBassIndex % bgmBass.length];
+                playBgmNote(freq, bgmNextBassTime, dur, bgmGain, "sine");
+                bgmNextBassTime += dur;
+                bgmBassIndex++;
+            }
+            bgmTimer = setTimeout(scheduleBgm, 100);
+        }
+
+        function toggleBgm() {
+            initAudio();
+            const btn = document.getElementById("bgmToggle");
+            if (!bgmPlaying) {
+                bgmPlaying = true;
+                bgmNoteIndex = 0;
+                bgmBassIndex = 0;
+                bgmNextNoteTime = audioCtx.currentTime + 0.1;
+                bgmNextBassTime = audioCtx.currentTime + 0.1;
+                scheduleBgm();
+                btn.querySelector("i").className = "fa fa-volume-up";
+                btn.classList.add("playing");
+            } else {
+                bgmPlaying = false;
+                clearTimeout(bgmTimer);
+                btn.querySelector("i").className = "fa fa-volume-off";
+                btn.classList.remove("playing");
+            }
+        }
+
+        // 音效：水枪射中
+        function sfxWaterHit() {
+            initAudio();
+            const now = audioCtx.currentTime;
+            // 噪声水花
+            const bufferSize = audioCtx.sampleRate * 0.3;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 2);
+            }
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buffer;
+            const noiseFilter = audioCtx.createBiquadFilter();
+            noiseFilter.type = "bandpass";
+            noiseFilter.frequency.setValueAtTime(2000, now);
+            noiseFilter.frequency.exponentialRampToValueAtTime(200, now + 0.3);
+            const noiseGain = audioCtx.createGain();
+            noiseGain.gain.setValueAtTime(0.4, now);
+            noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+            noise.connect(noiseFilter);
+            noiseFilter.connect(noiseGain);
+            noiseGain.connect(audioCtx.destination);
+            noise.start(now);
+            // 频率下滑（"滋"声）
+            const osc = audioCtx.createOscillator();
+            const oscGain = audioCtx.createGain();
+            osc.type = "sawtooth";
+            osc.frequency.setValueAtTime(800, now);
+            osc.frequency.exponentialRampToValueAtTime(150, now + 0.2);
+            oscGain.gain.setValueAtTime(0.25, now);
+            oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+            osc.connect(oscGain);
+            oscGain.connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + 0.2);
+        }
+
+        // 音效：空弹咔嗒
+        function sfxEmptyClick() {
+            initAudio();
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = "square";
+            osc.frequency.setValueAtTime(1200, now);
+            osc.frequency.exponentialRampToValueAtTime(400, now + 0.05);
+            gain.gain.setValueAtTime(0.15, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + 0.08);
+        }
+
+        // 音效：出牌
+        function sfxPlay() {
+            initAudio();
+            const now = audioCtx.currentTime;
+            const bufferSize = audioCtx.sampleRate * 0.12;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 1.5);
+            }
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buffer;
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = "highpass";
+            filter.frequency.value = 1000;
+            const gain = audioCtx.createGain();
+            gain.gain.setValueAtTime(0.12, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioCtx.destination);
+            noise.start(now);
         }
 
         // ==================== 音乐播放器 ====================
