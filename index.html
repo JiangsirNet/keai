@@ -1576,51 +1576,55 @@
         const rpsEmoji = { rock: "✊", paper: "✋", scissors: "✌️" };
         const rpsBeats = { rock: "scissors", paper: "rock", scissors: "paper" };
 
+        let myRpsEmail = "";
+
         function initRpsGame() {
-            const { data: { user } } = sb.auth.getUser();
-            user.then(u => {
-                const myEmail = u.user?.email || "";
-                const isBoy = myEmail === CONFIG.boyEmail;
+            sb.auth.getUser().then(({ data: { user } }) => {
+                myRpsEmail = user?.email || "";
+                const isBoy = myRpsEmail === CONFIG.boyEmail;
                 document.getElementById("myNameLabel").textContent = isBoy ? CONFIG.boyName : CONFIG.girlName;
                 document.getElementById("partnerNameLabel").textContent = isBoy ? CONFIG.girlName : CONFIG.boyName;
+
+                // 加载比分
+                const saved = JSON.parse(localStorage.getItem("rpsScore") || "{}");
+                myRpsScore = saved.my || 0;
+                partnerRpsScore = saved.partner || 0;
+                updateRpsScore();
+
+                // 创建 Realtime 频道（邮箱拿到后再创建，确保 track 时有值）
+                rpsChannel = sb.channel("rps-game");
+
+                rpsChannel
+                    .on("broadcast", { event: "pick" }, ({ payload }) => {
+                        partnerRpsPick = payload.pick;
+                        checkRpsResult();
+                    })
+                    .on("broadcast", { event: "reset" }, () => {
+                        myRpsScore = 0; partnerRpsScore = 0;
+                        saveRpsScore(); updateRpsScore();
+                        document.getElementById("gameStatus").textContent = "比分已重置！";
+                    })
+                    .on("presence", { event: "sync" }, () => {
+                        const state = rpsChannel.presenceState();
+                        const keys = Object.keys(state);
+                        const el = document.getElementById("partnerOnline");
+                        const partnerOnline = keys.some(k => k !== myRpsEmail);
+                        if (partnerOnline) {
+                            el.textContent = "对方在线";
+                            el.className = "ml-auto text-sm font-normal text-green-500";
+                        } else {
+                            el.textContent = "对方离线";
+                            el.className = "ml-auto text-sm font-normal text-gray-400";
+                        }
+                    })
+                    .subscribe(async (status) => {
+                        if (status === "SUBSCRIBED") {
+                            await rpsChannel.track({ user: myRpsEmail });
+                        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+                            console.error("RPS频道连接失败:", status);
+                        }
+                    });
             });
-
-            // 加载比分
-            const saved = JSON.parse(localStorage.getItem("rpsScore") || "{}");
-            myRpsScore = saved.my || 0;
-            partnerRpsScore = saved.partner || 0;
-            updateRpsScore();
-
-            // 创建 Realtime 频道
-            rpsChannel = sb.channel("rps-game", { config: { presence: { key: Date.now().toString() } } });
-
-            rpsChannel
-                .on("broadcast", { event: "pick" }, ({ payload }) => {
-                    partnerRpsPick = payload.pick;
-                    checkRpsResult();
-                })
-                .on("broadcast", { event: "reset" }, () => {
-                    myRpsScore = 0; partnerRpsScore = 0;
-                    saveRpsScore(); updateRpsScore();
-                    document.getElementById("gameStatus").textContent = "比分已重置！";
-                })
-                .on("presence", { event: "sync" }, () => {
-                    const state = rpsChannel.presenceState();
-                    const count = Object.keys(state).length;
-                    const el = document.getElementById("partnerOnline");
-                    if (count >= 2) {
-                        el.textContent = "对方在线";
-                        el.className = "ml-auto text-sm font-normal text-green-500";
-                    } else {
-                        el.textContent = "对方离线";
-                        el.className = "ml-auto text-sm font-normal text-gray-400";
-                    }
-                })
-                .subscribe(async (status) => {
-                    if (status === "SUBSCRIBED") {
-                        await rpsChannel.track({ online: true });
-                    }
-                });
         }
 
         function rpsPick(pick) {
