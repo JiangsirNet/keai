@@ -384,6 +384,18 @@
             text-decoration: underline;
         }
 
+        /* 语音录制按钮动画 */
+        #voiceBtn.recording {
+            background: #ef4444;
+            color: #fff;
+            border-color: #ef4444;
+            animation: record-pulse 1.2s ease infinite;
+        }
+        @keyframes record-pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); }
+            50% { box-shadow: 0 0 0 8px rgba(239,68,68,0); }
+        }
+
         /* 哈士奇宠物 */
         .husky-pet {
             position: fixed;
@@ -922,8 +934,15 @@
                 <textarea id="msgInput"
                     class="w-full border border-rose-200 rounded-xl p-4 outline-none focus:border-love resize-none h-28"
                     placeholder="写下想对TA说的话..."></textarea>
-                <button onclick="sendMessage()"
-                    class="mt-3 bg-love hover:bg-loveDark text-white px-6 py-2 rounded-full transition-all">发送留言</button>
+                <div class="mt-3 flex items-center gap-3">
+                    <button onclick="sendMessage()"
+                        class="bg-love hover:bg-loveDark text-white px-6 py-2 rounded-full transition-all">发送留言</button>
+                    <button id="voiceBtn" onclick="toggleVoiceRecord()"
+                        class="border border-rose-300 text-love px-4 py-2 rounded-full transition-all hover:bg-rose-50 flex items-center gap-2">
+                        <i class="fa fa-microphone"></i><span id="voiceBtnText">语音留言</span>
+                    </button>
+                    <span id="recordTimer" class="text-sm text-gray-400 hidden">00:00</span>
+                </div>
                 <div class="mt-5 space-y-3" id="msgList">
                     <div class="text-center text-gray-400 py-6 loading">加载留言...</div>
                 </div>
@@ -1091,6 +1110,42 @@
         }
 
         // ImgBB上传
+        // 压缩图片：按最大边长缩放 + JPEG 质量压缩
+        function compressImage(file, maxDim, quality) {
+            return new Promise((resolve) => {
+                // 小于 500KB 直接返回原文件
+                if (file.size < 500 * 1024) { resolve(file); return; }
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        let { width, height } = img;
+                        if (width > maxDim || height > maxDim) {
+                            if (width >= height) {
+                                height = Math.round(height * maxDim / width);
+                                width = maxDim;
+                            } else {
+                                width = Math.round(width * maxDim / height);
+                                height = maxDim;
+                            }
+                        }
+                        const canvas = document.createElement("canvas");
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext("2d");
+                        ctx.drawImage(img, 0, 0, width, height);
+                        canvas.toBlob((blob) => {
+                            const out = new File([blob], file.name.replace(/\.\w+$/, ".jpg"), { type: "image/jpeg" });
+                            console.log(`压缩: ${(file.size/1024/1024).toFixed(2)}MB → ${(out.size/1024/1024).toFixed(2)}MB`);
+                            resolve(out);
+                        }, "image/jpeg", quality);
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
         async function uploadImageToImgBB(e) {
             const file = e.target.files[0];
             const uploadBtn = document.getElementById("uploadBtn");
@@ -1113,12 +1168,17 @@
                 return;
             }
 
-            uploadBtn.innerText = "上传中...";
+            uploadBtn.innerText = "压缩中...";
             uploadBtn.disabled = true;
 
             try {
+                // 压缩图片
+                const compressedFile = await compressImage(file, 1920, 0.8);
+
+                uploadBtn.innerText = "上传中...";
+
                 const formData = new FormData();
-                formData.append('image', file);
+                formData.append('image', compressedFile);
                 formData.append('key', IMGBB_KEY);
 
                 const res = await fetch(`https://api.imgbb.com/1/upload`, {
@@ -1226,6 +1286,66 @@
         }
 
         //留言
+        // ===== 语音留言 =====
+        let mediaRecorder = null;
+        let voiceChunks = [];
+        let recordTimer = null;
+        let recordSeconds = 0;
+
+        async function toggleVoiceRecord() {
+            if (mediaRecorder && mediaRecorder.state === "recording") {
+                mediaRecorder.stop();
+                return;
+            }
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                voiceChunks = [];
+                mediaRecorder.ondataavailable = (e) => voiceChunks.push(e.data);
+                mediaRecorder.onstop = async () => {
+                    stream.getTracks().forEach(t => t.stop());
+                    clearInterval(recordTimer);
+                    const btn = document.getElementById("voiceBtn");
+                    btn.classList.remove("recording");
+                    document.getElementById("voiceBtnText").textContent = "上传中...";
+                    document.getElementById("recordTimer").classList.add("hidden");
+
+                    const blob = new Blob(voiceChunks, { type: "audio/webm" });
+                    if (blob.size < 1000) { alert("录音太短"); document.getElementById("voiceBtnText").textContent = "语音留言"; return; }
+
+                    try {
+                        const fileName = `voice_${Date.now()}.webm`;
+                        const { data, error } = await sb.storage.from("music").upload(fileName, blob);
+                        if (error) throw error;
+                        const url = sb.storage.from("music").getPublicUrl(data.path).data.publicUrl;
+                        const { data: { user } } = await sb.auth.getUser();
+                        const username = user?.email || "匿名";
+                        await sb.from("messages").insert({ content: "🎤 语音留言", voice_url: url, username });
+                        loadMessages();
+                    } catch (err) {
+                        alert("语音上传失败：" + err.message);
+                    } finally {
+                        document.getElementById("voiceBtnText").textContent = "语音留言";
+                    }
+                };
+                mediaRecorder.start();
+                const btn = document.getElementById("voiceBtn");
+                btn.classList.add("recording");
+                document.getElementById("voiceBtnText").textContent = "停止录音";
+                document.getElementById("recordTimer").classList.remove("hidden");
+                recordSeconds = 0;
+                recordTimer = setInterval(() => {
+                    recordSeconds++;
+                    const m = String(Math.floor(recordSeconds / 60)).padStart(2, "0");
+                    const s = String(recordSeconds % 60).padStart(2, "0");
+                    document.getElementById("recordTimer").textContent = `${m}:${s}`;
+                    if (recordSeconds >= 120) mediaRecorder.stop();
+                }, 1000);
+            } catch (err) {
+                alert("无法访问麦克风：" + err.message);
+            }
+        }
+
         async function sendMessage() {
             const text = document.getElementById("msgInput").value.trim();
             if (!text) return alert("请输入留言");
@@ -1249,13 +1369,29 @@
                 let name = email || "匿名";
                 if (email === CONFIG.boyEmail) name = CONFIG.boyName;
                 else if (email === CONFIG.girlEmail) name = CONFIG.girlName;
+                const voiceHtml = item.voice_url
+                    ? `<audio controls class="w-full mt-2" src="${item.voice_url}"></audio>`
+                    : `<p class="text-gray-700 mt-1">${item.content}</p>`;
                 wrap.innerHTML += `
-        <div class="bg-rose-50 p-4 rounded-xl">
+        <div class="bg-rose-50 p-4 rounded-xl relative">
             <span class="font-bold text-love text-sm">${name}</span>
-            <p class="text-gray-700 mt-1">${item.content}</p>
+            ${voiceHtml}
             <span class="text-xs text-gray-400">${time}</span>
+            <button onclick="deleteMessage('${item.id}')" class="absolute top-2 right-2 w-7 h-7 rounded-full bg-red-500 text-white text-xs hover:bg-red-600 transition flex items-center justify-center shadow-md z-10">
+                <i class="fa fa-trash"></i>
+            </button>
         </div>`
             })
+        }
+
+        async function deleteMessage(id) {
+            if (!confirm("确定删除这条留言？")) return;
+            try {
+                await sb.from("messages").delete().eq("id", id);
+                loadMessages();
+            } catch (err) {
+                alert("删除失败：" + err.message);
+            }
         }
 
         //纪念日
