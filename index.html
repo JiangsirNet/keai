@@ -962,12 +962,51 @@
                 <textarea id="journalContent"
                     class="w-full border border-rose-200 rounded-xl p-4 outline-none focus:border-love resize-none h-32"
                     placeholder="记录今天的故事、心情、趣事..."></textarea>
+                <div class="mt-2 flex items-center gap-2 flex-wrap">
+                    <input type="file" id="journalFileInput" accept="image/jpeg,image/png,image/webp" class="hidden" multiple>
+                    <button onclick="document.getElementById('journalFileInput').click()"
+                        class="border border-rose-300 text-love px-4 py-2 rounded-full text-sm hover:bg-rose-50 transition flex items-center gap-1">
+                        <i class="fa fa-image"></i> 添加照片
+                    </button>
+                    <div id="journalPhotoPreview" class="flex gap-2 flex-wrap"></div>
+                </div>
                 <button onclick="addJournal()"
                     class="mt-3 bg-love hover:bg-loveDark text-white px-6 py-2 rounded-full transition-all">
                     <i class="fa fa-pencil mr-1"></i>写下这一篇
                 </button>
                 <div class="mt-5 space-y-4 max-h-[500px] overflow-y-auto" id="journalList">
                     <div class="text-center text-gray-400 py-6 loading">加载日志...</div>
+                </div>
+            </div>
+
+            <!--互动小游戏-->
+            <div class="md:col-span-2 bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow">
+                <h2 class="text-xl font-bold text-love flex items-center mb-4">
+                    <i class="fa fa-gamepad mr-2"></i>情侣对战
+                    <span id="partnerOnline" class="ml-auto text-sm font-normal text-gray-400">对方离线</span>
+                </h2>
+                <div class="grid grid-cols-2 gap-4 max-w-md mx-auto">
+                    <!-- 我方 -->
+                    <div class="text-center">
+                        <p class="text-sm text-love font-bold mb-2" id="myNameLabel">我</p>
+                        <div id="myChoice" class="text-6xl mb-2">✊</div>
+                        <div id="myScore" class="text-2xl font-bold text-love">0</div>
+                    </div>
+                    <!-- 对方 -->
+                    <div class="text-center">
+                        <p class="text-sm text-love font-bold mb-2" id="partnerNameLabel">TA</p>
+                        <div id="partnerChoice" class="text-6xl mb-2 opacity-30">❓</div>
+                        <div id="partnerScore" class="text-2xl font-bold text-gray-400">0</div>
+                    </div>
+                </div>
+                <div id="gameStatus" class="text-center text-gray-500 my-3 min-h-[24px]">选择你的出招！</div>
+                <div class="flex justify-center gap-4">
+                    <button onclick="rpsPick('rock')" class="text-5xl hover:scale-125 transition-transform">✊</button>
+                    <button onclick="rpsPick('paper')" class="text-5xl hover:scale-125 transition-transform">✋</button>
+                    <button onclick="rpsPick('scissors')" class="text-5xl hover:scale-125 transition-transform">✌️</button>
+                </div>
+                <div class="text-center mt-3">
+                    <button onclick="rpsReset()" class="text-sm text-gray-400 hover:text-love">重置比分</button>
                 </div>
             </div>
         </div>
@@ -1084,6 +1123,7 @@
             loadMusicList();
             initHusky();
             initCat();
+            initRpsGame();
         }
 
         //相恋天数
@@ -1428,18 +1468,62 @@
         }
 
         //日志
+        // 日志照片选择预览
+        let journalPhotos = [];
+        document.addEventListener("DOMContentLoaded", () => {
+            document.getElementById("journalFileInput").onchange = (e) => {
+                const files = Array.from(e.target.files);
+                files.forEach(f => journalPhotos.push(f));
+                renderJournalPreview();
+                e.target.value = "";
+            };
+        });
+        function renderJournalPreview() {
+            const wrap = document.getElementById("journalPhotoPreview");
+            wrap.innerHTML = journalPhotos.map((f, i) => `
+                <div class="relative w-16 h-16 rounded-lg overflow-hidden">
+                    <img src="${URL.createObjectURL(f)}" class="w-full h-full object-cover">
+                    <button onclick="journalPhotos.splice(${i},1);renderJournalPreview()"
+                        class="absolute top-0 right-0 w-5 h-5 bg-red-500 text-white text-xs rounded-bl-lg">&times;</button>
+                </div>`).join("");
+        }
+
         async function addJournal() {
             const title = document.getElementById("journalTitle").value.trim();
             const content = document.getElementById("journalContent").value.trim();
             const day = document.getElementById("journalDate").value;
             if (!content) return alert("请写下日志内容");
             if (!day) return alert("请选择日期");
-            const { data: { user } } = await sb.auth.getUser();
-            const username = user?.email || "匿名";
-            await sb.from("journal").insert({ title, content, day, username });
-            document.getElementById("journalTitle").value = "";
-            document.getElementById("journalContent").value = "";
-            loadJournal();
+            const btn = event.target;
+            btn.innerText = "发布中...";
+            btn.disabled = true;
+            try {
+                const { data: { user } } = await sb.auth.getUser();
+                const username = user?.email || "匿名";
+
+                // 上传照片
+                let photoUrls = [];
+                if (journalPhotos.length > 0) {
+                    for (const file of journalPhotos) {
+                        const compressed = await compressImage(file, 1920, 0.8);
+                        const fileName = `journal_${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
+                        const { data, error } = await sb.storage.from("music").upload(fileName, compressed);
+                        if (!error) photoUrls.push(sb.storage.from("music").getPublicUrl(data.path).data.publicUrl);
+                    }
+                }
+
+                await sb.from("journal").insert({ title, content, day, username, photos: photoUrls.length ? JSON.stringify(photoUrls) : null });
+                document.getElementById("journalTitle").value = "";
+                document.getElementById("journalContent").value = "";
+                journalPhotos = [];
+                renderJournalPreview();
+                loadJournal();
+            } catch (err) {
+                alert("发布失败：" + err.message);
+            } finally {
+                btn.innerHTML = '<i class="fa fa-pencil mr-1"></i>写下这一篇';
+                btn.disabled = false;
+            }
         }
         async function loadJournal() {
             const { data } = await sb.from("journal").select("*").order("day", { ascending: false });
@@ -1455,6 +1539,11 @@
                 if (email === CONFIG.boyEmail) name = CONFIG.boyName;
                 else if (email === CONFIG.girlEmail) name = CONFIG.girlName;
                 const title = item.title || "无标题";
+                let photos = [];
+                try { photos = item.photos ? JSON.parse(item.photos) : []; } catch(e) { photos = []; }
+                const photoHtml = photos.length
+                    ? `<div class="flex gap-2 flex-wrap mt-2">${photos.map(url => `<img src="${url}" class="w-20 h-20 object-cover rounded-lg cursor-pointer" onclick="openPreview('${url}')">`).join("")}</div>`
+                    : "";
                 wrap.innerHTML += `
         <div class="journal-item bg-rose-50 p-4 rounded-xl border-l-4 border-love">
             <div class="flex justify-between items-start mb-2">
@@ -1468,6 +1557,7 @@
             </div>
             <h3 class="font-semibold text-gray-800 mb-1">${title}</h3>
             <p class="text-gray-600 whitespace-pre-wrap text-sm">${item.content}</p>
+            ${photoHtml}
         </div>`;
             })
         }
@@ -1475,6 +1565,118 @@
             if (!confirm("确定删除这篇日志？")) return;
             await sb.from("journal").delete().eq("id", id);
             loadJournal();
+        }
+
+        // ==================== 石头剪刀布对战 ====================
+        let rpsChannel = null;
+        let myRpsPick = null;
+        let partnerRpsPick = null;
+        let myRpsScore = 0;
+        let partnerRpsScore = 0;
+        const rpsEmoji = { rock: "✊", paper: "✋", scissors: "✌️" };
+        const rpsBeats = { rock: "scissors", paper: "rock", scissors: "paper" };
+
+        function initRpsGame() {
+            const { data: { user } } = sb.auth.getUser();
+            user.then(u => {
+                const myEmail = u.user?.email || "";
+                const isBoy = myEmail === CONFIG.boyEmail;
+                document.getElementById("myNameLabel").textContent = isBoy ? CONFIG.boyName : CONFIG.girlName;
+                document.getElementById("partnerNameLabel").textContent = isBoy ? CONFIG.girlName : CONFIG.boyName;
+            });
+
+            // 加载比分
+            const saved = JSON.parse(localStorage.getItem("rpsScore") || "{}");
+            myRpsScore = saved.my || 0;
+            partnerRpsScore = saved.partner || 0;
+            updateRpsScore();
+
+            // 创建 Realtime 频道
+            rpsChannel = sb.channel("rps-game", { config: { presence: { key: Date.now().toString() } } });
+
+            rpsChannel
+                .on("broadcast", { event: "pick" }, ({ payload }) => {
+                    partnerRpsPick = payload.pick;
+                    checkRpsResult();
+                })
+                .on("broadcast", { event: "reset" }, () => {
+                    myRpsScore = 0; partnerRpsScore = 0;
+                    saveRpsScore(); updateRpsScore();
+                    document.getElementById("gameStatus").textContent = "比分已重置！";
+                })
+                .on("presence", { event: "sync" }, () => {
+                    const state = rpsChannel.presenceState();
+                    const count = Object.keys(state).length;
+                    const el = document.getElementById("partnerOnline");
+                    if (count >= 2) {
+                        el.textContent = "对方在线";
+                        el.className = "ml-auto text-sm font-normal text-green-500";
+                    } else {
+                        el.textContent = "对方离线";
+                        el.className = "ml-auto text-sm font-normal text-gray-400";
+                    }
+                })
+                .subscribe(async (status) => {
+                    if (status === "SUBSCRIBED") {
+                        await rpsChannel.track({ online: true });
+                    }
+                });
+        }
+
+        function rpsPick(pick) {
+            if (myRpsPick) return;
+            myRpsPick = pick;
+            document.getElementById("myChoice").textContent = rpsEmoji[pick];
+            document.getElementById("myChoice").classList.remove("opacity-30");
+            document.getElementById("gameStatus").textContent = "已出招，等待对方...";
+            rpsChannel.send({ type: "broadcast", event: "pick", payload: { pick } });
+            checkRpsResult();
+        }
+
+        function checkRpsResult() {
+            if (!myRpsPick || !partnerRpsPick) return;
+            document.getElementById("partnerChoice").textContent = rpsEmoji[partnerRpsPick];
+            document.getElementById("partnerChoice").classList.remove("opacity-30");
+
+            let result;
+            if (myRpsPick === partnerRpsPick) {
+                result = "平局！";
+            } else if (rpsBeats[myRpsPick] === partnerRpsPick) {
+                result = "你赢了！🎉";
+                myRpsScore++;
+            } else {
+                result = "你输了 💔";
+                partnerRpsScore++;
+            }
+            saveRpsScore();
+            updateRpsScore();
+            document.getElementById("gameStatus").textContent = result;
+
+            setTimeout(() => {
+                myRpsPick = null;
+                partnerRpsPick = null;
+                document.getElementById("myChoice").textContent = "✊";
+                document.getElementById("myChoice").classList.add("opacity-30");
+                document.getElementById("partnerChoice").textContent = "❓";
+                document.getElementById("partnerChoice").classList.add("opacity-30");
+                document.getElementById("gameStatus").textContent = "继续出招！";
+            }, 2500);
+        }
+
+        function updateRpsScore() {
+            document.getElementById("myScore").textContent = myRpsScore;
+            document.getElementById("partnerScore").textContent = partnerRpsScore;
+        }
+
+        function saveRpsScore() {
+            localStorage.setItem("rpsScore", JSON.stringify({ my: myRpsScore, partner: partnerRpsScore }));
+        }
+
+        function rpsReset() {
+            myRpsScore = 0; partnerRpsScore = 0;
+            saveRpsScore(); updateRpsScore();
+            if (rpsChannel) rpsChannel.send({ type: "broadcast", event: "reset", payload: {} });
+            document.getElementById("gameStatus").textContent = "比分已重置！";
         }
 
         // ==================== 音乐播放器 ====================
