@@ -509,6 +509,19 @@
             text-decoration: underline;
         }
 
+        .music-sort-btn {
+            background: #f1f5f9;
+            border: none;
+            border-radius: 6px;
+            font-size: 10px;
+            color: #888;
+            cursor: pointer;
+            padding: 3px 8px;
+            transition: all 0.2s;
+        }
+        .music-sort-btn:hover { background: #fff0f4; color: #ff6b8b; }
+        .music-sort-btn.active { background: #ff6b8b; color: #fff; }
+
         /* 骗子酒馆卡牌 */
         .lb-card {
             width: 44px; height: 62px;
@@ -1324,6 +1337,12 @@
         <div class="music-list" id="musicList">
             <div class="text-center text-gray-400 py-2 text-xs">暂无歌曲</div>
         </div>
+        <div style="display:flex;gap:4px;justify-content:center;margin-top:6px;">
+            <button class="music-sort-btn" onclick="changeMusicSort('date_desc')" id="sortDateDesc">最新上传</button>
+            <button class="music-sort-btn" onclick="changeMusicSort('date_asc')" id="sortDateAsc">最早上传</button>
+            <button class="music-sort-btn" onclick="changeMusicSort('title_asc')" id="sortTitleAsc">歌名A-Z</button>
+            <button class="music-sort-btn" onclick="changeMusicSort('title_desc')" id="sortTitleDesc">歌名Z-A</button>
+        </div>
         <label class="music-upload">
             <i class="fa fa-upload"></i> 上传歌曲
             <input type="file" id="musicUpload" accept="audio/*" class="hidden" onchange="uploadMusic(event)">
@@ -1732,17 +1751,7 @@
             applyDisplaySettings();
         }
 
-        // ==================== 显示设置（Cookie 记忆）====================
-        function setCookie(name, value, days) {
-            const d = new Date();
-            d.setTime(d.getTime() + days * 24 * 60 * 60 * 1000);
-            document.cookie = name + "=" + value + ";expires=" + d.toUTCString() + ";path=/;SameSite=Lax";
-        }
-        function getCookie(name) {
-            const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
-            return m ? m.pop() : '';
-        }
-
+        // ==================== 显示设置（localStorage 记忆）====================
         const displayMap = {
             boy: { id: 'boyPet', toggleId: 'toggleBoy' },
             girl: { id: 'girlPet', toggleId: 'toggleGirl' },
@@ -1751,8 +1760,8 @@
         };
 
         function isDisplayOn(key) {
-            const val = getCookie('show_' + key);
-            return val === '' ? true : val === '1';
+            const val = localStorage.getItem('show_' + key);
+            return val === null ? true : val === '1';
         }
 
         function applyDisplaySettings() {
@@ -1773,7 +1782,7 @@
 
         function toggleDisplay(key) {
             const on = !isDisplayOn(key);
-            setCookie('show_' + key, on ? '1' : '0', 365);
+            localStorage.setItem('show_' + key, on ? '1' : '0');
             // 如果隐藏的元素正在抱抱，先释放
             if (!on && hugState) {
                 const idMap = { boy: 'boyPet', girl: 'girlPet', husky: 'huskyPet', cat: 'catPet' };
@@ -2241,7 +2250,7 @@
         async function loadJournal() {
             const wrap = document.getElementById("journalList");
             wrap.innerHTML = `<div class="text-center text-gray-400 py-4 loading">加载日志...</div>`;
-            const { data } = await sb.from("journal").select("*").order("day", { ascending: false });
+            const { data } = await sb.from("journal").select("*").order("created_at", { ascending: false });
             if (!data || data.length === 0) {
                 wrap.innerHTML = `<div class="text-center text-gray-400 py-4">还没有日志，记录你们的第一篇故事吧💫</div>`;
                 return;
@@ -3141,6 +3150,7 @@
 
         // ==================== 音乐播放器 ====================
         let musicList = [];
+        let musicSortBy = 'date_desc';
         let currentMusicIndex = -1;
 
         function toggleMusicPanel() {
@@ -3149,10 +3159,25 @@
         }
 
         async function loadMusicList() {
-            const { data } = await sb.from("music").select("*").order("created_at", { ascending: false });
+            let orderCol, ascending;
+            switch (musicSortBy) {
+                case 'date_asc': orderCol = 'created_at'; ascending = true; break;
+                case 'title_asc': orderCol = 'title'; ascending = true; break;
+                case 'title_desc': orderCol = 'title'; ascending = false; break;
+                default: orderCol = 'created_at'; ascending = false; break;
+            }
+            const { data } = await sb.from("music").select("*").order(orderCol, { ascending });
             musicList = data || [];
             const listEl = document.getElementById("musicList");
             listEl.innerHTML = "";
+            // 更新排序按钮高亮
+            ['sortDateDesc','sortDateAsc','sortTitleAsc','sortTitleDesc'].forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) {
+                    const val = id === 'sortDateDesc' ? 'date_desc' : id === 'sortDateAsc' ? 'date_asc' : id === 'sortTitleAsc' ? 'title_asc' : 'title_desc';
+                    btn.classList.toggle('active', val === musicSortBy);
+                }
+            });
             if (musicList.length === 0) {
                 listEl.innerHTML = `<div class="text-center text-gray-400 py-2 text-xs">暂无歌曲，上传一首吧</div>`;
                 return;
@@ -3168,11 +3193,23 @@
             });
         }
 
+        function changeMusicSort(sort) {
+            musicSortBy = sort;
+            currentMusicIndex = -1;
+            loadMusicList();
+        }
+
         async function uploadMusic(e) {
             const file = e.target.files[0];
             if (!file) return;
             const title = file.name.replace(/\.[^/.]+$/, "");
-            const { data, error } = await sb.storage.from("music").upload(`${Date.now()}_${file.name}`, file);
+            // 文件名去除中文及非ASCII字符，避免上传问题
+            const ext = file.name.match(/\.[^/.]+$/)?.[0] || "";
+            const safeName = file.name.replace(/\.[^/.]+$/, "").replace(/[^\x00-\x7F]/g, "").replace(/\s+/g, "_") || "music";
+            const now = new Date();
+            const ts = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}`;
+            const fileName = `${ts}_${safeName}${ext}`;
+            const { data, error } = await sb.storage.from("music").upload(fileName, file);
             if (error) {
                 alert("上传失败：" + error.message);
                 return;
@@ -3185,7 +3222,16 @@
 
         async function deleteMusic(id) {
             if (!confirm("确定删除这首歌？")) return;
+            // 删除 Storage 中的文件
+            const item = musicList.find(m => String(m.id) === String(id));
+            if (item && item.url) {
+                try {
+                    const path = decodeURIComponent(item.url.split('/music/')[1] || '');
+                    if (path) await sb.storage.from("music").remove([path]);
+                } catch (e) { console.warn("删除文件失败:", e); }
+            }
             await sb.from("music").delete().eq("id", id);
+            if (currentMusicIndex >= 0) currentMusicIndex = -1;
             loadMusicList();
         }
 
@@ -3581,10 +3627,16 @@
             if (characterId === 'boyPet') boyHugging = false;
             if (characterId === 'girlPet') girlHugging = false;
 
-            // 拥抱结束后宠物回到地面并恢复行走
+            // 拥抱结束后宠物放在人物下方并恢复行走
+            const character = document.getElementById(characterId);
+            const charRect = character.getBoundingClientRect();
             const pet = document.getElementById(petId);
+            // 水平：人物正下方居中；垂直：人物底部位置
+            const petX = charRect.left + charRect.width / 2 - pet.offsetWidth / 2;
+            const petBottom = window.innerHeight - charRect.bottom;
+            pet.style.left = Math.max(10, Math.min(window.innerWidth - pet.offsetWidth - 10, petX)) + "px";
             pet.style.top = "auto";
-            pet.style.bottom = "20px";
+            pet.style.bottom = Math.max(20, petBottom) + "px";
             resumePetWalking(petId);
         }
 
@@ -3725,7 +3777,30 @@
         }
 
         // ==================== 天气功能 ====================
-        let weatherData = null;  // 缓存天气数据
+        let weatherData = null;  // 当前天气数据
+        let weatherLatLon = null; // { lat, lon, cityName } 用于刷新
+        const WEATHER_CACHE_KEY = 'weather_cache';
+        const WEATHER_CACHE_TTL = 60 * 60 * 1000; // 1小时缓存
+
+        // 读取本地缓存
+        function getWeatherCache() {
+            try {
+                const raw = localStorage.getItem(WEATHER_CACHE_KEY);
+                if (!raw) return null;
+                const obj = JSON.parse(raw);
+                if (Date.now() - obj.timestamp > WEATHER_CACHE_TTL) return null;
+                return obj;
+            } catch (e) { return null; }
+        }
+
+        // 写入本地缓存
+        function setWeatherCache(data, lat, lon, cityName) {
+            try {
+                localStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify({
+                    data, lat, lon, cityName, timestamp: Date.now()
+                }));
+            } catch (e) {}
+        }
 
         // WMO 天气代码 → 图标 + 描述
         function wmoToIcon(code) {
@@ -3745,6 +3820,14 @@
         }
 
         async function initWeather() {
+            // 优先使用缓存
+            const cache = getWeatherCache();
+            if (cache) {
+                weatherData = cache.data;
+                weatherLatLon = { lat: cache.lat, lon: cache.lon, cityName: cache.cityName };
+                applyWeatherUI(cache.data, cache.cityName);
+                return;
+            }
             if (!navigator.geolocation) {
                 fallbackWeather("不支持定位");
                 return;
@@ -3763,13 +3846,34 @@
             );
         }
 
+        // 刷新天气（强制请求接口）
+        async function refreshWeather() {
+            if (!weatherLatLon) { alert("无法获取定位信息"); return; }
+            const btn = document.getElementById('weatherRefreshBtn');
+            if (btn) { btn.textContent = '刷新中...'; btn.disabled = true; }
+            await loadWeather(weatherLatLon.lat, weatherLatLon.lon, weatherLatLon.cityName, true);
+            if (btn) { btn.textContent = '🔄 刷新'; btn.disabled = false; }
+            // 如果详情弹窗打开，重新渲染
+            const modal = document.getElementById('weatherModal');
+            if (modal) { modal.remove(); showWeatherDetail(); }
+        }
+
+        // 应用天气数据到 UI
+        function applyWeatherUI(data, cityName) {
+            const code = data.current.weather_code;
+            const [icon, desc] = wmoToIcon(code);
+            document.getElementById("wIcon").textContent = icon;
+            document.getElementById("wTemp").textContent = Math.round(data.current.temperature_2m) + "°";
+            document.getElementById("wCity").textContent = cityName || desc;
+        }
+
         function fallbackWeather(msg) {
             document.getElementById("wIcon").textContent = "📍";
             document.getElementById("wTemp").textContent = "--";
             document.getElementById("wCity").textContent = msg;
         }
 
-        async function loadWeather(lat, lon, cityName) {
+        async function loadWeather(lat, lon, cityName, force) {
             try {
                 const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
                     `&current=temperature_2m,weather_code,relative_humidity_2m,wind_speed_10m` +
@@ -3779,13 +3883,7 @@
                 const res = await fetch(url);
                 const data = await res.json();
                 weatherData = data;
-
-                // 当前天气
-                const code = data.current.weather_code;
-                const [icon, desc] = wmoToIcon(code);
-                document.getElementById("wIcon").textContent = icon;
-                document.getElementById("wTemp").textContent = Math.round(data.current.temperature_2m) + "°";
-                document.getElementById("wCity").textContent = desc;
+                weatherLatLon = { lat, lon, cityName: cityName || "" };
 
                 // 获取城市名
                 if (!cityName) {
@@ -3793,9 +3891,15 @@
                         const geo = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=zh`);
                         const geoData = await geo.json();
                         cityName = geoData.city || geoData.locality || geoData.principalSubdivision || "未知";
+                        weatherLatLon.cityName = cityName;
                     } catch (e) { cityName = ""; }
                 }
-                if (cityName) document.getElementById("wCity").textContent = cityName;
+
+                // 更新 UI
+                applyWeatherUI(data, cityName);
+
+                // 写入缓存
+                setWeatherCache(data, lat, lon, cityName || "");
             } catch (e) {
                 console.warn("天气加载失败:", e);
                 fallbackWeather("加载失败");
@@ -3859,7 +3963,10 @@
                 <div class="weather-modal-inner">
                     <div class="flex items-center justify-between mb-4">
                         <h3 style="font-size:18px;font-weight:700;color:#ff6b8b;">${icon} 今日天气</h3>
-                        <button onclick="document.getElementById('weatherModal').remove()" style="background:none;border:none;font-size:22px;color:#999;cursor:pointer;">×</button>
+                        <div class="flex items-center" style="gap:8px;">
+                            <button id="weatherRefreshBtn" onclick="refreshWeather()" style="background:#fff0f4;border:1px solid #ffd0dc;border-radius:8px;font-size:12px;color:#ff6b8b;cursor:pointer;padding:4px 10px;">🔄 刷新</button>
+                            <button onclick="document.getElementById('weatherModal').remove()" style="background:none;border:none;font-size:22px;color:#999;cursor:pointer;">×</button>
+                        </div>
                     </div>
                     <div style="text-align:center;padding:12px 0 16px;border-bottom:1px solid #f1f5f9;">
                         <div style="font-size:48px;">${icon}</div>
