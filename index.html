@@ -3706,8 +3706,9 @@
         let myGender = "boy";  // 当前登录用户的性别
 
         async function loadCharacterQuotes() {
-            // 根据登录邮箱判断当前用户性别
-            const me = (myRpsEmail || "").toLowerCase();
+            // 直接从 Supabase 获取当前用户邮箱，避免 myRpsEmail 未初始化
+            const { data: { user } } = await sb.auth.getUser();
+            const me = (user?.email || "").toLowerCase();
             const girlEmail = (CONFIG.girlEmail || "").toLowerCase();
             myGender = me && me === girlEmail ? "girl" : "boy";
             currentQuoteTab = myGender;
