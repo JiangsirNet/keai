@@ -8,6 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -114,8 +115,61 @@
             border-radius: 12px;
         }
 
+        .preview-download-btn {
+            position: absolute;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 107, 139, 0.9);
+            color: #fff;
+            border: none;
+            padding: 10px 28px;
+            border-radius: 25px;
+            font-size: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            transition: background 0.2s, transform 0.2s;
+            z-index: 10;
+        }
+        .preview-download-btn:hover {
+            background: rgba(224, 76, 110, 0.95);
+            transform: translateX(-50%) scale(1.05);
+        }
+
         .hidden {
             display: none !important;
+        }
+
+        /* 下拉刷新指示器 */
+        .pull-refresh-indicator {
+            position: fixed;
+            top: -60px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9998;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 20px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+            font-size: 13px;
+            color: #ff6b8b;
+            transition: top 0.2s ease;
+            pointer-events: none;
+        }
+        .pull-refresh-indicator i {
+            transition: transform 0.2s ease;
+        }
+        .pull-refresh-indicator.ready i {
+            transform: rotate(180deg);
+        }
+        .pull-refresh-indicator.refreshing i {
+            animation: fa-spin 0.8s linear infinite;
         }
 
         .img-loading {
@@ -362,6 +416,102 @@
             transform: scale(1.1);
         }
 
+        .bell-toggle {
+            position: fixed;
+            top: 20px;
+            right: 74px;
+            z-index: 99;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: transform 0.3s;
+        }
+        .bell-toggle:hover { transform: scale(1.1); }
+        .bell-badge {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            background: #ff3b3b;
+            color: #fff;
+            font-size: 10px;
+            min-width: 18px;
+            height: 18px;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 4px;
+            border: 2px solid #fff;
+        }
+        .bell-panel {
+            position: fixed;
+            top: 72px;
+            right: 20px;
+            z-index: 100;
+            width: 320px;
+            max-height: 400px;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .bell-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .bell-clear-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: #fff;
+            font-size: 11px;
+            padding: 3px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .bell-clear-btn:hover { background: rgba(255,255,255,0.35); }
+        .bell-list {
+            overflow-y: auto;
+            flex: 1;
+            max-height: 340px;
+        }
+        .bell-item {
+            padding: 10px 16px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 13px;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .bell-item:hover { background: #f8f8ff; }
+        .bell-item.unread { background: #f0f4ff; }
+        .bell-item .bell-icon { font-size: 14px; flex-shrink: 0; margin-top: 2px; }
+        .bell-item .bell-content { flex: 1; }
+        .bell-item .bell-time { font-size: 10px; color: #aaa; margin-top: 2px; }
+        @keyframes bell-shake {
+            0%, 100% { transform: rotate(0); }
+            25% { transform: rotate(-15deg); }
+            75% { transform: rotate(15deg); }
+        }
+
         .music-toggle.playing {
             animation: pulse-glow 2s ease-in-out infinite;
         }
@@ -416,39 +566,7 @@
         }
         .weather-hour-item:last-child { border-bottom: none; }
 
-        /* BGM 开关按钮 */
-        .bgm-toggle {
-            position: fixed;
-            top: 20px;
-            right: 74px;
-            z-index: 99;
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #a78bfa, #c4b5fd);
-            color: white;
-            border: none;
-            cursor: pointer;
-            box-shadow: 0 4px 15px rgba(167, 139, 250, 0.4);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            transition: transform 0.3s;
-        }
-
-        .bgm-toggle:hover {
-            transform: scale(1.1);
-        }
-
-        .bgm-toggle.playing {
-            animation: pulse-glow-purple 2s ease-in-out infinite;
-        }
-
-        @keyframes pulse-glow-purple {
-            0%, 100% { box-shadow: 0 4px 15px rgba(167, 139, 250, 0.4); }
-            50% { box-shadow: 0 4px 25px rgba(167, 139, 250, 0.7); }
-        }
+        /* BGM 开关按钮（已移至骗子酒馆标题栏） */
 
         /* 显示设置开关 */
         .display-toggle {
@@ -1051,12 +1169,20 @@
                 font-size: 15px !important;
             }
 
-            .bgm-toggle {
+            .bell-toggle {
                 top: 12px !important;
                 right: 54px !important;
                 width: 38px !important;
                 height: 38px !important;
                 font-size: 15px !important;
+            }
+
+            .bell-panel {
+                top: 56px !important;
+                right: 8px !important;
+                width: calc(100vw - 16px) !important;
+                max-width: 320px !important;
+                max-height: 350px !important;
             }
 
             .weather-widget {
@@ -1301,6 +1427,12 @@
         </svg>
     </div>
 
+    <!-- 下拉刷新指示器 -->
+    <div id="pullRefreshIndicator" class="pull-refresh-indicator">
+        <i class="fa fa-arrow-down" id="pullRefreshIcon"></i>
+        <span id="pullRefreshText">下拉刷新</span>
+    </div>
+
     <!-- 天气组件（左上角）-->
     <div id="weatherWidget" class="weather-widget hidden" onclick="showWeatherDetail()">
         <span class="w-icon" id="wIcon">⏳</span>
@@ -1308,15 +1440,25 @@
         <span class="w-city" id="wCity">定位中</span>
     </div>
 
-    <!-- BGM 开关 -->
-    <button id="bgmToggle" class="bgm-toggle hidden" onclick="toggleBgm()">
-        <i class="fa fa-volume-off"></i>
-    </button>
-
     <!-- 音乐播放器 -->
     <button id="musicToggle" class="music-toggle hidden" onclick="toggleMusicPanel()">
         <i class="fa fa-music"></i>
     </button>
+
+    <!-- 通知铃铛 -->
+    <button id="bellToggle" class="bell-toggle hidden" onclick="toggleBellPanel()">
+        <i class="fa fa-bell"></i>
+        <span class="bell-badge hidden" id="bellBadge">0</span>
+    </button>
+    <div id="bellPanel" class="bell-panel hidden">
+        <div class="bell-panel-header">
+            <span>消息通知</span>
+            <button onclick="clearAllNotifications()" class="bell-clear-btn">清空</button>
+        </div>
+        <div id="bellList" class="bell-list">
+            <div class="text-center text-gray-400 py-4 text-xs">暂无通知</div>
+        </div>
+    </div>
     <div id="musicPanel" class="music-panel hidden-panel">
         <div class="music-cover" id="musicCover"><i class="fa fa-music"></i></div>
         <div class="music-title" id="musicTitle">暂无歌曲</div>
@@ -1370,6 +1512,9 @@
     <div id="previewModal" class="img-preview-modal hidden" onclick="closePreview()">
         <img id="previewImg" alt="大图预览">
         <span class="absolute top-5 right-5 text-white text-3xl cursor-pointer">&times;</span>
+        <button id="previewDownload" class="preview-download-btn" onclick="event.stopPropagation();downloadPreviewImage()">
+            <i class="fa fa-download"></i> 下载
+        </button>
     </div>
 
     <div id="mainPage" class="container max-w-4xl mx-auto px-4 py-8 md:py-12 hidden">
@@ -1531,6 +1676,9 @@
                 <h2 class="text-xl font-bold text-love flex items-center mb-4">
                     <i class="fa fa-clone mr-2"></i>骗子酒馆
                     <span id="lbStatus" class="ml-auto text-sm font-normal text-gray-400">空闲</span>
+                    <button id="lbSfxToggle" type="button" class="ml-2 w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:bg-rose-50 transition" title="BGM开关">
+                        <i class="fa fa-volume-off"></i>
+                    </button>
                 </h2>
                 <div class="flex justify-between items-center mb-4 px-4">
                     <div class="text-center">
@@ -1644,6 +1792,9 @@
         const { createClient } = window.supabase;
         const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
         let IMGBB_KEY = ""; // 运行登录后从数据库读取
+        let EMAILJS_SERVICE_ID = "";
+        let EMAILJS_TEMPLATE_ID = "";
+        let EMAILJS_PUBLIC_KEY = "";
 
         // 页面初始化，检测登录状态
         (async function initCheckAuth() {
@@ -1684,8 +1835,11 @@
             document.getElementById("musicAudio").pause();
             // 停止 BGM
             if (bgmPlaying) toggleBgm();
-            document.getElementById("bgmToggle").classList.add("hidden");
             document.getElementById("weatherWidget").classList.add("hidden");
+            document.getElementById("bellToggle").classList.add("hidden");
+            document.getElementById("bellPanel").classList.add("hidden");
+            if (notificationChannel) { sb.removeChannel(notificationChannel); notificationChannel = null; }
+            notifications = []; unreadCount = 0;
             document.getElementById("huskyPet").classList.add("hidden");
             if (huskyWalkingTimer) clearInterval(huskyWalkingTimer);
             document.getElementById("catPet").classList.add("hidden");
@@ -1710,6 +1864,13 @@
             if (map.girl_email) CONFIG.girlEmail = map.girl_email;
             if (map.love_start) CONFIG.loveStart = new Date(map.love_start);
             if (map.imgbb_api_key) IMGBB_KEY = map.imgbb_api_key;
+            if (map.emailjs_service_id) EMAILJS_SERVICE_ID = map.emailjs_service_id;
+            if (map.emailjs_template_id) EMAILJS_TEMPLATE_ID = map.emailjs_template_id;
+            if (map.emailjs_public_key) EMAILJS_PUBLIC_KEY = map.emailjs_public_key;
+            // 初始化 EmailJS
+            if (EMAILJS_PUBLIC_KEY && window.emailjs) {
+                try { emailjs.init(EMAILJS_PUBLIC_KEY); } catch (e) { console.warn("EmailJS初始化失败:", e); }
+            }
             return true;
         }
 
@@ -1720,6 +1881,34 @@
         }
         function closePreview() {
             document.getElementById("previewModal").classList.add("hidden");
+        }
+        //下载大图预览中的图片
+        async function downloadPreviewImage() {
+            const img = document.getElementById("previewImg");
+            const url = img.src;
+            if (!url) return;
+            const btn = document.getElementById("previewDownload");
+            const oldHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> 下载中';
+            btn.disabled = true;
+            try {
+                const res = await fetch(url, { mode: "cors" });
+                const blob = await res.blob();
+                const a = document.createElement("a");
+                a.href = URL.createObjectURL(blob);
+                const ext = blob.type.split("/")[1] || "jpg";
+                a.download = `photo_${Date.now()}.${ext}`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(a.href);
+            } catch (e) {
+                // 跨域无法 fetch 时退化为新窗口打开
+                window.open(url, "_blank");
+            } finally {
+                btn.innerHTML = oldHtml;
+                btn.disabled = false;
+            }
         }
 
         //页面业务初始化
@@ -1738,8 +1927,8 @@
             document.getElementById("journalDate").value = today;
             document.getElementById("fileInput").onchange = uploadImageToImgBB;
             document.getElementById("musicToggle").classList.remove("hidden");
-            document.getElementById("bgmToggle").classList.remove("hidden");
             document.getElementById("weatherWidget").classList.remove("hidden");
+            document.getElementById("bellToggle").classList.remove("hidden");
             loadMusicList();
             initHusky();
             initCat();
@@ -1748,6 +1937,7 @@
             initRpsGame();
             loadCharacterQuotes();
             initWeather();
+            initNotifications();
             applyDisplaySettings();
         }
 
@@ -1801,6 +1991,7 @@
             document.querySelectorAll(".nav-btn").forEach((btn, i) => {
                 btn.classList.toggle("active", ["home", "journal", "game", "config"][i] === name);
             });
+            if (name === "game") syncLbBgmBtn();
             window.scrollTo({ top: 0, behavior: "smooth" });
         }
 
@@ -1910,6 +2101,7 @@
                 const deleteUrl = result.data.delete_url;
 
                 await sb.from("gallery").insert({ img_url: imgUrl, delete_url: deleteUrl });
+                sendNotification("photo", "📷 上传了一张照片");
                 loadGallery();
             } catch (err) {
                 console.error(err);
@@ -2068,6 +2260,7 @@
                         const { data: { user } } = await sb.auth.getUser();
                         const username = user?.email || "匿名";
                         await sb.from("messages").insert({ content: "🎤 语音留言", voice_url: url, username });
+                        sendNotification("voice", "🎤 发送了一条语音留言");
                         loadMessages();
                     } catch (err) {
                         alert("语音上传失败：" + err.message);
@@ -2099,6 +2292,7 @@
             const { data: { user } } = await sb.auth.getUser();
             const username = user?.email || "匿名";
             await sb.from("messages").insert({ content: text, username });
+            sendNotification("message", "💬 发送了一条留言：" + (text.length > 20 ? text.slice(0,20) + "..." : text));
             document.getElementById("msgInput").value = "";
             loadMessages();
         }
@@ -2199,7 +2393,61 @@
                 renderJournalPreview();
                 e.target.value = "";
             };
+            // 骗子酒馆 BGM 开关按钮
+            const lbSfxBtn = document.getElementById("lbSfxToggle");
+            if (lbSfxBtn) lbSfxBtn.addEventListener("click", toggleBgm);
+
+            // 下拉刷新
+            initPullToRefresh();
         });
+
+        // 下拉刷新
+        function initPullToRefresh() {
+            const indicator = document.getElementById("pullRefreshIndicator");
+            const icon = document.getElementById("pullRefreshIcon");
+            const text = document.getElementById("pullRefreshText");
+            const THRESHOLD = 70;
+            let startY = 0, pulling = false, refreshing = false;
+
+            document.addEventListener("touchstart", (e) => {
+                if (refreshing || window.scrollY > 0) return;
+                startY = e.touches[0].clientY;
+                pulling = true;
+            }, { passive: true });
+
+            document.addEventListener("touchmove", (e) => {
+                if (!pulling || refreshing) return;
+                const dist = e.touches[0].clientY - startY;
+                if (dist <= 0) { indicator.style.top = "-60px"; return; }
+                const offset = Math.min(dist * 0.5, THRESHOLD + 20);
+                indicator.style.top = (offset - 50) + "px";
+                if (dist >= THRESHOLD) {
+                    indicator.classList.add("ready");
+                    text.textContent = "松开刷新";
+                } else {
+                    indicator.classList.remove("ready");
+                    text.textContent = "下拉刷新";
+                }
+            }, { passive: true });
+
+            document.addEventListener("touchend", () => {
+                if (!pulling || refreshing) return;
+                pulling = false;
+                const dist = parseInt(indicator.style.top || "-60") + 50;
+                if (dist >= THRESHOLD) {
+                    refreshing = true;
+                    indicator.style.top = "10px";
+                    indicator.classList.remove("ready");
+                    indicator.classList.add("refreshing");
+                    icon.className = "fa fa-refresh";
+                    text.textContent = "刷新中...";
+                    setTimeout(() => location.reload(), 600);
+                } else {
+                    indicator.style.top = "-60px";
+                    indicator.classList.remove("ready");
+                }
+            }, { passive: true });
+        }
         function renderJournalPreview() {
             const wrap = document.getElementById("journalPhotoPreview");
             wrap.innerHTML = journalPhotos.map((f, i) => `
@@ -2235,6 +2483,7 @@
                 }
 
                 await sb.from("journal").insert({ title, content, day, username, photos: photoUrls.length ? JSON.stringify(photoUrls) : null });
+                sendNotification("journal", "📔 发布了日志：" + (title || "无标题"));
                 document.getElementById("journalTitle").value = "";
                 document.getElementById("journalContent").value = "";
                 journalPhotos = [];
@@ -2355,6 +2604,7 @@
                 await sb.from("journal_likes").delete().eq("journal_id", jid).eq("username", me);
             } else {
                 await sb.from("journal_likes").insert({ journal_id: parseInt(jid), username: me });
+                sendNotification("like", "❤️ 点赞了你的日志");
             }
             loadJournal();
         }
@@ -2372,6 +2622,7 @@
             if (!me) { alert("请先登录"); return; }
             const { error } = await sb.from("journal_comments").insert({ journal_id: parseInt(jid), username: me, content });
             if (error) { alert("评论失败：" + error.message); return; }
+            sendNotification("comment", "💭 评论了日志：" + (content.length > 20 ? content.slice(0,20) + "..." : content));
             input.value = "";
             loadJournal();
         }
@@ -2996,6 +3247,22 @@
         let bgmNextNoteTime = 0;
         let bgmNextBassTime = 0;
 
+        // 同步骗子酒馆 BGM 按钮图标状态
+        function syncLbBgmBtn() {
+            const btn = document.getElementById("lbSfxToggle");
+            if (!btn) return;
+            const icon = btn.querySelector("i");
+            if (bgmPlaying) {
+                icon.className = "fa fa-volume-up";
+                btn.classList.add("text-love");
+                btn.classList.remove("text-gray-400");
+            } else {
+                icon.className = "fa fa-volume-off";
+                btn.classList.remove("text-love");
+                btn.classList.add("text-gray-400");
+            }
+        }
+
         function initAudio() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -3051,7 +3318,9 @@
 
         function toggleBgm() {
             initAudio();
-            const btn = document.getElementById("bgmToggle");
+            const btn = document.getElementById("lbSfxToggle");
+            if (!btn) return;
+            const icon = btn.querySelector("i");
             if (!bgmPlaying) {
                 bgmPlaying = true;
                 bgmNoteIndex = 0;
@@ -3059,13 +3328,15 @@
                 bgmNextNoteTime = audioCtx.currentTime + 0.1;
                 bgmNextBassTime = audioCtx.currentTime + 0.1;
                 scheduleBgm();
-                btn.querySelector("i").className = "fa fa-volume-up";
-                btn.classList.add("playing");
+                icon.className = "fa fa-volume-up";
+                btn.classList.add("text-love");
+                btn.classList.remove("text-gray-400");
             } else {
                 bgmPlaying = false;
                 clearTimeout(bgmTimer);
-                btn.querySelector("i").className = "fa fa-volume-off";
-                btn.classList.remove("playing");
+                icon.className = "fa fa-volume-off";
+                btn.classList.remove("text-love");
+                btn.classList.add("text-gray-400");
             }
         }
 
@@ -3216,6 +3487,7 @@
             }
             const url = sb.storage.from("music").getPublicUrl(data.path).data.publicUrl;
             await sb.from("music").insert({ title, url });
+            sendNotification("music", "🎵 上传了歌曲：" + title);
             e.target.value = "";
             loadMusicList();
         }
@@ -3760,6 +4032,7 @@
             try {
                 const { error } = await sb.from("character_quotes").insert({ character: currentQuoteTab, text });
                 if (error) { alert("添加失败：" + error.message); return; }
+                sendNotification("quote", "💬 添加了互动话语：" + (text.length > 20 ? text.slice(0,20) + "..." : text));
                 input.value = "";
                 await loadCharacterQuotes();
             } catch (e) { alert("添加异常：" + e.message); }
@@ -3775,6 +4048,180 @@
                 if (error) { alert("删除失败：" + error.message); return; }
                 await loadCharacterQuotes();
             } catch (e) { alert("删除异常：" + e.message); }
+        }
+
+        // ==================== 通知铃铛 ====================
+        let notificationChannel = null;
+        let notifications = [];
+        let unreadCount = 0;
+
+        // 通知图标映射
+        const NOTIF_ICONS = {
+            message: '💬', journal: '📔', photo: '📷', music: '🎵',
+            quote: '💬', comment: '💭', like: '❤️', voice: '🎤'
+        };
+
+        async function initNotifications() {
+            const { data: { user } } = await sb.auth.getUser();
+            if (!user) return;
+            const myEmail = user.email.toLowerCase();
+
+            // 加载历史通知
+            await loadNotifications();
+
+            // Supabase Realtime 订阅新通知
+            notificationChannel = sb.channel("notifications_channel")
+                .on("postgres_changes", {
+                    event: "INSERT",
+                    schema: "public",
+                    table: "notifications",
+                    filter: `to_email=eq.${myEmail}`
+                }, (payload) => {
+                    notifications.unshift(payload.new);
+                    unreadCount++;
+                    updateBellBadge();
+                    renderBellList();
+                    // 铃铛抖动动画
+                    const bell = document.getElementById("bellToggle");
+                    bell.style.animation = "bell-shake 0.5s ease 3";
+                    setTimeout(() => { bell.style.animation = ""; }, 1500);
+                })
+                .subscribe();
+        }
+
+        async function loadNotifications() {
+            const { data: { user } } = await sb.auth.getUser();
+            if (!user) return;
+            const myEmail = user.email.toLowerCase();
+            const { data, error } = await sb.from("notifications")
+                .select("*")
+                .eq("to_email", myEmail)
+                .order("created_at", { ascending: false })
+                .limit(50);
+            if (error) { console.warn("加载通知失败:", error.message); return; }
+            notifications = data || [];
+            unreadCount = notifications.filter(n => !n.is_read).length;
+            updateBellBadge();
+            renderBellList();
+        }
+
+        async function sendNotification(type, content) {
+            try {
+                const { data: { user } } = await sb.auth.getUser();
+                if (!user) return;
+                const fromEmail = user.email.toLowerCase();
+                // to_email = 对方邮箱
+                const boyEmail = (CONFIG.boyEmail || "").toLowerCase();
+                const girlEmail = (CONFIG.girlEmail || "").toLowerCase();
+                const toEmail = fromEmail === boyEmail ? girlEmail : boyEmail;
+                if (!toEmail) return;
+                // 获取发送者名字
+                const fromName = fromEmail === girlEmail ? CONFIG.girlName : CONFIG.boyName;
+                const fullContent = fromName + " " + content;
+                await sb.from("notifications").insert({
+                    type, content: fullContent, from_email: fromEmail, to_email: toEmail, is_read: false
+                });
+                // 同时发送邮件通知给对方
+                if (EMAILJS_SERVICE_ID && EMAILJS_TEMPLATE_ID && window.emailjs) {
+                    try {
+                        await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+                            to_email: toEmail,
+                            from_name: fromName,
+                            message: content,
+                            notification_type: type,
+                            app_title: "情侣空间"
+                        });
+                    } catch (emailErr) { console.warn("邮件发送失败:", emailErr); }
+                }
+            } catch (e) { console.warn("发送通知失败:", e); }
+        }
+
+        function updateBellBadge() {
+            const badge = document.getElementById("bellBadge");
+            if (unreadCount > 0) {
+                badge.textContent = unreadCount > 99 ? "99+" : unreadCount;
+                badge.classList.remove("hidden");
+            } else {
+                badge.classList.add("hidden");
+            }
+        }
+
+        function renderBellList() {
+            const listEl = document.getElementById("bellList");
+            if (notifications.length === 0) {
+                listEl.innerHTML = `<div class="text-center text-gray-400 py-4 text-xs">暂无通知</div>`;
+                return;
+            }
+            listEl.innerHTML = notifications.map(n => {
+                const icon = NOTIF_ICONS[n.type] || '🔔';
+                const time = formatNotifTime(n.created_at);
+                return `<div class="bell-item ${n.is_read ? '' : 'unread'}" onclick="markNotifRead('${n.id}')">
+                    <span class="bell-icon">${icon}</span>
+                    <div class="bell-content">
+                        <div>${escapeHtml(n.content || '')}</div>
+                        <div class="bell-time">${time}</div>
+                    </div>
+                </div>`;
+            }).join("");
+        }
+
+        function formatNotifTime(t) {
+            if (!t) return '';
+            const d = new Date(t);
+            const now = new Date();
+            const diff = (now - d) / 1000;
+            if (diff < 60) return '刚刚';
+            if (diff < 3600) return Math.floor(diff / 60) + '分钟前';
+            if (diff < 86400) return Math.floor(diff / 3600) + '小时前';
+            if (diff < 604800) return Math.floor(diff / 86400) + '天前';
+            return d.toLocaleDateString();
+        }
+
+        function escapeHtml(s) {
+            return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        async function markNotifRead(id) {
+            const n = notifications.find(x => String(x.id) === String(id));
+            if (!n || n.is_read) return;
+            n.is_read = true;
+            unreadCount = Math.max(0, unreadCount - 1);
+            updateBellBadge();
+            renderBellList();
+            await sb.from("notifications").update({ is_read: true }).eq("id", id);
+        }
+
+        function toggleBellPanel() {
+            const panel = document.getElementById("bellPanel");
+            panel.classList.toggle("hidden");
+            if (!panel.classList.contains("hidden")) {
+                // 打开时标记所有为已读
+                markAllRead();
+            }
+        }
+
+        async function markAllRead() {
+            const unread = notifications.filter(n => !n.is_read);
+            if (unread.length === 0) return;
+            unread.forEach(n => n.is_read = true);
+            unreadCount = 0;
+            updateBellBadge();
+            renderBellList();
+            for (const n of unread) {
+                await sb.from("notifications").update({ is_read: true }).eq("id", n.id);
+            }
+        }
+
+        async function clearAllNotifications() {
+            if (!confirm("确定清空所有通知？")) return;
+            const { data: { user } } = await sb.auth.getUser();
+            if (!user) return;
+            const myEmail = user.email.toLowerCase();
+            await sb.from("notifications").delete().eq("to_email", myEmail);
+            notifications = [];
+            unreadCount = 0;
+            updateBellBadge();
+            renderBellList();
         }
 
         // ==================== 天气功能 ====================
