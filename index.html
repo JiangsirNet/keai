@@ -9,6 +9,7 @@
     <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lunar-javascript@1.6.11/lunar.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -565,6 +566,121 @@
             padding: 8px 4px; border-bottom: 1px solid #f1f5f9;
         }
         .weather-hour-item:last-child { border-bottom: none; }
+
+        /* ============ 日历 & 纪念日弹窗 ============ */
+        .cal-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+        }
+        .cal-head {
+            text-align: center;
+            font-size: 12px;
+            color: #9ca3af;
+            padding: 6px 0;
+            font-weight: 600;
+        }
+        .cal-cell {
+            position: relative;
+            min-height: 56px;
+            padding: 4px 2px 16px;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            font-size: 13px;
+            color: #374151;
+            cursor: pointer;
+            transition: background 0.15s, transform 0.15s;
+            background: #fff7fa;
+            border: 1px solid #fce7f0;
+            user-select: none;
+        }
+        .cal-cell:hover { background: #ffe4ec; transform: translateY(-1px); }
+        .cal-cell.muted { color: #d1d5db; background: #fafafa; border-color: #f0f0f0; }
+        .cal-cell.today { border: 2px solid #ff6b8b; font-weight: 700; color: #ff6b8b; }
+        .cal-cell.selected { background: #ff6b8b; color: #fff; border-color: #ff6b8b; }
+        .cal-cell.selected .cal-dot { background: #fff !important; }
+        .cal-cell.selected .cal-label { color: #fff !important; }
+        .cal-dots {
+            position: absolute;
+            bottom: 2px;
+            display: flex;
+            gap: 2px;
+            height: 5px;
+        }
+        .cal-dot {
+            width: 5px; height: 5px; border-radius: 50%;
+            background: #ff6b8b;
+        }
+        .cal-dot.boy { background: #3b82f6; }
+        .cal-dot.girl { background: #ec4899; }
+        .cal-dot.todo { background: #f59e0b; }
+        .cal-dot.memo { background: #8b5cf6; }
+        .cal-label {
+            font-size: 9px;
+            line-height: 1.1;
+            margin-top: 1px;
+            max-width: 100%;
+            padding: 0 2px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            text-align: center;
+        }
+        .cal-label.memo-label { color: #8b5cf6; font-weight: 600; }
+        .cal-label.checkin-label { color: #6b7280; }
+        .cal-label.todo-label { color: #f59e0b; }
+        .cal-legend {
+            display: flex; flex-wrap: wrap; gap: 10px;
+            font-size: 11px; color: #6b7280;
+            margin-top: 10px; justify-content: center;
+        }
+        .cal-legend span { display: inline-flex; align-items: center; gap: 4px; }
+
+        .anniv-modal {
+            position: fixed; inset: 0; z-index: 1000;
+            background: rgba(0,0,0,0.5);
+            display: flex; align-items: center; justify-content: center;
+            padding: 16px;
+        }
+        .anniv-modal-inner {
+            background: #fff; border-radius: 20px;
+            max-width: 460px; width: 100%; max-height: 85vh; overflow-y: auto;
+            padding: 22px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .anniv-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px 12px; border-radius: 12px;
+            background: #fff7fa; border: 1px solid #fce7f0;
+            margin-bottom: 8px;
+        }
+        .anniv-item .anniv-days {
+            font-size: 11px; color: #ff6b8b; font-weight: 700;
+        }
+        .todo-item {
+            display: flex; align-items: center; gap: 8px;
+            padding: 8px 10px; border-radius: 10px;
+            background: #fff7fa; border: 1px solid #fce7f0;
+            margin-bottom: 6px; font-size: 13px;
+        }
+        .todo-item.done { opacity: 0.55; }
+        .todo-item.done .todo-text { text-decoration: line-through; color: #9ca3af; }
+        .todo-checkbox {
+            width: 18px; height: 18px; border-radius: 5px;
+            border: 2px solid #ff6b8b; cursor: pointer; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 11px; background: #fff;
+            transition: background 0.15s;
+        }
+        .todo-checkbox.checked { background: #ff6b8b; }
+        .todo-del {
+            margin-left: auto; color: #9ca3af; cursor: pointer;
+            font-size: 14px; padding: 0 4px;
+        }
+        .todo-del:hover { color: #ef4444; }
 
         /* BGM 开关按钮（已移至骗子酒馆标题栏） */
 
@@ -1552,7 +1668,7 @@
 
             <div class="grid md:grid-cols-2 gap-6">
                 <!--相册模块 -->
-                <div class="bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow">
+                <div class="bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow md:col-span-2">
                     <h2 class="text-xl font-bold text-love flex items-center mb-4">
                         <i class="fa fa-camera mr-2"></i>恋爱相册
                     </h2>
@@ -1561,23 +1677,8 @@
                         class="w-full border border-dashed border-love rounded-xl py-3 text-love mb-4 hover:bg-rose-50 transition">
                         <i class="fa fa-upload mr-1"></i>上传照片
                     </button>
-                    <div id="galleryWrap" class="grid grid-cols-2 gap-3">
+                    <div id="galleryWrap" class="grid grid-cols-2 md:grid-cols-4 gap-3">
                         <div class="text-center text-gray-400 py-10 loading">加载相册...</div>
-                    </div>
-                </div>
-
-                <!--纪念日-->
-                <div class="bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow">
-                    <h2 class="text-xl font-bold text-love flex items-center mb-4">
-                        <i class="fa fa-calendar mr-2"></i>重要纪念日
-                    </h2>
-                    <ul class="space-y-3 text-gray-700" id="memoList">
-                        <div class="text-center text-gray-400 py-6 loading">加载中...</div>
-                    </ul>
-                    <div class="mt-4 pt-4 border-t border-rose-100">
-                        <input id="memoTitle" placeholder="名称" class="w-full border border-rose-200 rounded-lg p-2 mb-2">
-                        <input id="memoDate" type="date" class="w-full border border-rose-200 rounded-lg p-2 mb-2">
-                        <button onclick="addMemorial()" class="w-full bg-love text-white py-2 rounded-lg">新增纪念日</button>
                     </div>
                 </div>
 
@@ -1634,6 +1735,99 @@
                 </button>
                 <div class="mt-5 space-y-4 max-h-[500px] overflow-y-auto" id="journalList">
                     <div class="text-center text-gray-400 py-6 loading">加载日志...</div>
+                </div>
+            </div>
+
+            <!-- 日历打卡 + 代办 -->
+            <div class="bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow mt-6">
+                <h2 class="text-xl font-bold text-love flex items-center mb-4">
+                    <i class="fa fa-calendar-check-o mr-2"></i>日历打卡
+                    <button onclick="openAnnivModal()" class="ml-auto text-sm bg-love text-white px-4 py-1.5 rounded-full hover:bg-loveDark transition flex items-center gap-1">
+                        <i class="fa fa-heart"></i> 重要纪念日
+                    </button>
+                </h2>
+
+                <!-- 月份切换 -->
+                <div class="flex items-center justify-between mb-3">
+                    <button onclick="calPrevMonth()" class="w-9 h-9 rounded-full bg-rose-50 text-love hover:bg-rose-100 transition">
+                        <i class="fa fa-chevron-left"></i>
+                    </button>
+                    <div id="calTitle" class="text-lg font-bold text-love">-</div>
+                    <button onclick="calNextMonth()" class="w-9 h-9 rounded-full bg-rose-50 text-love hover:bg-rose-100 transition">
+                        <i class="fa fa-chevron-right"></i>
+                    </button>
+                </div>
+
+                <!-- 星期表头 -->
+                <div class="cal-grid mb-1">
+                    <div class="cal-head">日</div>
+                    <div class="cal-head">一</div>
+                    <div class="cal-head">二</div>
+                    <div class="cal-head">三</div>
+                    <div class="cal-head">四</div>
+                    <div class="cal-head">五</div>
+                    <div class="cal-head">六</div>
+                </div>
+                <div id="calGrid" class="cal-grid"></div>
+
+                <!-- 图例 -->
+                <div class="cal-legend">
+                    <span><i class="cal-dot boy" style="display:inline-block"></i>他打卡</span>
+                    <span><i class="cal-dot girl" style="display:inline-block"></i>她打卡</span>
+                    <span><i class="cal-dot todo" style="display:inline-block"></i>代办</span>
+                    <span><i class="cal-dot memo" style="display:inline-block"></i>纪念日</span>
+                </div>
+
+                <!-- 当日操作区 -->
+                <div class="mt-5 pt-4 border-t border-rose-100">
+                    <div class="flex items-center justify-between mb-3">
+                        <div>
+                            <p class="text-sm text-gray-500">已选日期</p>
+                            <p id="calSelectedDate" class="text-base font-bold text-love">-</p>
+                        </div>
+                        <button id="checkinBtn" onclick="toggleCheckin()"
+                                            class="bg-love text-white px-5 py-2 rounded-full hover:bg-loveDark transition flex items-center gap-2">
+                            <i class="fa fa-check-circle"></i><span id="checkinBtnText">打卡</span>
+                        </button>
+                    </div>
+
+                    <!-- 代办列表 -->
+                    <div class="mb-2 flex items-center gap-2">
+                        <input id="todoInput" placeholder="添加当日代办事项，回车提交" maxlength="60"
+                            class="flex-1 border border-rose-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-love"
+                            onkeydown="if(event.key==='Enter')addTodo()">
+                        <button onclick="addTodo()" class="bg-love text-white px-4 py-2 rounded-lg text-sm hover:bg-loveDark transition">添加</button>
+                    </div>
+                    <div id="todoList" class="max-h-[200px] overflow-y-auto pr-1">
+                        <div class="text-center text-gray-400 text-sm py-2">选择日期查看代办</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 重要纪念日弹窗 -->
+        <div id="annivModal" class="anniv-modal hidden" onclick="if(event.target===this)closeAnnivModal()">
+            <div class="anniv-modal-inner">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-love flex items-center">
+                        <i class="fa fa-heart mr-2"></i>重要纪念日
+                    </h3>
+                    <button onclick="closeAnnivModal()" class="text-gray-400 hover:text-love text-2xl leading-none">&times;</button>
+                </div>
+                <div id="annivList" class="mb-3">
+                    <div class="text-center text-gray-400 py-4">加载中...</div>
+                </div>
+                <div class="mt-4 pt-4 border-t border-rose-100">
+                    <p class="text-sm font-bold text-love mb-2"><i class="fa fa-plus-circle mr-1"></i>新增纪念日</p>
+                    <input id="annivTitle" placeholder="纪念日名称（如：第一次约会）" maxlength="30"
+                        class="w-full border border-rose-200 rounded-lg p-2 mb-2 text-sm outline-none focus:border-love">
+                    <input id="annivDate" type="date" class="w-full border border-rose-200 rounded-lg p-2 mb-2 text-sm outline-none focus:border-love">
+                    <label class="flex items-center gap-2 mb-1 text-sm text-gray-600 cursor-pointer select-none">
+                        <input type="checkbox" id="annivLunar" class="w-4 h-4 accent-pink-500" onchange="onAnnivLunarChange()">
+                        <span>农历日期（输入的月日按农历解释，每年自动换算为公历显示）</span>
+                    </label>
+                    <p id="annivLunarHint" class="hidden text-xs text-purple-500 mb-2 ml-6">例：选 8月15日 = 农历八月十五（中秋节），日历会在当年农历八月十五对应的公历日显示</p>
+                    <button onclick="addAnniv()" class="w-full bg-love text-white py-2 rounded-lg text-sm hover:bg-loveDark transition">保存纪念日</button>
                 </div>
             </div>
         </div>
@@ -1921,10 +2115,10 @@
             createHeartLoop();
             loadGallery();
             loadMessages();
-            loadMemorial();
             loadJournal();
             const today = new Date().toISOString().split('T')[0];
             document.getElementById("journalDate").value = today;
+            initCalendar();
             document.getElementById("fileInput").onchange = uploadImageToImgBB;
             document.getElementById("musicToggle").classList.remove("hidden");
             document.getElementById("weatherWidget").classList.remove("hidden");
@@ -1992,6 +2186,7 @@
                 btn.classList.toggle("active", ["home", "journal", "game", "config"][i] === name);
             });
             if (name === "game") syncLbBgmBtn();
+            if (name === "journal") refreshCalendar();
             window.scrollTo({ top: 0, behavior: "smooth" });
         }
 
@@ -2350,39 +2545,6 @@
             }
         }
 
-        //纪念日
-        async function addMemorial() {
-            const title = document.getElementById("memoTitle").value.trim();
-            const day = document.getElementById("memoDate").value;
-            if (!title || !day) return alert("请填写完整");
-            await sb.from("memorial_day").insert({ title, day });
-            document.getElementById("memoTitle").value = "";
-            document.getElementById("memoDate").value = "";
-            loadMemorial();
-        }
-        async function loadMemorial() {
-            const { data } = await sb.from("memorial_day").select("*");
-            const wrap = document.getElementById("memoList");
-            wrap.innerHTML = "";
-            if (!data || data.length === 0) {
-                wrap.innerHTML = `<li class="text-gray-400 text-center py-4">添加纪念日记录重要日子</li>`;
-            }
-            data.forEach(item => {
-                wrap.innerHTML += `
-        <li class="flex justify-between border-b border-rose-100 pb-2">
-            <span>${item.title}</span>
-            <span>${item.day}</span>
-        </li>`
-            })
-            const start = CONFIG.loveStart;
-            const startStr = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`;
-            wrap.innerHTML = `
-        <li class="flex justify-between border-b border-rose-100 pb-2">
-            <span>相恋起始日</span>
-            <span>${startStr}</span>
-        </li>` + wrap.innerHTML;
-        }
-
         //日志
         // 日志照片选择预览
         let journalPhotos = [];
@@ -2625,6 +2787,489 @@
             sendNotification("comment", "💭 评论了日志：" + (content.length > 20 ? content.slice(0,20) + "..." : content));
             input.value = "";
             loadJournal();
+        }
+
+        // ==================== 日历 / 打卡 / 代办 / 纪念日 ====================
+        let calCurrent = new Date();      // 当前显示月份
+        let calSelectedDate = null;        // 已选日期 (YYYY-MM-DD)
+        let calCheckins = [];              // 当月所有签到 [{date, username}]
+        let calTodos = [];                 // 当月所有代办 [{id, date, content, done, username}]
+        let calMemos = [];                 // 纪念日（含相恋起始）[{title, day}]
+
+        const CAL_MONTHS = ["一月","二月","三月","四月","五月","六月","七月","八月","九月","十月","十一月","十二月"];
+
+        function fmtCalDate(d) {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, "0");
+            const day = String(d.getDate()).padStart(2, "0");
+            return `${y}-${m}-${day}`;
+        }
+
+        function initCalendar() {
+            calSelectedDate = fmtCalDate(new Date());
+            document.getElementById("calSelectedDate").innerText = calSelectedDate;
+            // 默认选中今天
+            refreshCalendar();
+        }
+
+        async function refreshCalendar() {
+            if (!calSelectedDate) calSelectedDate = fmtCalDate(new Date());
+            // 月份标题
+            document.getElementById("calTitle").innerText =
+                `${calCurrent.getFullYear()}年 ${CAL_MONTHS[calCurrent.getMonth()]}`;
+
+            const y = calCurrent.getFullYear();
+            const m = calCurrent.getMonth();
+            const firstDay = new Date(y, m, 1).getDay();           // 1号是星期几
+            const daysInMonth = new Date(y, m + 1, 0).getDate();   // 当月天数
+            const prevDays = new Date(y, m, 0).getDate();          // 上月天数
+
+            // 加载当月数据
+            const start = `${y}-${String(m + 1).padStart(2, "0")}-01`;
+            const end = `${y}-${String(m + 1).padStart(2, "0")}-${String(daysInMonth).padStart(2, "0")}`;
+            try {
+                const [cRes, tRes, mRes] = await Promise.all([
+                    sb.from("checkins").select("date,username").gte("date", start).lte("date", end),
+                    sb.from("todos").select("id,date,content,done,username").gte("date", start).lte("date", end),
+                    sb.from("memorial_day").select("*")
+                ]);
+                calCheckins = cRes.data || [];
+                calTodos = tRes.data || [];
+                calMemos = mRes.data || [];
+            } catch (e) {
+                console.warn("加载日历数据失败:", e);
+                calCheckins = []; calTodos = []; calMemos = [];
+            }
+
+            // 构建签到/代办映射
+            const checkinMap = {};   // date -> Set(username)
+            const checkinNamesMap = {}; // date -> [显示名]
+            calCheckins.forEach(c => {
+                const u = (c.username || "").toLowerCase();
+                if (!checkinMap[c.date]) checkinMap[c.date] = new Set();
+                checkinMap[c.date].add(u);
+                let name = "匿名";
+                if (u === (CONFIG.boyEmail || "").toLowerCase()) name = CONFIG.boyName;
+                else if (u === (CONFIG.girlEmail || "").toLowerCase()) name = CONFIG.girlName;
+                if (!checkinNamesMap[c.date]) checkinNamesMap[c.date] = [];
+                if (!checkinNamesMap[c.date].includes(name)) checkinNamesMap[c.date].push(name);
+            });
+            const todoMap = {};      // date -> bool(有代办)
+            const todoTitlesMap = {}; // date -> [content]
+            calTodos.forEach(t => {
+                todoMap[t.date] = true;
+                if (!todoTitlesMap[t.date]) todoTitlesMap[t.date] = [];
+                todoTitlesMap[t.date].push(t.content);
+            });
+            const memoMap = {};      // "MM-DD" -> [titles]（按月日匹配，每年都显示）
+            calMemos.forEach(mo => {
+                const day = mo.day || "";
+                const parts = day.split("-");
+                if (parts.length < 3) return;
+                const mm = parseInt(parts[1]);
+                const dd = parseInt(parts[2]);
+                // 兼容多种 is_lunar 取值
+                const isLunar = mo.is_lunar === true || mo.is_lunar === 'true' || mo.is_lunar === 1 || mo.is_lunar === '1' || mo.is_lunar === 't';
+                if (isLunar && window.Lunar) {
+                    // 农历：用当前显示年份的农历构造，转公历
+                    try {
+                        const lunar = Lunar.fromYmd(y, mm, dd);
+                        const solar = lunar.getSolar();
+                        // 检查公历是否落在当前显示的月份
+                        if (solar.getYear() === y && (solar.getMonth() - 1) === m) {
+                            const solarMd = `${String(solar.getMonth()).padStart(2, "0")}-${String(solar.getDay()).padStart(2, "0")}`;
+                            if (!memoMap[solarMd]) memoMap[solarMd] = [];
+                            memoMap[solarMd].push(mo.title + "(农历)");
+                        }
+                    } catch (e) {
+                        console.warn("农历转换失败:", mo, e);
+                    }
+                } else {
+                    // 公历：按月日匹配
+                    const md = day.length >= 10 ? day.slice(5) : day;
+                    if (!memoMap[md]) memoMap[md] = [];
+                    memoMap[md].push(mo.title);
+                }
+            });
+            // 加入相恋起始日
+            const start2 = CONFIG.loveStart;
+            const startStr = fmtCalDate(start2);
+            const startMd = startStr.slice(5);
+            if (!memoMap[startMd]) memoMap[startMd] = [];
+            memoMap[startMd].push("相恋起始日");
+
+            // 渲染日历
+            const grid = document.getElementById("calGrid");
+            grid.innerHTML = "";
+            const todayStr = fmtCalDate(new Date());
+            // 上月填充
+            for (let i = firstDay - 1; i >= 0; i--) {
+                grid.innerHTML += `<div class="cal-cell muted">${prevDays - i}</div>`;
+            }
+            // 当月
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateStr = `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+                const classes = ["cal-cell"];
+                if (dateStr === todayStr) classes.push("today");
+                if (dateStr === calSelectedDate) classes.push("selected");
+
+                // 圆点（颜色标识）
+                let dots = "";
+                const set = checkinMap[dateStr];
+                const checkinNames = checkinNamesMap[dateStr] || [];
+                if (set) {
+                    if (set.has((CONFIG.boyEmail || "").toLowerCase())) dots += `<i class="cal-dot boy"></i>`;
+                    if (set.has((CONFIG.girlEmail || "").toLowerCase())) dots += `<i class="cal-dot girl"></i>`;
+                    // 既不是男也不是女的其他邮箱
+                    set.forEach(u => {
+                        if (u && u !== (CONFIG.boyEmail || "").toLowerCase() && u !== (CONFIG.girlEmail || "").toLowerCase()) {
+                            dots += `<i class="cal-dot"></i>`;
+                        }
+                    });
+                }
+                if (todoMap[dateStr]) dots += `<i class="cal-dot todo"></i>`;
+                // 纪念日按"月-日"匹配，每年都显示
+                const dateMd = dateStr.slice(5);  // "MM-DD"
+                if (memoMap[dateMd]) dots += `<i class="cal-dot memo"></i>`;
+                const dotsHtml = dots ? `<div class="cal-dots">${dots}</div>` : "";
+
+                // 文字标签：把当日所有事件都列出来
+                const memoTitles = memoMap[dateMd] || [];
+                const todoTitles = todoTitlesMap[dateStr] || [];
+                let labelHtml = "";
+                // 所有纪念日（每个一行）
+                memoTitles.forEach(t => {
+                    labelHtml += `<div class="cal-label memo-label">${t}</div>`;
+                });
+                // 打卡人
+                if (checkinNames.length) {
+                    labelHtml += `<div class="cal-label checkin-label">${checkinNames.join("·")}打卡</div>`;
+                }
+                // 所有代办（每个一行）
+                todoTitles.forEach(t => {
+                    labelHtml += `<div class="cal-label todo-label">${t}</div>`;
+                });
+
+                // title 悬停提示（完整信息）
+                const titleParts = [];
+                if (memoTitles.length) titleParts.push("纪念日：" + memoTitles.join("、"));
+                if (checkinNames.length) titleParts.push("打卡：" + checkinNames.join("、"));
+                if (todoTitles.length) titleParts.push("代办(" + todoTitles.length + ")：" + todoTitles.join("、"));
+                const titleAttr = titleParts.length ? ` title="${titleParts.join('&#10;')}"` : "";
+
+                grid.innerHTML += `<div class="${classes.join(" ")}" onclick="selectCalDate('${dateStr}')"${titleAttr}><span>${d}</span>${labelHtml}${dotsHtml}</div>`;
+            }
+            // 下月填充
+            const totalCells = firstDay + daysInMonth;
+            const tail = (7 - (totalCells % 7)) % 7;
+            for (let i = 1; i <= tail; i++) {
+                grid.innerHTML += `<div class="cal-cell muted">${i}</div>`;
+            }
+
+            // 刷新当日操作区
+            updateCheckinBtn();
+            renderTodos();
+        }
+
+        function calPrevMonth() {
+            calCurrent = new Date(calCurrent.getFullYear(), calCurrent.getMonth() - 1, 1);
+            refreshCalendar();
+        }
+        function calNextMonth() {
+            calCurrent = new Date(calCurrent.getFullYear(), calCurrent.getMonth() + 1, 1);
+            refreshCalendar();
+        }
+        function selectCalDate(dateStr) {
+            calSelectedDate = dateStr;
+            // 切换到该日期所在月份
+            const [yy, mm] = dateStr.split("-").map(Number);
+            if (calCurrent.getFullYear() !== yy || calCurrent.getMonth() !== mm - 1) {
+                calCurrent = new Date(yy, mm - 1, 1);
+            }
+            refreshCalendar();
+        }
+
+        async function toggleCheckin() {
+            const me = myRpsEmail || "";
+            if (!me) { alert("请先登录"); return; }
+            if (!calSelectedDate) return;
+            // 只能在当天打卡，不可补卡或预打卡
+            const todayStr = fmtCalDate(new Date());
+            if (calSelectedDate !== todayStr) {
+                alert("只能在当天打卡哦~\n已选日期：" + calSelectedDate + "\n今天：" + todayStr);
+                return;
+            }
+            const btn = document.getElementById("checkinBtn");
+            btn.disabled = true;
+            try {
+                const { data } = await sb.from("checkins")
+                    .select("id").eq("date", calSelectedDate).eq("username", me);
+                if (data && data.length > 0) {
+                    // 已打卡 -> 取消
+                    if (!confirm("取消今日打卡？")) { btn.disabled = false; return; }
+                    await sb.from("checkins").delete()
+                        .eq("date", calSelectedDate).eq("username", me);
+                } else {
+                    await sb.from("checkins").insert({ date: calSelectedDate, username: me });
+                }
+                refreshCalendar();
+            } catch (e) {
+                alert("打卡失败：" + (e.message || "请稍后重试\n提示：需先在Supabase创建 checkins 表"));
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function updateCheckinBtn() {
+            const me = (myRpsEmail || "").toLowerCase();
+            const todaySet = calCheckins.filter(c => c.date === calSelectedDate)
+                .map(c => (c.username || "").toLowerCase());
+            const checked = todaySet.includes(me);
+            const btnText = document.getElementById("checkinBtnText");
+            const btn = document.getElementById("checkinBtn");
+            // 仅当天允许打卡，非今天禁用按钮
+            const todayStr = fmtCalDate(new Date());
+            const isToday = calSelectedDate === todayStr;
+            btn.disabled = !isToday;
+            btn.style.opacity = isToday ? "1" : "0.5";
+            btn.style.cursor = isToday ? "pointer" : "not-allowed";
+            if (!isToday) {
+                btnText.innerText = "仅当天可打卡";
+                btn.classList.remove("bg-loveDark");
+                btn.querySelector("i").className = "fa fa-ban";
+            } else if (checked) {
+                btnText.innerText = "已打卡";
+                btn.classList.add("bg-loveDark");
+                btn.querySelector("i").className = "fa fa-check";
+            } else {
+                btnText.innerText = "打卡";
+                btn.classList.remove("bg-loveDark");
+                btn.querySelector("i").className = "fa fa-check-circle";
+            }
+            // 显示当日所有打卡人
+            const names = todaySet.map(u => {
+                if (u === (CONFIG.boyEmail || "").toLowerCase()) return CONFIG.boyName;
+                if (u === (CONFIG.girlEmail || "").toLowerCase()) return CONFIG.girlName;
+                return u || "匿名";
+            });
+            document.getElementById("calSelectedDate").innerText =
+                calSelectedDate + (names.length ? `  (${names.join("、")} 已打卡)` : "");
+        }
+
+        async function addTodo() {
+            const input = document.getElementById("todoInput");
+            const content = input.value.trim();
+            if (!content) return;
+            const me = myRpsEmail || "";
+            if (!me) { alert("请先登录"); return; }
+            if (!calSelectedDate) return alert("请先选择日期");
+            try {
+                const { error } = await sb.from("todos").insert({
+                    date: calSelectedDate, content, username: me, done: false
+                });
+                if (error) throw error;
+                input.value = "";
+                refreshCalendar();
+            } catch (e) {
+                alert("添加失败：" + (e.message || "请稍后重试\n提示：需先在Supabase创建 todos 表"));
+            }
+        }
+
+        async function toggleTodo(id, done) {
+            try {
+                await sb.from("todos").update({ done: !done }).eq("id", id);
+                refreshCalendar();
+            } catch (e) {
+                alert("更新失败：" + (e.message || ""));
+            }
+        }
+
+        async function deleteTodo(id) {
+            if (!confirm("删除该代办事项？")) return;
+            try {
+                await sb.from("todos").delete().eq("id", id);
+                refreshCalendar();
+            } catch (e) {
+                alert("删除失败：" + (e.message || ""));
+            }
+        }
+
+        function renderTodos() {
+            const wrap = document.getElementById("todoList");
+            const list = calTodos.filter(t => t.date === calSelectedDate);
+            if (!list.length) {
+                wrap.innerHTML = `<div class="text-center text-gray-400 text-sm py-2">该日期暂无代办</div>`;
+                return;
+            }
+            wrap.innerHTML = list.map(t => {
+                let who = t.username || "匿名";
+                if ((t.username || "").toLowerCase() === (CONFIG.boyEmail || "").toLowerCase()) who = CONFIG.boyName;
+                else if ((t.username || "").toLowerCase() === (CONFIG.girlEmail || "").toLowerCase()) who = CONFIG.girlName;
+                return `<div class="todo-item ${t.done ? "done" : ""}">
+                    <div class="todo-checkbox ${t.done ? "checked" : ""}" onclick="toggleTodo(${t.id}, ${t.done})">
+                        ${t.done ? '<i class="fa fa-check"></i>' : ''}
+                    </div>
+                    <span class="todo-text flex-1 break-all">${(t.content || "").replace(/</g, "&lt;")}</span>
+                    <span class="text-xs text-gray-400">${who}</span>
+                    <i class="fa fa-trash todo-del" onclick="deleteTodo(${t.id})"></i>
+                </div>`;
+            }).join("");
+        }
+
+        // ============ 重要纪念日弹窗 ============
+        function openAnnivModal() {
+            document.getElementById("annivModal").classList.remove("hidden");
+            loadAnnivList();
+        }
+        function closeAnnivModal() {
+            document.getElementById("annivModal").classList.add("hidden");
+        }
+        function onAnnivLunarChange() {
+            const checked = document.getElementById("annivLunar").checked;
+            document.getElementById("annivLunarHint").classList.toggle("hidden", !checked);
+        }
+
+        async function loadAnnivList() {
+            const wrap = document.getElementById("annivList");
+            wrap.innerHTML = `<div class="text-center text-gray-400 py-4">加载中...</div>`;
+            try {
+                const { data } = await sb.from("memorial_day").select("*");
+                const list = data || [];
+                // 加入相恋起始日
+                const startStr = fmtCalDate(CONFIG.loveStart);
+                const all = [{ title: "相恋起始日", day: startStr, is_lunar: false, _builtin: true }, ...list];
+                const today = new Date(); today.setHours(0, 0, 0, 0);
+                // 按距今天数排序（区分农历/公历）
+                all.sort((a, b) => daysUntil(a.day, today, a.is_lunar) - daysUntil(b.day, today, b.is_lunar));
+                if (!all.length) {
+                    wrap.innerHTML = `<div class="text-center text-gray-400 py-4">还没有纪念日</div>`;
+                    return;
+                }
+                wrap.innerHTML = all.map(item => {
+                    const isLunar = item.is_lunar === true || item.is_lunar === 'true' || item.is_lunar === 1 || item.is_lunar === '1' || item.is_lunar === 't';
+                    const days = daysUntil(item.day, today, isLunar);
+                    const text = days === 0 ? "今天" : (days > 0 ? `还有 ${days} 天` : `已过 ${-days} 天`);
+                    const color = days === 0 ? "text-love" : (days > 0 ? "text-gray-500" : "text-gray-400");
+                    const delBtn = item._builtin ? "" :
+                        `<i class="fa fa-trash text-gray-400 hover:text-red-500 cursor-pointer ml-2" onclick="delAnniv('${item.id}')"></i>`;
+                    // 日期显示：农历显示中文+今年公历，公历显示原日期
+                    let dateDisplay = item.day;
+                    let badge = "";
+                    if (isLunar) {
+                        const cn = lunarToChinese(item.day);
+                        const solarThisYear = lunarToSolarThisYear(item.day, today.getFullYear());
+                        dateDisplay = `农历 ${cn}` + (solarThisYear ? `（今年 ${solarThisYear}）` : "");
+                        badge = `<span class="text-xs bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded ml-1">农历</span>`;
+                    } else {
+                        badge = `<span class="text-xs bg-rose-100 text-love px-1.5 py-0.5 rounded ml-1">公历</span>`;
+                    }
+                    return `<div class="anniv-item">
+                        <div>
+                            <p class="font-semibold text-gray-800">${item.title}${badge}</p>
+                            <p class="text-xs text-gray-400">${dateDisplay}</p>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="anniv-days ${color}">${text}</span>
+                            ${delBtn}
+                        </div>
+                    </div>`;
+                }).join("");
+            } catch (e) {
+                wrap.innerHTML = `<div class="text-center text-gray-400 py-4">加载失败</div>`;
+            }
+        }
+
+        function daysUntil(dayStr, today, isLunar) {
+            if (isLunar && window.Lunar) {
+                // 农历：解析月日，用今年/明年的农历转公历计算
+                const parts = dayStr.split("-");
+                const mm = parseInt(parts[parts.length - 2]);
+                const dd = parseInt(parts[parts.length - 1]);
+                const tryYears = [today.getFullYear(), today.getFullYear() + 1, today.getFullYear() - 1];
+                for (const ty of tryYears) {
+                    try {
+                        const lunar = Lunar.fromYmd(ty, mm, dd);
+                        const solar = lunar.getSolar();
+                        const solarDate = new Date(solar.getYear(), solar.getMonth() - 1, solar.getDay());
+                        if (solarDate >= today) {
+                            return Math.round((solarDate - today) / (1000 * 60 * 60 * 24));
+                        }
+                    } catch (e) {}
+                }
+                return 0;
+            }
+            const [y, m, d] = dayStr.split("-").map(Number);
+            // 取今年的同月同日作为参照
+            let thisYear = new Date(today.getFullYear(), m - 1, d);
+            if (thisYear < today) thisYear = new Date(today.getFullYear() + 1, m - 1, d);
+            const diff = Math.round((thisYear - today) / (1000 * 60 * 60 * 24));
+            return diff;
+        }
+
+        // 将农历纪念日（YYYY-MM-DD）转为中文展示，如"五月初一"
+        function lunarToChinese(dayStr) {
+            if (!window.Lunar) return dayStr;
+            try {
+                const parts = dayStr.split("-");
+                const mm = parseInt(parts[parts.length - 2]);
+                const dd = parseInt(parts[parts.length - 1]);
+                // 用任意一年（2000）构造，只为取中文月日
+                const lunar = Lunar.fromYmd(2000, mm, dd);
+                return lunar.getMonthInChinese() + "月" + lunar.getDayInChinese();
+            } catch (e) {
+                return dayStr;
+            }
+        }
+
+        // 获取农历纪念日今年对应的公历日期字符串
+        function lunarToSolarThisYear(dayStr, year) {
+            if (!window.Lunar) return null;
+            try {
+                const parts = dayStr.split("-");
+                const mm = parseInt(parts[parts.length - 2]);
+                const dd = parseInt(parts[parts.length - 1]);
+                const lunar = Lunar.fromYmd(year, mm, dd);
+                const solar = lunar.getSolar();
+                return `${solar.getYear()}-${String(solar.getMonth()).padStart(2, "0")}-${String(solar.getDay()).padStart(2, "0")}`;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        async function addAnniv() {
+            const title = document.getElementById("annivTitle").value.trim();
+            const day = document.getElementById("annivDate").value;
+            const isLunar = document.getElementById("annivLunar").checked;
+            if (!title || !day) return alert("请填写完整");
+            try {
+                const { data, error } = await sb.from("memorial_day").insert({ title, day, is_lunar: isLunar }).select();
+                if (error) throw error;
+                // 检查 is_lunar 是否真的写进去了
+                if (isLunar && (!data || !data[0] || data[0].is_lunar === undefined || data[0].is_lunar === null)) {
+                    alert("⚠️ 农历标识未保存成功！\n\n请在 Supabase SQL Editor 执行：\nalter table memorial_day add column if not exists is_lunar boolean default false;\n\n然后重新添加该纪念日。");
+                    return;
+                }
+                console.log("[添加纪念日] 写入结果:", data);
+                document.getElementById("annivTitle").value = "";
+                document.getElementById("annivDate").value = "";
+                document.getElementById("annivLunar").checked = false;
+                document.getElementById("annivLunarHint").classList.add("hidden");
+                loadAnnivList();
+                refreshCalendar();
+            } catch (e) {
+                alert("保存失败：" + (e.message || "请稍后重试\n提示：需先在Supabase创建 memorial_day 表，并添加 is_lunar 字段"));
+            }
+        }
+
+        async function delAnniv(id) {
+            if (!confirm("删除该纪念日？")) return;
+            try {
+                await sb.from("memorial_day").delete().eq("id", id);
+                loadAnnivList();
+                refreshCalendar();
+            } catch (e) {
+                alert("删除失败：" + (e.message || ""));
+            }
         }
 
         // ==================== 石头剪刀布对战 ====================
@@ -4109,14 +4754,31 @@
             try {
                 const { data: { user } } = await sb.auth.getUser();
                 if (!user) return;
-                const fromEmail = user.email.toLowerCase();
+                const fromEmail = (user.email || "").toLowerCase().trim();
                 // to_email = 对方邮箱
-                const boyEmail = (CONFIG.boyEmail || "").toLowerCase();
-                const girlEmail = (CONFIG.girlEmail || "").toLowerCase();
-                const toEmail = fromEmail === boyEmail ? girlEmail : boyEmail;
-                if (!toEmail) return;
-                // 获取发送者名字
-                const fromName = fromEmail === girlEmail ? CONFIG.girlName : CONFIG.boyName;
+                const boyEmail = (CONFIG.boyEmail || "").toLowerCase().trim();
+                const girlEmail = (CONFIG.girlEmail || "").toLowerCase().trim();
+                // 明确判断发送者身份，确定收件人
+                let toEmail = "";
+                let fromName = CONFIG.boyName; // 默认
+                if (fromEmail && fromEmail === boyEmail) {
+                    // 发送者是男生 → 发给女生
+                    toEmail = girlEmail;
+                    fromName = CONFIG.boyName;
+                } else if (fromEmail && fromEmail === girlEmail) {
+                    // 发送者是女生 → 发给男生
+                    toEmail = boyEmail;
+                    fromName = CONFIG.girlName;
+                } else {
+                    // 既不是男生也不是女生邮箱，无法确定收件人，安全起见不发送
+                    console.warn("[通知] 当前登录邮箱未匹配到男女配置，跳过发送：", fromEmail, "boyEmail:", boyEmail, "girlEmail:", girlEmail);
+                    return;
+                }
+                if (!toEmail) {
+                    console.warn("[通知] 收件人邮箱为空，跳过发送");
+                    return;
+                }
+                console.log("[通知] 发送:", fromName, fromEmail, "→", toEmail, "类型:", type);
                 const fullContent = fromName + " " + content;
                 await sb.from("notifications").insert({
                     type, content: fullContent, from_email: fromEmail, to_email: toEmail, is_read: false
@@ -4131,6 +4793,7 @@
                             notification_type: type,
                             app_title: "情侣空间"
                         });
+                        console.log("[通知] 邮件已发送至:", toEmail);
                     } catch (emailErr) { console.warn("邮件发送失败:", emailErr); }
                 }
             } catch (e) { console.warn("发送通知失败:", e); }
