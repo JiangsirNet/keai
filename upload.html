@@ -3,122 +3,316 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>资源上传工具</title>
+    <title>资源管理工具</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
         tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        love: '#ff6b8b',
-                        loveDark: '#e04c6e'
-                    }
-                }
-            }
+            theme: { extend: { colors: { love: '#ff6b8b', loveDark: '#e04c6e' } } }
         }
     </script>
     <style>
         body { font-family: system-ui, sans-serif; background: #fef2f4; }
         .log-line { padding: 2px 0; font-size: 13px; }
-        .log-ok { color: #16a34a; }
-        .log-err { color: #dc2626; }
-        .log-info { color: #2563eb; }
+        .log-ok { color: #16a34a; } .log-err { color: #dc2626; } .log-info { color: #2563eb; }
+        .tab-btn.active { background: #ff6b8b; color: #fff; }
+        .asset-item.active { background: #ff6b8b; color: #fff; }
+        .asset-item { cursor: pointer; }
+        .asset-item:hover { background: #ffe4e9; }
+        #editorArea { font-family: 'Consolas', monospace; font-size: 13px; }
+        #docView h1 { font-size: 1.5rem; font-weight: bold; color: #ff6b8b; margin: 1rem 0 0.5rem; }
+        #docView h2 { font-size: 1.2rem; font-weight: bold; color: #e04c6e; margin: 1rem 0 0.5rem; border-bottom: 1px solid #ffe4e9; padding-bottom: 0.25rem; }
+        #docView h3 { font-size: 1rem; font-weight: bold; color: #444; margin: 0.75rem 0 0.25rem; }
+        #docView p { font-size: 0.875rem; color: #555; margin: 0.25rem 0; }
+        #docView ul, #docView ol { font-size: 0.875rem; color: #555; margin: 0.25rem 0 0.25rem 1.5rem; }
+        #docView li { margin: 0.15rem 0; }
+        #docView code { background: #f3f4f6; padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.8rem; color: #d6336c; }
+        #docView pre { background: #1e293b; color: #e2e8f0; padding: 0.75rem; border-radius: 8px; overflow-x: auto; margin: 0.5rem 0; }
+        #docView pre code { background: none; color: inherit; padding: 0; }
+        #docView table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin: 0.5rem 0; }
+        #docView th, #docView td { border: 1px solid #e5e7eb; padding: 0.3rem 0.5rem; text-align: left; }
+        #docView th { background: #f9fafb; font-weight: 600; }
+        #docView blockquote { border-left: 3px solid #ff6b8b; padding-left: 0.75rem; color: #6b7280; margin: 0.5rem 0; }
     </style>
 </head>
 <body class="min-h-screen p-6">
-    <div class="max-w-3xl mx-auto">
-        <h1 class="text-2xl font-bold text-love mb-2"><i class="fa fa-database"></i> 资源上传工具</h1>
-        <p class="text-gray-500 text-sm mb-6">将本地 HTML 片段和 JS 模块上传到 Supabase <code>app_assets</code> 表</p>
+    <div class="max-w-5xl mx-auto">
+        <h1 class="text-2xl font-bold text-love mb-2"><i class="fa fa-database"></i> 资源管理工具</h1>
 
-        <!-- 建表 SQL -->
-        <div class="bg-white rounded-xl p-4 shadow mb-6">
-            <h2 class="font-bold text-gray-700 mb-2">第一步：建表 SQL</h2>
-            <p class="text-sm text-gray-500 mb-2">在 Supabase Dashboard → SQL Editor 中执行以下 SQL：</p>
-            <textarea id="sqlBox" readonly class="w-full h-72 bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs font-mono text-gray-700"></textarea>
+        <!-- Tab 切换 -->
+        <div class="flex gap-2 mb-4">
+            <button onclick="switchTab('local')" id="tabLocal" class="tab-btn active px-4 py-2 rounded-lg bg-white text-gray-600 font-semibold text-sm shadow">
+                <i class="fa fa-upload"></i> 本地上传
+            </button>
+            <button onclick="switchTab('online')" id="tabOnline" class="tab-btn px-4 py-2 rounded-lg bg-white text-gray-600 font-semibold text-sm shadow">
+                <i class="fa fa-pencil"></i> 在线管理
+            </button>
+            <button onclick="switchTab('sql')" id="tabSql" class="tab-btn px-4 py-2 rounded-lg bg-white text-gray-600 font-semibold text-sm shadow">
+                <i class="fa fa-code"></i> 建表 SQL
+            </button>
+            <button onclick="switchTab('docs')" id="tabDocs" class="tab-btn px-4 py-2 rounded-lg bg-white text-gray-600 font-semibold text-sm shadow">
+                <i class="fa fa-book"></i> 架构文档
+            </button>
+            <button onclick="switchTab('containers')" id="tabContainers" class="tab-btn px-4 py-2 rounded-lg bg-white text-gray-600 font-semibold text-sm shadow">
+                <i class="fa fa-th"></i> 容器配置
+            </button>
+        </div>
+
+        <!-- ===== Tab: 本地上传 ===== -->
+        <div id="panelLocal" class="bg-white rounded-xl p-4 shadow mb-6">
+            <h2 class="font-bold text-gray-700 mb-2">上传本地文件到数据库</h2>
+            <p class="text-sm text-gray-500 mb-3">读取本地 partials/ 和 js/ 目录的文件并上传。仅在本地服务器可用。</p>
+            <button onclick="uploadAll()" id="uploadBtn" class="bg-love text-white px-6 py-3 rounded-xl font-semibold hover:bg-loveDark transition">
+                <i class="fa fa-upload"></i> 全部上传
+            </button>
+            <div id="logBox" class="mt-4 bg-gray-900 text-gray-100 rounded-lg p-3 max-h-60 overflow-y-auto font-mono"></div>
+        </div>
+
+        <!-- ===== Tab: 在线管理 ===== -->
+        <div id="panelOnline" class="hidden">
+            <div class="flex gap-4">
+                <!-- 左侧资源列表 -->
+                <div class="bg-white rounded-xl p-3 shadow w-64 flex-shrink-0">
+                    <div class="flex items-center justify-between mb-2">
+                        <h2 class="font-bold text-gray-700 text-sm">资源列表</h2>
+                        <button onclick="showNewForm()" class="text-love text-sm hover:text-loveDark"><i class="fa fa-plus"></i> 新增</button>
+                    </div>
+                    <div id="assetList" class="space-y-1 max-h-[500px] overflow-y-auto">
+                        <div class="text-center text-gray-400 text-sm py-4">加载中...</div>
+                    </div>
+                </div>
+
+                <!-- 右侧编辑器 -->
+                <div class="bg-white rounded-xl p-4 shadow flex-1">
+                    <div id="editorBar" class="flex items-center gap-2 mb-3 flex-wrap">
+                        <span id="editorPath" class="text-sm font-bold text-gray-600">未选择资源</span>
+                        <span id="editorType" class="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-500"></span>
+                    </div>
+                    <div id="editorMeta" class="hidden flex gap-3 mb-3 text-xs">
+                        <label class="flex items-center gap-1">类型:
+                            <select id="metaType" class="border border-gray-200 rounded px-2 py-1">
+                                <option value="js">js</option>
+                                <option value="html">html</option>
+                            </select>
+                        </label>
+                        <label class="flex items-center gap-1">容器ID:
+                            <input id="metaContainer" type="text" placeholder="如 pageHomeContainer" class="border border-gray-200 rounded px-2 py-1 w-40">
+                        </label>
+                        <label class="flex items-center gap-1">加载顺序:
+                            <input id="metaOrder" type="number" class="border border-gray-200 rounded px-2 py-1 w-20">
+                        </label>
+                        <label class="flex items-center gap-1">启用:
+                            <input id="metaActive" type="checkbox" checked class="w-4 h-4">
+                        </label>
+                    </div>
+                    <textarea id="editorArea" class="w-full h-[400px] bg-gray-50 border border-gray-200 rounded-lg p-3" placeholder="选择左侧资源编辑，或点击"新增"创建资源..."></textarea>
+                    <div class="flex gap-2 mt-3">
+                        <button onclick="saveAsset()" id="saveBtn" class="bg-love text-white px-6 py-2 rounded-lg font-semibold hover:bg-loveDark transition disabled:opacity-50" disabled>
+                            <i class="fa fa-save"></i> 保存
+                        </button>
+                        <button onclick="deleteAsset()" id="deleteBtn" class="bg-red-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-red-600 transition disabled:opacity-50" disabled>
+                            <i class="fa fa-trash"></i> 删除
+                        </button>
+                        <span id="saveStatus" class="text-sm text-gray-400 self-center"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== Tab: 建表 SQL ===== -->
+        <div id="panelSql" class="hidden bg-white rounded-xl p-4 shadow mb-6">
+            <p class="text-sm text-gray-500 mb-2">在 Supabase Dashboard → SQL Editor 中执行：</p>
+            <textarea id="sqlBox" readonly class="w-full h-96 bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs font-mono text-gray-700"></textarea>
             <button onclick="copySQL()" class="mt-2 bg-love text-white px-4 py-2 rounded-lg text-sm hover:bg-loveDark">
                 <i class="fa fa-copy"></i> 复制 SQL
             </button>
         </div>
 
-        <!-- 上传 -->
-        <div class="bg-white rounded-xl p-4 shadow mb-6">
-            <h2 class="font-bold text-gray-700 mb-2">第二步：上传本地文件到数据库</h2>
-            <p class="text-sm text-gray-500 mb-3">点击按钮后，工具会读取本地 partials/ 和 js/ 目录下的文件并上传到数据库。</p>
-            <button onclick="uploadAll()" id="uploadBtn"
-                class="bg-love text-white px-6 py-3 rounded-xl font-semibold hover:bg-loveDark transition">
-                <i class="fa fa-upload"></i> 全部上传
-            </button>
-            <button onclick="checkTable()" class="ml-2 bg-gray-200 text-gray-700 px-4 py-3 rounded-xl font-semibold hover:bg-gray-300 transition">
-                <i class="fa fa-check"></i> 检查表状态
-            </button>
-            <div id="logBox" class="mt-4 bg-gray-900 text-gray-100 rounded-lg p-3 max-h-80 overflow-y-auto font-mono"></div>
+        <!-- ===== Tab: 架构文档 ===== -->
+        <div id="panelDocs" class="hidden bg-white rounded-xl p-6 shadow mb-6 max-h-[80vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold text-love"><i class="fa fa-book"></i> 项目架构文档</h2>
+                <span class="flex items-center gap-2">
+                    <button onclick="toggleDocEdit()" id="docEditBtn" class="text-sm text-love hover:text-loveDark"><i class="fa fa-pencil"></i> 编辑</button>
+                </span>
+            </div>
+            <div id="docView" class="prose prose-sm max-w-none"></div>
+            <div id="docEdit" class="hidden">
+                <textarea id="docTextarea" class="w-full h-[500px] bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs font-mono"></textarea>
+                <div class="flex gap-2 mt-2">
+                    <button onclick="saveDoc()" class="bg-love text-white px-4 py-2 rounded-lg text-sm hover:bg-loveDark"><i class="fa fa-save"></i> 保存</button>
+                    <button onclick="cancelDocEdit()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-300"><i class="fa fa-times"></i> 取消</button>
+                    <span id="docStatus" class="text-sm text-gray-400 self-center"></span>
+                </div>
+            </div>
         </div>
 
-        <!-- 资源列表 -->
-        <div class="bg-white rounded-xl p-4 shadow">
-            <h2 class="font-bold text-gray-700 mb-2">数据库现有资源</h2>
-            <div id="assetList" class="text-sm text-gray-500">点击"检查表状态"查看</div>
+        <!-- ===== Tab: 容器配置 ===== -->
+        <div id="panelContainers" class="hidden bg-white rounded-xl p-4 shadow mb-6">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="font-bold text-gray-700">页面容器配置</h2>
+                <button onclick="addContainerRow()" class="bg-love text-white px-3 py-1.5 rounded-lg text-sm hover:bg-loveDark"><i class="fa fa-plus"></i> 新增容器</button>
+            </div>
+            <p class="text-sm text-gray-500 mb-3">配置导航按钮和页面容器。新增页面只需加一行配置 + 上传对应 HTML/JS 文件。</p>
+            <table class="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="text-left px-3 py-2">container_id</th>
+                        <th class="text-left px-3 py-2">page_name</th>
+                        <th class="text-left px-3 py-2">导航文字</th>
+                        <th class="text-left px-3 py-2">图标</th>
+                        <th class="text-left px-3 py-2">排序</th>
+                        <th class="text-left px-3 py-2">位置</th>
+                        <th class="text-left px-3 py-2">启用</th>
+                        <th class="text-left px-3 py-2">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="containerTableBody">
+                    <tr><td colspan="8" class="text-center text-gray-400 py-4">加载中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ===== 确认模态框 ===== -->
+    <div id="confirmModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50" style="display:none;">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl">
+            <h3 class="text-lg font-bold text-gray-700 mb-2"><i class="fa fa-question-circle text-love"></i> 确认操作</h3>
+            <p id="confirmMsg" class="text-sm text-gray-600 mb-5">确认执行此操作？</p>
+            <div class="flex items-center justify-end gap-2">
+                <button onclick="closeConfirm()" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition">取消</button>
+                <button onclick="confirmAction()" id="confirmOkBtn" class="bg-red-500 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-red-600 transition">
+                    确认
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 容器编辑模态框 ===== -->
+    <div id="containerModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50" style="display:none;">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-lg mx-4 shadow-2xl">
+            <div class="flex items-center justify-between mb-4">
+                <h3 id="containerModalTitle" class="text-lg font-bold text-gray-700"><i class="fa fa-th"></i> 新增容器</h3>
+                <button onclick="closeContainerModal()" class="text-gray-400 hover:text-gray-600 text-xl"><i class="fa fa-times"></i></button>
+            </div>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-600 mb-1">container_id <span class="text-red-500">*</span></label>
+                    <input id="modalContainerId" type="text" placeholder="如 pageFavoriteContainer" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-love">
+                    <p class="text-xs text-gray-400 mt-1">唯一标识符，页面容器建议以 page 开头，全局容器以 panel 结尾</p>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-600 mb-1">page_name</label>
+                        <input id="modalPageName" type="text" placeholder="如 favorite（全局容器留空）" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-love">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-600 mb-1">位置</label>
+                        <select id="modalPlacement" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-love">
+                            <option value="page">page（在导航栏显示按钮）</option>
+                            <option value="global">global（全局容器，无按钮）</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-600 mb-1">导航文字</label>
+                        <input id="modalNavLabel" type="text" placeholder="如 收藏" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-love">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-600 mb-1">图标 emoji</label>
+                        <input id="modalNavIcon" type="text" placeholder="如 ⭐" maxlength="4" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-love">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                    <label class="block text-sm font-semibold text-gray-600 mb-1">排序</label>
+                    <input id="modalSortOrder" type="number" value="5" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-love">
+                    <p class="text-xs text-gray-400 mt-1">小的排在前面</p>
+                    </div>
+                    <div class="flex items-end">
+                        <label class="flex items-center gap-2 text-sm text-gray-600">
+                            <input id="modalActive" type="checkbox" checked class="w-4 h-4">
+                            <span>启用</span>
+                        </label>
+                    </div>
+                </div>
+                <div id="containerModalError" class="text-red-500 text-sm hidden"></div>
+            </div>
+            <div class="flex items-center justify-end gap-2 mt-5">
+                <button onclick="closeContainerModal()" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition">取消</button>
+                <button onclick="saveContainerModal()" id="saveContainerBtn" class="bg-love text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-loveDark transition">
+                    <i class="fa fa-save"></i> 保存
+                </button>
+            </div>
         </div>
     </div>
 
     <script>
-        // ===== Supabase 配置（与 config.js 一致）=====
-        const SUPABASE_URL = "https://fccsjbvkfllapyoozuvf.supabase.co";
-        const SUPABASE_ANON_KEY = "sb_publishable_A3W8wYMbB-6pABB0-e0vkA_E-VMsJ4n";
-        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // ===== Supabase 配置 =====
+        const sb = supabase.createClient(
+            "https://fccsjbvkfllapyoozuvf.supabase.co",
+            "sb_publishable_A3W8wYMbB-6pABB0-e0vkA_E-VMsJ4n"
+        );
 
         // ===== 建表 SQL =====
-        const CREATE_SQL = `-- app_assets 表：存储动态加载的 HTML 片段和 JS 脚本
+        const CREATE_SQL = `-- 1. 资源表
 CREATE TABLE IF NOT EXISTS app_assets (
     id          BIGSERIAL PRIMARY KEY,
     file_path   TEXT UNIQUE NOT NULL,
-    type        TEXT NOT NULL DEFAULT 'js',          -- 'html' 或 'js'
-    container_id TEXT,                               -- HTML 注入目标容器 ID
-    content     TEXT NOT NULL DEFAULT '',            -- 文件内容
-    load_order  INTEGER NOT NULL DEFAULT 99,         -- 加载顺序（小的先加载）
+    type        TEXT NOT NULL DEFAULT 'js',
+    container_id TEXT,
+    content     TEXT NOT NULL DEFAULT '',
+    load_order  INTEGER NOT NULL DEFAULT 99,
     is_active   BOOLEAN NOT NULL DEFAULT true,
     created_at  TIMESTAMPTZ DEFAULT now(),
     updated_at  TIMESTAMPTZ DEFAULT now()
 );
-
--- 启用 RLS
 ALTER TABLE app_assets ENABLE ROW LEVEL SECURITY;
-
--- 允许匿名读取（loader 在登录前就需要加载资源）
-CREATE POLICY "allow_public_read" ON app_assets
-    FOR SELECT USING (true);
-
--- 允许认证用户写入
-CREATE POLICY "allow_auth_write" ON app_assets
-    FOR ALL TO authenticated USING (true) WITH CHECK (true);
-
--- updated_at 自动更新
+CREATE POLICY "allow_public_read" ON app_assets FOR SELECT USING (true);
+CREATE POLICY "allow_auth_write" ON app_assets FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE OR REPLACE FUNCTION update_app_assets_timestamp()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = now();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+RETURNS TRIGGER AS $$ BEGIN NEW.updated_at = now(); RETURN NEW; END; $$ LANGUAGE plpgsql;
+CREATE TRIGGER app_assets_updated_at BEFORE UPDATE ON app_assets
+    FOR EACH ROW EXECUTE FUNCTION update_app_assets_timestamp();
 
-CREATE TRIGGER app_assets_updated_at
-    BEFORE UPDATE ON app_assets
-    FOR EACH ROW EXECUTE FUNCTION update_app_assets_timestamp();`;
+-- 2. 容器配置表
+CREATE TABLE IF NOT EXISTS app_containers (
+    id           BIGSERIAL PRIMARY KEY,
+    container_id TEXT UNIQUE NOT NULL,
+    page_name    TEXT,
+    nav_label    TEXT,
+    nav_icon     TEXT,
+    sort_order   INTEGER NOT NULL DEFAULT 99,
+    placement    TEXT NOT NULL DEFAULT 'page',
+    is_active    BOOLEAN NOT NULL DEFAULT true,
+    created_at   TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE app_containers ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow_public_read_containers" ON app_containers FOR SELECT USING (true);
+CREATE POLICY "allow_auth_write_containers" ON app_containers FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
+-- 3. 初始容器数据
+INSERT INTO app_containers (container_id, page_name, nav_label, nav_icon, sort_order, placement) VALUES
+('loginPanelContainer',  NULL,     NULL,    NULL, 1, 'global'),
+('previewModalContainer', NULL,    NULL,    NULL, 2, 'global'),
+('pageHomeContainer',    'home',   '首页',  '🏠', 1, 'page'),
+('pageJournalContainer', 'journal','日志',  '📖', 2, 'page'),
+('pageGameContainer',    'game',   '游戏',  '🎮', 3, 'page'),
+('pageConfigContainer',  'config', '设置',  '⚙️', 4, 'page')
+ON CONFLICT (container_id) DO NOTHING;`;
         document.getElementById('sqlBox').value = CREATE_SQL;
 
-        // ===== 待上传文件清单 =====
+        // ===== 本地上传文件清单 =====
         const FILES = [
-            // HTML 片段（load_order 1-9）
             { path: 'partials/login.html',   type: 'html', container: 'loginPanelContainer',   order: 1 },
             { path: 'partials/preview.html', type: 'html', container: 'previewModalContainer', order: 2 },
             { path: 'partials/home.html',    type: 'html', container: 'pageHomeContainer',     order: 3 },
             { path: 'partials/journal.html', type: 'html', container: 'pageJournalContainer',  order: 4 },
             { path: 'partials/game.html',    type: 'html', container: 'pageGameContainer',     order: 5 },
             { path: 'partials/config.html',  type: 'html', container: 'pageConfigContainer',   order: 6 },
-            // JS 模块（load_order 10+，保持依赖顺序）
             { path: 'js/config_page.js',     type: 'js', container: null, order: 10 },
             { path: 'js/notifications.js',   type: 'js', container: null, order: 11 },
             { path: 'js/weather.js',         type: 'js', container: null, order: 12 },
@@ -130,112 +324,398 @@ CREATE TRIGGER app_assets_updated_at
             { path: 'js/journal.js',         type: 'js', container: null, order: 18 },
             { path: 'js/calendar.js',        type: 'js', container: null, order: 19 },
             { path: 'js/game.js',            type: 'js', container: null, order: 20 },
-            { path: 'js/auth.js',            type: 'js', container: null, order: 21 },
+            { path: 'js/background.js',      type: 'js', container: null, order: 21 },
+            { path: 'js/auth.js',            type: 'js', container: null, order: 22 },
+            { path: 'ARCHITECTURE.md',       type: 'md', container: null, order: 99 },
         ];
+
+        // ===== Tab 切换 =====
+        function switchTab(name) {
+            ['Local', 'Online', 'Sql', 'Docs', 'Containers'].forEach(t => {
+                document.getElementById('tab' + t).classList.remove('active');
+                document.getElementById('panel' + t).classList.add('hidden');
+            });
+            const map = { local: 'Local', online: 'Online', sql: 'Sql', docs: 'Docs', containers: 'Containers' };
+            document.getElementById('tab' + map[name]).classList.add('active');
+            document.getElementById('panel' + map[name]).classList.remove('hidden');
+            if (name === 'online') loadAssets();
+            if (name === 'docs') loadDoc();
+            if (name === 'containers') loadContainers();
+        }
+
+        // ===== 架构文档动态加载 =====
+        let docOriginal = '';
+
+        async function loadDoc() {
+            const view = document.getElementById('docView');
+            view.innerHTML = '<p class="text-gray-400 text-center py-8">加载中...</p>';
+            const { data, error } = await sb.from('app_assets')
+                .select('content').eq('file_path', 'ARCHITECTURE.md');
+            if (error || !data || data.length === 0) {
+                view.innerHTML = '<p class="text-red-500 text-center py-8">文档未上传到数据库。<br>请先在"本地上传"中上传 ARCHITECTURE.md</p>';
+                return;
+            }
+            docOriginal = data[0].content;
+            view.innerHTML = marked.parse(docOriginal);
+        }
+
+        function toggleDocEdit() {
+            const view = document.getElementById('docView');
+            const edit = document.getElementById('docEdit');
+            if (edit.classList.contains('hidden')) {
+                document.getElementById('docTextarea').value = docOriginal;
+                view.classList.add('hidden');
+                edit.classList.remove('hidden');
+            } else {
+                view.classList.remove('hidden');
+                edit.classList.add('hidden');
+            }
+        }
+
+        function cancelDocEdit() {
+            document.getElementById('docView').classList.remove('hidden');
+            document.getElementById('docEdit').classList.add('hidden');
+        }
+
+        async function saveDoc() {
+            const content = document.getElementById('docTextarea').value;
+            const status = document.getElementById('docStatus');
+            status.textContent = '保存中...';
+            const { error } = await sb.from('app_assets')
+                .update({ content }).eq('file_path', 'ARCHITECTURE.md');
+            if (error) {
+                status.textContent = '保存失败: ' + error.message;
+                return;
+            }
+            docOriginal = content;
+            document.getElementById('docView').innerHTML = marked.parse(content);
+            document.getElementById('docView').classList.remove('hidden');
+            document.getElementById('docEdit').classList.add('hidden');
+            status.textContent = '✅ 已保存';
+        }
+
+        // ===== 容器配置管理 =====
+        let containersData = [];
+
+        async function loadContainers() {
+            const tbody = document.getElementById('containerTableBody');
+            const { data, error } = await sb.from('app_containers')
+                .select('*').order('sort_order', { ascending: true });
+            if (error) {
+                tbody.innerHTML = `<tr><td colspan="8" class="text-red-500 text-center py-4">查询失败: ${error.message}<br>请先在"建表 SQL"中执行建表语句</td></tr>`;
+                return;
+            }
+            containersData = data || [];
+            renderContainers();
+        }
+
+        function renderContainers() {
+            const tbody = document.getElementById('containerTableBody');
+            if (containersData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-gray-400 py-4">暂无容器配置</td></tr>';
+                return;
+            }
+            tbody.innerHTML = containersData.map(c => `
+                <tr class="border-t hover:bg-gray-50">
+                    <td class="px-3 py-1.5 font-mono text-xs">${c.container_id}</td>
+                    <td class="px-3 py-1.5 font-mono text-xs">${c.page_name || '—'}</td>
+                    <td class="px-3 py-1.5">${c.nav_label || '—'}</td>
+                    <td class="px-3 py-1.5 text-center">${c.nav_icon || '—'}</td>
+                    <td class="px-3 py-1.5 text-center">${c.sort_order}</td>
+                    <td class="px-3 py-1.5"><span class="text-xs px-2 py-0.5 rounded ${c.placement === 'global' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}">${c.placement}</span></td>
+                    <td class="px-3 py-1.5 text-center">${c.is_active ? '<span class="text-green-500">●</span>' : '<span class="text-gray-300">○</span>'}</td>
+                    <td class="px-3 py-1.5">
+                        <button onclick="editContainer(${c.id})" class="text-love text-xs hover:text-loveDark mr-2"><i class="fa fa-pencil"></i></button>
+                        <button onclick="deleteContainer(${c.id})" class="text-red-500 text-xs hover:text-red-700"><i class="fa fa-trash"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // ===== 通用确认模态框 =====
+        let confirmCallback = null;
+
+        function showConfirm(msg, callback) {
+            document.getElementById('confirmMsg').textContent = msg;
+            confirmCallback = callback;
+            const m = document.getElementById('confirmModal');
+            m.classList.remove('hidden');
+            m.style.display = 'flex';
+        }
+
+        function closeConfirm() {
+            confirmCallback = null;
+            const m = document.getElementById('confirmModal');
+            m.classList.add('hidden');
+            m.style.display = 'none';
+        }
+
+        function confirmAction() {
+            const cb = confirmCallback;
+            closeConfirm();
+            if (cb) cb();
+        }
+
+        // ===== 模态框：容器编辑 =====
+        let modalEditId = null; // null=新增，数字=编辑已有id
+
+        function addContainerRow() {
+            modalEditId = null;
+            document.getElementById('containerModalTitle').innerHTML = '<i class="fa fa-plus"></i> 新增容器';
+            document.getElementById('modalContainerId').value = '';
+            document.getElementById('modalContainerId').disabled = false;
+            document.getElementById('modalPageName').value = '';
+            document.getElementById('modalPlacement').value = 'page';
+            document.getElementById('modalNavLabel').value = '';
+            document.getElementById('modalNavIcon').value = '';
+            document.getElementById('modalSortOrder').value = 5;
+            document.getElementById('modalActive').checked = true;
+            document.getElementById('containerModalError').classList.add('hidden');
+            openContainerModal();
+        }
+
+        function editContainer(id) {
+            const c = containersData.find(x => x.id === id);
+            if (!c) return;
+            modalEditId = id;
+            document.getElementById('containerModalTitle').innerHTML = '<i class="fa fa-pencil"></i> 编辑容器';
+            document.getElementById('modalContainerId').value = c.container_id;
+            document.getElementById('modalContainerId').disabled = true;
+            document.getElementById('modalPageName').value = c.page_name || '';
+            document.getElementById('modalPlacement').value = c.placement || 'page';
+            document.getElementById('modalNavLabel').value = c.nav_label || '';
+            document.getElementById('modalNavIcon').value = c.nav_icon || '';
+            document.getElementById('modalSortOrder').value = c.sort_order ?? 99;
+            document.getElementById('modalActive').checked = c.is_active;
+            document.getElementById('containerModalError').classList.add('hidden');
+            openContainerModal();
+        }
+
+        function openContainerModal() {
+            const m = document.getElementById('containerModal');
+            m.classList.remove('hidden');
+            m.style.display = 'flex';
+        }
+
+        function closeContainerModal() {
+            const m = document.getElementById('containerModal');
+            m.classList.add('hidden');
+            m.style.display = 'none';
+        }
+
+        async function saveContainerModal() {
+            const errEl = document.getElementById('containerModalError');
+            errEl.classList.add('hidden');
+
+            const containerId = document.getElementById('modalContainerId').value.trim();
+            const placement = document.getElementById('modalPlacement').value;
+            const sortOrder = parseInt(document.getElementById('modalSortOrder').value) || 99;
+            const isActive = document.getElementById('modalActive').checked;
+            const pageNameVal = document.getElementById('modalPageName').value.trim();
+            const navLabelVal = document.getElementById('modalNavLabel').value.trim();
+            const navIconVal = document.getElementById('modalNavIcon').value.trim();
+
+            if (!containerId) {
+                errEl.textContent = '请填写 container_id';
+                errEl.classList.remove('hidden');
+                return;
+            }
+
+            const pageName = placement === 'page' ? (pageNameVal || null) : null;
+            const navLabel = placement === 'page' ? (navLabelVal || '') : null;
+            const navIcon = placement === 'page' ? (navIconVal || '📄') : null;
+
+            const saveBtn = document.getElementById('saveContainerBtn');
+            const originalText = saveBtn.innerHTML;
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> 保存中...';
+
+            const payload = {
+                container_id: containerId, placement, page_name: pageName,
+                nav_label: navLabel, nav_icon: navIcon,
+                sort_order: sortOrder, is_active: isActive,
+            };
+
+            const { error } = modalEditId
+                ? await sb.from('app_containers').update(payload).eq('id', modalEditId)
+                : await sb.from('app_containers').upsert(payload, { onConflict: 'container_id' });
+
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalText;
+
+            if (error) {
+                errEl.textContent = '保存失败: ' + error.message;
+                errEl.classList.remove('hidden');
+                return;
+            }
+            closeContainerModal();
+            loadContainers();
+        }
+
+        function deleteContainer(id) {
+            const c = containersData.find(x => x.id === id);
+            if (!c) return;
+            showConfirm(`确认删除容器"${c.container_id}"？\n此操作仅删除配置，已上传的 HTML/JS 文件不受影响。`, async () => {
+                const { error } = await sb.from('app_containers').delete().eq('id', id);
+                if (error) { alert('删除失败: ' + error.message); return; }
+                loadContainers();
+            });
+        }
 
         // ===== 日志 =====
         function log(msg, type) {
             const box = document.getElementById('logBox');
             const line = document.createElement('div');
             line.className = 'log-line ' + (type === 'ok' ? 'log-ok' : type === 'err' ? 'log-err' : 'log-info');
-            const time = new Date().toLocaleTimeString();
-            line.textContent = `[${time}] ${msg}`;
+            line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
             box.appendChild(line);
             box.scrollTop = box.scrollHeight;
         }
 
         function copySQL() {
-            const sql = document.getElementById('sqlBox');
-            sql.select();
+            document.getElementById('sqlBox').select();
             document.execCommand('copy');
-            log('SQL 已复制到剪贴板', 'ok');
+            alert('SQL 已复制');
         }
 
-        // ===== 检查表状态 =====
-        async function checkTable() {
-            log('正在查询 app_assets 表...', 'info');
-            const { data, error } = await sb.from('app_assets')
-                .select('file_path, type, load_order, is_active')
-                .order('load_order', { ascending: true });
-
-            if (error) {
-                log('查询失败: ' + error.message, 'err');
-                log('请先在 Supabase Dashboard 中执行建表 SQL', 'err');
-                return;
-            }
-
-            const list = document.getElementById('assetList');
-            if (!data || data.length === 0) {
-                list.innerHTML = '<span class="text-gray-400">表中暂无数据</span>';
-                log('表中暂无数据', 'info');
-                return;
-            }
-
-            list.innerHTML = `
-                <table class="w-full text-xs">
-                    <thead><tr class="border-b">
-                        <th class="text-left py-1">file_path</th>
-                        <th class="text-left py-1">type</th>
-                        <th class="text-left py-1">order</th>
-                        <th class="text-left py-1">active</th>
-                    </tr></thead>
-                    <tbody>
-                        ${data.map(r => `
-                            <tr class="border-b border-gray-100">
-                                <td class="py-1">${r.file_path}</td>
-                                <td class="py-1">${r.type}</td>
-                                <td class="py-1">${r.load_order}</td>
-                                <td class="py-1">${r.is_active ? '✅' : '❌'}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            `;
-            log(`共 ${data.length} 条记录`, 'ok');
-        }
-
-        // ===== 上传单个文件 =====
-        async function uploadOne(file) {
-            try {
-                const res = await fetch(file.path);
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const content = await res.text();
-
-                const { error } = await sb.from('app_assets').upsert({
-                    file_path: file.path,
-                    type: file.type,
-                    container_id: file.container,
-                    content: content,
-                    load_order: file.order,
-                    is_active: true,
-                }, { onConflict: 'file_path' });
-
-                if (error) throw error;
-                log(`✅ ${file.path} (${content.length} 字符)`, 'ok');
-                return true;
-            } catch (e) {
-                log(`❌ ${file.path}: ${e.message}`, 'err');
-                return false;
-            }
-        }
-
-        // ===== 全部上传 =====
+        // ===== 本地上传 =====
         async function uploadAll() {
             const btn = document.getElementById('uploadBtn');
             btn.disabled = true;
             btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> 上传中...';
             log(`开始上传 ${FILES.length} 个文件...`, 'info');
-
             let ok = 0, fail = 0;
-            for (const file of FILES) {
-                const success = await uploadOne(file);
-                if (success) ok++; else fail++;
+            for (const f of FILES) {
+                try {
+                    const res = await fetch(f.path);
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    const content = await res.text();
+                    const { error } = await sb.from('app_assets').upsert({
+                        file_path: f.path, type: f.type, container_id: f.container,
+                        content, load_order: f.order, is_active: true,
+                    }, { onConflict: 'file_path' });
+                    if (error) throw error;
+                    log(`✅ ${f.path} (${content.length} 字符)`, 'ok');
+                    ok++;
+                } catch (e) {
+                    log(`❌ ${f.path}: ${e.message}`, 'err');
+                    fail++;
+                }
             }
-
             log(`完成！成功 ${ok}，失败 ${fail}`, ok === FILES.length ? 'ok' : 'err');
             btn.disabled = false;
             btn.innerHTML = '<i class="fa fa-upload"></i> 全部上传';
-            checkTable();
+        }
+
+        // ===== 在线管理 =====
+        let currentAssets = [];
+        let currentPath = null;
+
+        async function loadAssets() {
+            const listEl = document.getElementById('assetList');
+            listEl.innerHTML = '<div class="text-center text-gray-400 text-sm py-4">加载中...</div>';
+            const { data, error } = await sb.from('app_assets')
+                .select('file_path, type, container_id, load_order, is_active, content')
+                .order('load_order', { ascending: true });
+            if (error) {
+                listEl.innerHTML = `<div class="text-red-500 text-sm p-2">查询失败: ${error.message}</div>`;
+                return;
+            }
+            currentAssets = data || [];
+            renderAssetList();
+        }
+
+        function renderAssetList() {
+            const listEl = document.getElementById('assetList');
+            if (currentAssets.length === 0) {
+                listEl.innerHTML = '<div class="text-center text-gray-400 text-sm py-4">暂无资源<br>点击"新增"创建</div>';
+                return;
+            }
+            listEl.innerHTML = currentAssets.map(a => `
+                <div class="asset-item ${a.file_path === currentPath ? 'active' : ''} flex items-center justify-between px-3 py-2 rounded-lg text-sm" onclick="editAsset('${a.file_path}')">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <i class="fa ${a.type === 'html' ? 'fa-file-code-o' : 'fa-file-text-o'} text-xs"></i>
+                        <span class="truncate">${a.file_path}</span>
+                    </div>
+                    <span class="text-xs ${a.is_active ? 'text-green-500' : 'text-gray-400'} flex-shrink-0">${a.is_active ? '●' : '○'}</span>
+                </div>
+            `).join('');
+        }
+
+        function editAsset(filePath) {
+            const asset = currentAssets.find(a => a.file_path === filePath);
+            if (!asset) return;
+            currentPath = filePath;
+            document.getElementById('editorPath').textContent = filePath;
+            document.getElementById('editorType').textContent = asset.type;
+            document.getElementById('editorType').className = 'text-xs px-2 py-0.5 rounded ' + (asset.type === 'html' ? 'bg-blue-100 text-blue-600' : 'bg-yellow-100 text-yellow-600');
+            document.getElementById('editorMeta').classList.remove('hidden');
+            document.getElementById('editorMeta').classList.add('flex');
+            document.getElementById('metaType').value = asset.type;
+            document.getElementById('metaContainer').value = asset.container_id || '';
+            document.getElementById('metaOrder').value = asset.load_order;
+            document.getElementById('metaActive').checked = asset.is_active;
+            document.getElementById('editorArea').value = asset.content || '';
+            document.getElementById('saveBtn').disabled = false;
+            document.getElementById('deleteBtn').disabled = false;
+            document.getElementById('saveStatus').textContent = '';
+            renderAssetList();
+        }
+
+        async function saveAsset() {
+            if (!currentPath) return;
+            const content = document.getElementById('editorArea').value;
+            const type = document.getElementById('metaType').value;
+            const container = document.getElementById('metaContainer').value || null;
+            const order = parseInt(document.getElementById('metaOrder').value) || 99;
+            const active = document.getElementById('metaActive').checked;
+            document.getElementById('saveStatus').textContent = '保存中...';
+            const { error } = await sb.from('app_assets').update({
+                content, type, container_id: container, load_order: order, is_active: active,
+            }).eq('file_path', currentPath);
+            if (error) {
+                document.getElementById('saveStatus').textContent = '保存失败: ' + error.message;
+                return;
+            }
+            document.getElementById('saveStatus').textContent = '✅ 已保存';
+            // 更新本地缓存
+            const idx = currentAssets.findIndex(a => a.file_path === currentPath);
+            if (idx >= 0) {
+                currentAssets[idx] = { ...currentAssets[idx], content, type, container_id: container, load_order: order, is_active: active };
+            }
+            renderAssetList();
+        }
+
+        async function deleteAsset() {
+            if (!currentPath) return;
+            if (!confirm(`确认删除 ${currentPath}？`)) return;
+            const { error } = await sb.from('app_assets').delete().eq('file_path', currentPath);
+            if (error) { alert('删除失败: ' + error.message); return; }
+            currentAssets = currentAssets.filter(a => a.file_path !== currentPath);
+            currentPath = null;
+            document.getElementById('editorArea').value = '';
+            document.getElementById('editorPath').textContent = '未选择资源';
+            document.getElementById('editorType').textContent = '';
+            document.getElementById('editorMeta').classList.add('hidden');
+            document.getElementById('saveBtn').disabled = true;
+            document.getElementById('deleteBtn').disabled = true;
+            renderAssetList();
+        }
+
+        function showNewForm() {
+            const path = prompt('输入资源路径（如 partials/new.html 或 js/new.js）:');
+            if (!path) return;
+            const type = path.endsWith('.html') ? 'html' : 'js';
+            const container = type === 'html' ? prompt('容器ID（如 pageHomeContainer，可留空）:') || null : null;
+            const order = parseInt(prompt('加载顺序（数字，小的先加载）:', '50')) || 50;
+            // 插入空记录
+            sb.from('app_assets').upsert({
+                file_path: path, type, container_id: container,
+                content: '', load_order: order, is_active: true,
+            }, { onConflict: 'file_path' }).then(({ error }) => {
+                if (error) { alert('创建失败: ' + error.message); return; }
+                loadAssets().then(() => editAsset(path));
+            });
         }
     </script>
 </body>

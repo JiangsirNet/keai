@@ -200,11 +200,11 @@
 
     // 切换页面
     function showPage(name) {
-        ["home", "journal", "game", "config"].forEach(p => {
-            document.getElementById("page-" + p).classList.toggle("hidden", p !== name);
+        document.querySelectorAll('.page-content').forEach(el => {
+            el.classList.toggle('hidden', el.id !== 'page-' + name);
         });
-        document.querySelectorAll(".nav-btn").forEach((btn, i) => {
-            btn.classList.toggle("active", ["home", "journal", "game", "config"][i] === name);
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.page === name);
         });
         if (name === "game") window.syncLbBgmBtn();
         if (name === "journal") window.refreshCalendar();

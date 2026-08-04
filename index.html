@@ -161,37 +161,18 @@
         <audio id="musicAudio" ontimeupdate="updateProgress()" onended="onMusicEnded()"></audio>
     </div>
 
-    <!-- ===== 以下内容由 loader.js 动态加载 ===== -->
+    <!-- ===== 以下容器和导航由 loader.js 从数据库动态生成 ===== -->
 
-    <!-- 登录面板 -->
-    <div id="loginPanelContainer"></div>
-
-    <!-- 大图预览弹窗 -->
-    <div id="previewModalContainer"></div>
+    <!-- 全局容器（登录面板、弹窗等） -->
+    <div id="globalContainers"></div>
 
     <!-- 主页面 -->
     <div id="mainPage" class="container max-w-4xl mx-auto px-4 py-8 md:py-12 hidden">
-        <!-- 导航栏 -->
-        <nav class="nav-bar">
-            <button class="nav-btn active" onclick="showPage('home')">
-                <span class="nav-icon">🏠</span> 首页
-            </button>
-            <button class="nav-btn" onclick="showPage('journal')">
-                <span class="nav-icon">📖</span> 日志
-            </button>
-            <button class="nav-btn" onclick="showPage('game')">
-                <span class="nav-icon">🎮</span> 游戏
-            </button>
-            <button class="nav-btn" onclick="showPage('config')">
-                <span class="nav-icon">⚙️</span> 设置
-            </button>
-        </nav>
+        <!-- 导航栏（动态生成） -->
+        <nav class="nav-bar" id="navBar"></nav>
 
-        <!-- 各页面内容由 loader.js 注入 -->
-        <div id="pageHomeContainer"></div>
-        <div id="pageJournalContainer"></div>
-        <div id="pageGameContainer"></div>
-        <div id="pageConfigContainer"></div>
+        <!-- 页面容器（动态生成） -->
+        <div id="pageContainers"></div>
 
         <div class="text-center mt-10 text-gray-500 text-sm">
             <p>Made with <i class="fa fa-heart text-love"></i> 只属于我们两个人的小天地</p>

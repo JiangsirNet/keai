@@ -47,4 +47,23 @@
             </div>
         </div>
     </div>
+
+    <!-- 背景设置 -->
+    <div class="bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow mt-6">
+        <h2 class="text-xl font-bold text-love flex items-center mb-2">
+            <i class="fa fa-picture-o mr-2"></i>背景设置
+        </h2>
+        <p class="text-sm text-gray-500 mb-4">上传图片设置网页背景（两人共享）</p>
+        <div class="flex gap-3 items-center flex-wrap">
+            <input type="file" id="bgFileInput" accept="image/*" class="hidden">
+            <button onclick="document.getElementById('bgFileInput').click()" class="bg-love text-white px-4 py-2 rounded-lg text-sm hover:bg-loveDark transition">
+                <i class="fa fa-upload"></i> 选择背景图
+            </button>
+            <button onclick="clearBackground()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-300 transition">
+                <i class="fa fa-times"></i> 恢复默认
+            </button>
+            <span id="bgStatus" class="text-sm text-gray-400"></span>
+        </div>
+        <div id="bgPreview" class="mt-3"></div>
+    </div>
 </div>
