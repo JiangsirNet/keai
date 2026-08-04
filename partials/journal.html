@@ -1,0 +1,120 @@
+<!-- 日志页 -->
+<div id="page-journal" class="page-content hidden">
+    <div class="bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow">
+        <h2 class="text-xl font-bold text-love flex items-center mb-4">
+            <i class="fa fa-book mr-2"></i>我们的日志
+        </h2>
+        <div class="flex gap-2 mb-3">
+            <input id="journalTitle" placeholder="标题（可选）"
+                class="flex-1 border border-rose-200 rounded-lg p-2 outline-none focus:border-love">
+            <input id="journalDate" type="date"
+                class="border border-rose-200 rounded-lg p-2 outline-none focus:border-love">
+        </div>
+        <textarea id="journalContent"
+            class="w-full border border-rose-200 rounded-xl p-4 outline-none focus:border-love resize-none h-32"
+            placeholder="记录今天的故事、心情、趣事..."></textarea>
+        <div class="mt-2 flex items-center gap-2 flex-wrap">
+            <input type="file" id="journalFileInput" accept="image/jpeg,image/png,image/webp" class="hidden" multiple>
+            <button onclick="document.getElementById('journalFileInput').click()"
+                class="border border-rose-300 text-love px-4 py-2 rounded-full text-sm hover:bg-rose-50 transition flex items-center gap-1">
+                <i class="fa fa-image"></i> 添加照片
+            </button>
+            <div id="journalPhotoPreview" class="flex gap-2 flex-wrap"></div>
+        </div>
+        <button onclick="addJournal()"
+            class="mt-3 bg-love hover:bg-loveDark text-white px-6 py-2 rounded-full transition-all">
+            <i class="fa fa-pencil mr-1"></i>写下这一篇
+        </button>
+        <div class="mt-5 space-y-4 max-h-[500px] overflow-y-auto" id="journalList">
+            <div class="text-center text-gray-400 py-6 loading">加载日志...</div>
+        </div>
+    </div>
+
+    <!-- 日历打卡 + 代办 -->
+    <div class="bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow mt-6">
+        <h2 class="text-xl font-bold text-love flex items-center mb-4">
+            <i class="fa fa-calendar-check-o mr-2"></i>日历打卡
+            <button onclick="openAnnivModal()" class="ml-auto text-sm bg-love text-white px-4 py-1.5 rounded-full hover:bg-loveDark transition flex items-center gap-1">
+                <i class="fa fa-heart"></i> 重要纪念日
+            </button>
+        </h2>
+
+        <div class="flex items-center justify-between mb-3">
+            <button onclick="calPrevMonth()" class="w-9 h-9 rounded-full bg-rose-50 text-love hover:bg-rose-100 transition">
+                <i class="fa fa-chevron-left"></i>
+            </button>
+            <div id="calTitle" class="text-lg font-bold text-love">-</div>
+            <button onclick="calNextMonth()" class="w-9 h-9 rounded-full bg-rose-50 text-love hover:bg-rose-100 transition">
+                <i class="fa fa-chevron-right"></i>
+            </button>
+        </div>
+
+        <div class="cal-grid mb-1">
+            <div class="cal-head">日</div>
+            <div class="cal-head">一</div>
+            <div class="cal-head">二</div>
+            <div class="cal-head">三</div>
+            <div class="cal-head">四</div>
+            <div class="cal-head">五</div>
+            <div class="cal-head">六</div>
+        </div>
+        <div id="calGrid" class="cal-grid"></div>
+
+        <div class="cal-legend">
+            <span><i class="cal-dot boy" style="display:inline-block"></i>他打卡</span>
+            <span><i class="cal-dot girl" style="display:inline-block"></i>她打卡</span>
+            <span><i class="cal-dot todo" style="display:inline-block"></i>代办</span>
+            <span><i class="cal-dot memo" style="display:inline-block"></i>纪念日</span>
+        </div>
+
+        <div class="mt-5 pt-4 border-t border-rose-100">
+            <div class="flex items-center justify-between mb-3">
+                <div>
+                    <p class="text-sm text-gray-500">已选日期</p>
+                    <p id="calSelectedDate" class="text-base font-bold text-love">-</p>
+                </div>
+                <button id="checkinBtn" onclick="toggleCheckin()"
+                                    class="bg-love text-white px-5 py-2 rounded-full hover:bg-loveDark transition flex items-center gap-2">
+                    <i class="fa fa-check-circle"></i><span id="checkinBtnText">打卡</span>
+                </button>
+            </div>
+
+            <div class="mb-2 flex items-center gap-2">
+                <input id="todoInput" placeholder="添加当日代办事项，回车提交" maxlength="60"
+                    class="flex-1 border border-rose-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-love"
+                    onkeydown="if(event.key==='Enter')addTodo()">
+                <button onclick="addTodo()" class="bg-love text-white px-4 py-2 rounded-lg text-sm hover:bg-loveDark transition">添加</button>
+            </div>
+            <div id="todoList" class="max-h-[200px] overflow-y-auto pr-1">
+                <div class="text-center text-gray-400 text-sm py-2">选择日期查看代办</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 重要纪念日弹窗 -->
+<div id="annivModal" class="anniv-modal hidden" onclick="if(event.target===this)closeAnnivModal()">
+    <div class="anniv-modal-inner">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-bold text-love flex items-center">
+                <i class="fa fa-heart mr-2"></i>重要纪念日
+            </h3>
+            <button onclick="closeAnnivModal()" class="text-gray-400 hover:text-love text-2xl leading-none">&times;</button>
+        </div>
+        <div id="annivList" class="mb-3">
+            <div class="text-center text-gray-400 py-4">加载中...</div>
+        </div>
+        <div class="mt-4 pt-4 border-t border-rose-100">
+            <p class="text-sm font-bold text-love mb-2"><i class="fa fa-plus-circle mr-1"></i>新增纪念日</p>
+            <input id="annivTitle" placeholder="纪念日名称（如：第一次约会）" maxlength="30"
+                class="w-full border border-rose-200 rounded-lg p-2 mb-2 text-sm outline-none focus:border-love">
+            <input id="annivDate" type="date" class="w-full border border-rose-200 rounded-lg p-2 mb-2 text-sm outline-none focus:border-love">
+            <label class="flex items-center gap-2 mb-1 text-sm text-gray-600 cursor-pointer select-none">
+                <input type="checkbox" id="annivLunar" class="w-4 h-4 accent-pink-500" onchange="onAnnivLunarChange()">
+                <span>农历日期（输入的月日按农历解释，每年自动换算为公历显示）</span>
+            </label>
+            <p id="annivLunarHint" class="hidden text-xs text-purple-500 mb-2 ml-6">例：选 8月15日 = 农历八月十五（中秋节），日历会在当年农历八月十五对应的公历日显示</p>
+            <button onclick="addAnniv()" class="w-full bg-love text-white py-2 rounded-lg text-sm hover:bg-loveDark transition">保存纪念日</button>
+        </div>
+    </div>
+</div>

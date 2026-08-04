@@ -1,0 +1,8 @@
+<!--大图预览弹窗-->
+<div id="previewModal" class="img-preview-modal hidden" onclick="closePreview()">
+    <img id="previewImg" alt="大图预览">
+    <span class="absolute top-5 right-5 text-white text-3xl cursor-pointer">&times;</span>
+    <button id="previewDownload" class="preview-download-btn" onclick="event.stopPropagation();downloadPreviewImage()">
+        <i class="fa fa-download"></i> 下载
+    </button>
+</div>

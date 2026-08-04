@@ -1,0 +1,71 @@
+<!-- 游戏页 -->
+<div id="page-game" class="page-content hidden">
+    <div class="bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow mb-6">
+        <h2 class="text-xl font-bold text-love flex items-center mb-4">
+            <i class="fa fa-gamepad mr-2"></i>情侣对战
+            <span id="partnerOnline" class="ml-auto text-sm font-normal text-gray-400">对方离线</span>
+        </h2>
+        <div class="grid grid-cols-2 gap-4 max-w-md mx-auto">
+            <div class="text-center">
+                <p class="text-sm text-love font-bold mb-2" id="myNameLabel">我</p>
+                <div id="myChoice" class="text-6xl mb-2">✊</div>
+                <div id="myScore" class="text-2xl font-bold text-love">0</div>
+            </div>
+            <div class="text-center">
+                <p class="text-sm text-love font-bold mb-2" id="partnerNameLabel">TA</p>
+                <div id="partnerChoice" class="text-6xl mb-2 opacity-30">❓</div>
+                <div id="partnerScore" class="text-2xl font-bold text-gray-400">0</div>
+            </div>
+        </div>
+        <div id="gameStatus" class="text-center text-gray-500 my-3 min-h-[24px]">选择你的出招！</div>
+        <div class="flex justify-center gap-4">
+            <button onclick="rpsPick('rock')" class="text-5xl hover:scale-125 transition-transform">✊</button>
+            <button onclick="rpsPick('paper')" class="text-5xl hover:scale-125 transition-transform">✋</button>
+            <button onclick="rpsPick('scissors')" class="text-5xl hover:scale-125 transition-transform">✌️</button>
+        </div>
+        <div class="text-center mt-3">
+            <button onclick="rpsReset()" class="text-sm text-gray-400 hover:text-love">重置比分</button>
+        </div>
+    </div>
+
+    <div class="bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow">
+        <h2 class="text-xl font-bold text-love flex items-center mb-4">
+            <i class="fa fa-clone mr-2"></i>骗子酒馆
+            <span id="lbStatus" class="ml-auto text-sm font-normal text-gray-400">空闲</span>
+            <button id="lbSfxToggle" type="button" class="ml-2 w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:bg-rose-50 transition" title="BGM开关">
+                <i class="fa fa-volume-off"></i>
+            </button>
+        </h2>
+        <div class="flex justify-between items-center mb-4 px-4">
+            <div class="text-center">
+                <span class="text-sm font-bold text-love" id="lbMyName">我</span>
+                <div id="lbMyHP" class="text-xl">💧</div>
+            </div>
+            <div class="text-center">
+                <div id="lbTargetRank" class="text-3xl font-bold text-gray-300">?</div>
+                <div class="text-xs text-gray-400">目标牌型</div>
+            </div>
+            <div class="text-center">
+                <span class="text-sm font-bold text-gray-400" id="lbPartnerName">TA</span>
+                <div id="lbPartnerHP" class="text-xl">💧</div>
+            </div>
+        </div>
+        <div id="lbPartnerPlayed" class="flex justify-center gap-2 min-h-[70px] mb-2"></div>
+        <div id="lbMyHand" class="flex justify-center gap-2 flex-wrap min-h-[70px] mb-3"></div>
+        <div id="lbActions" class="flex justify-center gap-3 flex-wrap">
+            <button onclick="lbStart()" id="lbStartBtn" class="bg-love hover:bg-loveDark text-white px-6 py-2 rounded-full transition-all">邀请对方开始</button>
+        </div>
+        <div id="lbMessage" class="text-center text-gray-500 mt-3 min-h-[24px] text-sm"></div>
+    </div>
+
+    <a href="./GameHub-main/index.html" class="mt-6 bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow flex items-center justify-between hover:bg-rose-50 transition group">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-white text-2xl">🕹️</div>
+            <div>
+                <h2 class="text-lg font-bold text-love">单机游戏合集</h2>
+                <p class="text-sm text-gray-500">一个人也能玩的小游戏</p>
+            </div>
+        </div>
+        <i class="fa fa-chevron-right text-gray-400 group-hover:text-love group-hover:translate-x-1 transition-all"></i>
+    </a>
+</div>

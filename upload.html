@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>资源上传工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        love: '#ff6b8b',
+                        loveDark: '#e04c6e'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: system-ui, sans-serif; background: #fef2f4; }
+        .log-line { padding: 2px 0; font-size: 13px; }
+        .log-ok { color: #16a34a; }
+        .log-err { color: #dc2626; }
+        .log-info { color: #2563eb; }
+    </style>
+</head>
+<body class="min-h-screen p-6">
+    <div class="max-w-3xl mx-auto">
+        <h1 class="text-2xl font-bold text-love mb-2"><i class="fa fa-database"></i> 资源上传工具</h1>
+        <p class="text-gray-500 text-sm mb-6">将本地 HTML 片段和 JS 模块上传到 Supabase <code>app_assets</code> 表</p>
+
+        <!-- 建表 SQL -->
+        <div class="bg-white rounded-xl p-4 shadow mb-6">
+            <h2 class="font-bold text-gray-700 mb-2">第一步：建表 SQL</h2>
+            <p class="text-sm text-gray-500 mb-2">在 Supabase Dashboard → SQL Editor 中执行以下 SQL：</p>
+            <textarea id="sqlBox" readonly class="w-full h-72 bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs font-mono text-gray-700"></textarea>
+            <button onclick="copySQL()" class="mt-2 bg-love text-white px-4 py-2 rounded-lg text-sm hover:bg-loveDark">
+                <i class="fa fa-copy"></i> 复制 SQL
+            </button>
+        </div>
+
+        <!-- 上传 -->
+        <div class="bg-white rounded-xl p-4 shadow mb-6">
+            <h2 class="font-bold text-gray-700 mb-2">第二步：上传本地文件到数据库</h2>
+            <p class="text-sm text-gray-500 mb-3">点击按钮后，工具会读取本地 partials/ 和 js/ 目录下的文件并上传到数据库。</p>
+            <button onclick="uploadAll()" id="uploadBtn"
+                class="bg-love text-white px-6 py-3 rounded-xl font-semibold hover:bg-loveDark transition">
+                <i class="fa fa-upload"></i> 全部上传
+            </button>
+            <button onclick="checkTable()" class="ml-2 bg-gray-200 text-gray-700 px-4 py-3 rounded-xl font-semibold hover:bg-gray-300 transition">
+                <i class="fa fa-check"></i> 检查表状态
+            </button>
+            <div id="logBox" class="mt-4 bg-gray-900 text-gray-100 rounded-lg p-3 max-h-80 overflow-y-auto font-mono"></div>
+        </div>
+
+        <!-- 资源列表 -->
+        <div class="bg-white rounded-xl p-4 shadow">
+            <h2 class="font-bold text-gray-700 mb-2">数据库现有资源</h2>
+            <div id="assetList" class="text-sm text-gray-500">点击"检查表状态"查看</div>
+        </div>
+    </div>
+
+    <script>
+        // ===== Supabase 配置（与 config.js 一致）=====
+        const SUPABASE_URL = "https://fccsjbvkfllapyoozuvf.supabase.co";
+        const SUPABASE_ANON_KEY = "sb_publishable_A3W8wYMbB-6pABB0-e0vkA_E-VMsJ4n";
+        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // ===== 建表 SQL =====
+        const CREATE_SQL = `-- app_assets 表：存储动态加载的 HTML 片段和 JS 脚本
+CREATE TABLE IF NOT EXISTS app_assets (
+    id          BIGSERIAL PRIMARY KEY,
+    file_path   TEXT UNIQUE NOT NULL,
+    type        TEXT NOT NULL DEFAULT 'js',          -- 'html' 或 'js'
+    container_id TEXT,                               -- HTML 注入目标容器 ID
+    content     TEXT NOT NULL DEFAULT '',            -- 文件内容
+    load_order  INTEGER NOT NULL DEFAULT 99,         -- 加载顺序（小的先加载）
+    is_active   BOOLEAN NOT NULL DEFAULT true,
+    created_at  TIMESTAMPTZ DEFAULT now(),
+    updated_at  TIMESTAMPTZ DEFAULT now()
+);
+
+-- 启用 RLS
+ALTER TABLE app_assets ENABLE ROW LEVEL SECURITY;
+
+-- 允许匿名读取（loader 在登录前就需要加载资源）
+CREATE POLICY "allow_public_read" ON app_assets
+    FOR SELECT USING (true);
+
+-- 允许认证用户写入
+CREATE POLICY "allow_auth_write" ON app_assets
+    FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- updated_at 自动更新
+CREATE OR REPLACE FUNCTION update_app_assets_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER app_assets_updated_at
+    BEFORE UPDATE ON app_assets
+    FOR EACH ROW EXECUTE FUNCTION update_app_assets_timestamp();`;
+
+        document.getElementById('sqlBox').value = CREATE_SQL;
+
+        // ===== 待上传文件清单 =====
+        const FILES = [
+            // HTML 片段（load_order 1-9）
+            { path: 'partials/login.html',   type: 'html', container: 'loginPanelContainer',   order: 1 },
+            { path: 'partials/preview.html', type: 'html', container: 'previewModalContainer', order: 2 },
+            { path: 'partials/home.html',    type: 'html', container: 'pageHomeContainer',     order: 3 },
+            { path: 'partials/journal.html', type: 'html', container: 'pageJournalContainer',  order: 4 },
+            { path: 'partials/game.html',    type: 'html', container: 'pageGameContainer',     order: 5 },
+            { path: 'partials/config.html',  type: 'html', container: 'pageConfigContainer',   order: 6 },
+            // JS 模块（load_order 10+，保持依赖顺序）
+            { path: 'js/config_page.js',     type: 'js', container: null, order: 10 },
+            { path: 'js/notifications.js',   type: 'js', container: null, order: 11 },
+            { path: 'js/weather.js',         type: 'js', container: null, order: 12 },
+            { path: 'js/audio.js',           type: 'js', container: null, order: 13 },
+            { path: 'js/music.js',           type: 'js', container: null, order: 14 },
+            { path: 'js/pets.js',            type: 'js', container: null, order: 15 },
+            { path: 'js/characters.js',      type: 'js', container: null, order: 16 },
+            { path: 'js/home.js',            type: 'js', container: null, order: 17 },
+            { path: 'js/journal.js',         type: 'js', container: null, order: 18 },
+            { path: 'js/calendar.js',        type: 'js', container: null, order: 19 },
+            { path: 'js/game.js',            type: 'js', container: null, order: 20 },
+            { path: 'js/auth.js',            type: 'js', container: null, order: 21 },
+        ];
+
+        // ===== 日志 =====
+        function log(msg, type) {
+            const box = document.getElementById('logBox');
+            const line = document.createElement('div');
+            line.className = 'log-line ' + (type === 'ok' ? 'log-ok' : type === 'err' ? 'log-err' : 'log-info');
+            const time = new Date().toLocaleTimeString();
+            line.textContent = `[${time}] ${msg}`;
+            box.appendChild(line);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function copySQL() {
+            const sql = document.getElementById('sqlBox');
+            sql.select();
+            document.execCommand('copy');
+            log('SQL 已复制到剪贴板', 'ok');
+        }
+
+        // ===== 检查表状态 =====
+        async function checkTable() {
+            log('正在查询 app_assets 表...', 'info');
+            const { data, error } = await sb.from('app_assets')
+                .select('file_path, type, load_order, is_active')
+                .order('load_order', { ascending: true });
+
+            if (error) {
+                log('查询失败: ' + error.message, 'err');
+                log('请先在 Supabase Dashboard 中执行建表 SQL', 'err');
+                return;
+            }
+
+            const list = document.getElementById('assetList');
+            if (!data || data.length === 0) {
+                list.innerHTML = '<span class="text-gray-400">表中暂无数据</span>';
+                log('表中暂无数据', 'info');
+                return;
+            }
+
+            list.innerHTML = `
+                <table class="w-full text-xs">
+                    <thead><tr class="border-b">
+                        <th class="text-left py-1">file_path</th>
+                        <th class="text-left py-1">type</th>
+                        <th class="text-left py-1">order</th>
+                        <th class="text-left py-1">active</th>
+                    </tr></thead>
+                    <tbody>
+                        ${data.map(r => `
+                            <tr class="border-b border-gray-100">
+                                <td class="py-1">${r.file_path}</td>
+                                <td class="py-1">${r.type}</td>
+                                <td class="py-1">${r.load_order}</td>
+                                <td class="py-1">${r.is_active ? '✅' : '❌'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            log(`共 ${data.length} 条记录`, 'ok');
+        }
+
+        // ===== 上传单个文件 =====
+        async function uploadOne(file) {
+            try {
+                const res = await fetch(file.path);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const content = await res.text();
+
+                const { error } = await sb.from('app_assets').upsert({
+                    file_path: file.path,
+                    type: file.type,
+                    container_id: file.container,
+                    content: content,
+                    load_order: file.order,
+                    is_active: true,
+                }, { onConflict: 'file_path' });
+
+                if (error) throw error;
+                log(`✅ ${file.path} (${content.length} 字符)`, 'ok');
+                return true;
+            } catch (e) {
+                log(`❌ ${file.path}: ${e.message}`, 'err');
+                return false;
+            }
+        }
+
+        // ===== 全部上传 =====
+        async function uploadAll() {
+            const btn = document.getElementById('uploadBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> 上传中...';
+            log(`开始上传 ${FILES.length} 个文件...`, 'info');
+
+            let ok = 0, fail = 0;
+            for (const file of FILES) {
+                const success = await uploadOne(file);
+                if (success) ok++; else fail++;
+            }
+
+            log(`完成！成功 ${ok}，失败 ${fail}`, ok === FILES.length ? 'ok' : 'err');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa fa-upload"></i> 全部上传';
+            checkTable();
+        }
+    </script>
+</body>
+</html>

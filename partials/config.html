@@ -1,0 +1,50 @@
+<!-- 设置页：人物互动配置 -->
+<div id="page-config" class="page-content hidden">
+    <div class="bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow">
+        <h2 class="text-xl font-bold text-love flex items-center mb-2">
+            <i class="fa fa-cog mr-2"></i>人物互动配置
+        </h2>
+        <p id="quoteConfigTitle" class="text-sm text-gray-500 mb-4">点击人物时说的话从这里管理</p>
+
+        <div id="quoteTabWrap" class="flex gap-2 mb-4">
+            <button id="quoteTabBoy" onclick="switchQuoteTab('boy')" class="flex-1 py-2 rounded-lg bg-love text-white font-semibold transition">男生</button>
+            <button id="quoteTabGirl" onclick="switchQuoteTab('girl')" class="flex-1 py-2 rounded-lg bg-rose-100 text-love font-semibold transition">女生</button>
+        </div>
+
+        <div class="flex gap-2 mb-4">
+            <input id="quoteInput" placeholder="输入想说的话..." maxlength="50"
+                class="flex-1 border border-rose-200 rounded-lg p-2 outline-none focus:border-love">
+            <button onclick="addQuote()" class="bg-love hover:bg-loveDark text-white px-5 py-2 rounded-lg transition">添加</button>
+        </div>
+
+        <div id="quoteList" class="space-y-2 max-h-[400px] overflow-y-auto">
+            <div class="text-center text-gray-400 py-6">加载中...</div>
+        </div>
+        <p class="text-xs text-gray-400 mt-3">提示：数据库为空时，点击人物会使用默认话语。</p>
+    </div>
+
+    <div class="bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow mt-6">
+        <h2 class="text-xl font-bold text-love flex items-center mb-2">
+            <i class="fa fa-eye mr-2"></i>显示设置
+        </h2>
+        <p class="text-sm text-gray-500 mb-4">选择要在页面上显示的宠物与人物（设置会自动记忆）</p>
+        <div class="space-y-2">
+            <div class="display-toggle">
+                <span class="toggle-label"><i class="fa fa-male text-blue-400"></i>男生人物</span>
+                <div class="toggle-switch on" id="toggleBoy" onclick="toggleDisplay('boy')"></div>
+            </div>
+            <div class="display-toggle">
+                <span class="toggle-label"><i class="fa fa-female text-pink-400"></i>女生人物</span>
+                <div class="toggle-switch on" id="toggleGirl" onclick="toggleDisplay('girl')"></div>
+            </div>
+            <div class="display-toggle">
+                <span class="toggle-label"><i class="fa fa-paw text-purple-400"></i>狗狗宠物</span>
+                <div class="toggle-switch on" id="toggleHusky" onclick="toggleDisplay('husky')"></div>
+            </div>
+            <div class="display-toggle">
+                <span class="toggle-label"><i class="fa fa-paw text-orange-400"></i>猫咪宠物</span>
+                <div class="toggle-switch on" id="toggleCat" onclick="toggleDisplay('cat')"></div>
+            </div>
+        </div>
+    </div>
+</div>

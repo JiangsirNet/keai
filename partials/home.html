@@ -1,0 +1,55 @@
+<!-- 首页 -->
+<div id="page-home" class="page-content">
+    <div class="flex justify-end mb-4">
+        <button onclick="logout()" class="px-3 py-1 bg-gray-200 rounded-lg text-sm">退出登录</button>
+    </div>
+    <div class="bg-white/80 backdrop-blur rounded-3xl p-6 md:p-10 card-shadow text-center mb-8">
+        <h1 class="text-[clamp(1.8rem,5vw,2.8rem)] font-bold text-love mb-3">
+            <span id="boy"></span>
+            <i class="fa fa-heart mx-3 animate-pulse"></i>
+            <span id="girl"></span>
+        </h1>
+        <p class="text-gray-600 text-lg">我们在一起的时光</p>
+        <div class="mt-5 text-[clamp(1.5rem,4vw,2.2rem)] font-semibold text-loveDark" id="dayCount"></div>
+        <p class="text-sm text-gray-500 mt-2">朝朝暮暮，岁岁年年</p>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-6">
+        <!--相册模块 -->
+        <div class="bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow md:col-span-2">
+            <h2 class="text-xl font-bold text-love flex items-center mb-4">
+                <i class="fa fa-camera mr-2"></i>恋爱相册
+            </h2>
+            <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp" class="hidden">
+            <button id="uploadBtn" onclick="document.getElementById('fileInput').click()"
+                class="w-full border border-dashed border-love rounded-xl py-3 text-love mb-4 hover:bg-rose-50 transition">
+                <i class="fa fa-upload mr-1"></i>上传照片
+            </button>
+            <div id="galleryWrap" class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div class="text-center text-gray-400 py-10 loading">加载相册...</div>
+            </div>
+        </div>
+
+        <!--留言板-->
+        <div class="md:col-span-2 bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow">
+            <h2 class="text-xl font-bold text-love flex items-center mb-4">
+                <i class="fa fa-comment mr-2"></i>留言
+            </h2>
+            <textarea id="msgInput"
+                class="w-full border border-rose-200 rounded-xl p-4 outline-none focus:border-love resize-none h-28"
+                placeholder="写下想对TA说的话..."></textarea>
+            <div class="mt-3 flex items-center gap-3">
+                <button onclick="sendMessage()"
+                    class="bg-love hover:bg-loveDark text-white px-6 py-2 rounded-full transition-all">发送留言</button>
+                <button id="voiceBtn" onclick="toggleVoiceRecord()"
+                    class="border border-rose-300 text-love px-4 py-2 rounded-full transition-all hover:bg-rose-50 flex items-center gap-2">
+                    <i class="fa fa-microphone"></i><span id="voiceBtnText">语音留言</span>
+                </button>
+                <span id="recordTimer" class="text-sm text-gray-400 hidden">00:00</span>
+            </div>
+            <div class="mt-5 space-y-3" id="msgList">
+                <div class="text-center text-gray-400 py-6 loading">加载留言...</div>
+            </div>
+        </div>
+    </div>
+</div>
