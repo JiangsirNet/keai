@@ -8,6 +8,8 @@
     <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.52/min/vs/loader.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script>
         tailwind.config = {
             theme: { extend: { colors: { love: '#ff6b8b', loveDark: '#e04c6e' } } }
@@ -21,7 +23,7 @@
         .asset-item.active { background: #ff6b8b; color: #fff; }
         .asset-item { cursor: pointer; }
         .asset-item:hover { background: #ffe4e9; }
-        #editorArea { font-family: 'Consolas', monospace; font-size: 13px; }
+        #editorArea { border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
         #docView h1 { font-size: 1.5rem; font-weight: bold; color: #ff6b8b; margin: 1rem 0 0.5rem; }
         #docView h2 { font-size: 1.2rem; font-weight: bold; color: #e04c6e; margin: 1rem 0 0.5rem; border-bottom: 1px solid #ffe4e9; padding-bottom: 0.25rem; }
         #docView h3 { font-size: 1rem; font-weight: bold; color: #444; margin: 0.75rem 0 0.25rem; }
@@ -49,8 +51,8 @@
         }
     </style>
 </head>
-<body class="min-h-screen p-3 sm:p-6">
-    <div class="max-w-5xl mx-auto">
+<body class="min-h-screen p-3 sm:p-4">
+    <div class="w-full max-w-full">
         <h1 class="text-xl sm:text-2xl font-bold text-love mb-2"><i class="fa fa-database"></i> 资源管理工具</h1>
 
         <!-- Tab 切换 -->
@@ -104,6 +106,10 @@
                     <div id="editorBar" class="flex items-center gap-2 mb-3 flex-wrap">
                         <span id="editorPath" class="text-sm font-bold text-gray-600 break-all">未选择资源</span>
                         <span id="editorType" class="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-500"></span>
+                        <div class="flex-1"></div>
+                        <button onclick="downloadAllAssets()" class="text-xs bg-purple-500 text-white px-3 py-1.5 rounded-lg hover:bg-purple-600 flex items-center gap-1">
+                            <i class="fa fa-download"></i> 全部下载（ZIP）
+                        </button>
                     </div>
                     <div id="editorMeta" class="hidden flex flex-wrap gap-2 mb-3 text-xs">
                         <label class="flex items-center gap-1">类型:
@@ -124,7 +130,26 @@
                             <input id="metaActive" type="checkbox" checked class="w-4 h-4">
                         </label>
                     </div>
-                    <textarea id="editorArea" class="w-full h-[300px] sm:h-[400px] bg-gray-50 border border-gray-200 rounded-lg p-3" placeholder="选择资源编辑，或点击新增创建..."></textarea>
+                    <!-- Monaco 编辑器工具栏 -->
+                    <div class="flex items-center gap-2 mb-2 flex-wrap text-xs">
+                        <select id="editorLang" title="语言模式" class="border border-gray-200 rounded px-2 py-1 bg-white">
+                            <option value="javascript">JavaScript</option>
+                            <option value="html">HTML</option>
+                            <option value="css">CSS</option>
+                            <option value="markdown">Markdown</option>
+                            <option value="json">JSON</option>
+                            <option value="sql">SQL</option>
+                        </select>
+                        <select id="editorTheme" title="主题" class="border border-gray-200 rounded px-2 py-1 bg-white">
+                            <option value="vs">浅色</option>
+                            <option value="vs-dark">深色</option>
+                        </select>
+                        <button onclick="formatEditor()" title="格式化文档" class="border border-gray-200 rounded px-2 py-1 bg-white hover:bg-rose-50"><i class="fa fa-indent"></i> 格式化</button>
+                        <span class="text-gray-400" id="editorCursor">Ln 1, Col 1</span>
+                        <span class="text-gray-400" id="editorCharCount">0 字符</span>
+                        <button onclick="toggleAiPanel()" title="AI 助手" class="border border-love text-love rounded px-2 py-1 bg-white hover:bg-rose-50 ml-auto md:hidden"><i class="fa fa-magic"></i> AI</button>
+                    </div>
+                    <div id="editorArea" class="w-full h-[400px]"></div>
                     <div class="flex flex-wrap gap-2 mt-3">
                         <button onclick="saveAsset()" id="saveBtn" class="bg-love text-white px-5 py-2 rounded-lg font-semibold hover:bg-loveDark transition disabled:opacity-50" disabled>
                             <i class="fa fa-save"></i> 保存
@@ -138,8 +163,67 @@
                         <button onclick="downloadAsset()" id="downloadBtn" class="bg-blue-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-600 transition disabled:opacity-50" disabled>
                             <i class="fa fa-download"></i> 下载
                         </button>
+                        <button onclick="showHistory()" id="historyBtn" class="bg-purple-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-600 transition disabled:opacity-50" disabled>
+                            <i class="fa fa-history"></i> 历史版本
+                        </button>
                         <span id="saveStatus" class="text-sm text-gray-400 self-center"></span>
                     </div>
+                </div>
+
+                <!-- AI 代码助手面板 -->
+                <div id="aiPanel" class="hidden md:flex bg-white rounded-xl p-3 shadow w-full md:w-96 lg:w-[420px] flex-shrink-0 flex-col">
+                    <div class="flex items-center justify-between mb-2">
+                        <h2 class="font-bold text-gray-700 text-sm flex items-center gap-1">
+                            <i class="fa fa-magic text-love"></i> AI 代码助手
+                        </h2>
+                        <button onclick="toggleAiPanel()" class="text-gray-400 hover:text-gray-600 md:hidden">
+                            <i class="fa fa-times"></i>
+                        </button>
+                    </div>
+                    <div id="aiChatMsgs" class="flex-1 overflow-y-auto space-y-2 mb-2 min-h-[200px] max-h-[300px] md:max-h-[400px] text-sm">
+                        <div class="text-center text-gray-400 text-xs py-4">
+                            <i class="fa fa-comments block mb-1"></i>
+                            自动加载项目文档，可手动引用代码文件
+                        </div>
+                    </div>
+                    <!-- 引用文件列表 -->
+                    <div id="aiRefFiles" class="hidden mb-2"></div>
+                    <!-- 快捷指令 -->
+                    <div class="flex flex-wrap items-center gap-1 mb-2">
+                        <button onclick="aiQuickCmd('优化这段代码')" class="text-xs bg-rose-50 text-love px-2 py-1 rounded hover:bg-rose-100">优化</button>
+                        <button onclick="aiQuickCmd('解释这段代码')" class="text-xs bg-rose-50 text-love px-2 py-1 rounded hover:bg-rose-100">解释</button>
+                        <button onclick="aiQuickCmd('修复这个Bug')" class="text-xs bg-rose-50 text-love px-2 py-1 rounded hover:bg-rose-100">修复</button>
+                        <button onclick="aiQuickCmd('添加详细注释')" class="text-xs bg-rose-50 text-love px-2 py-1 rounded hover:bg-rose-100">注释</button>
+                        <button onclick="clearAiChat()" class="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded hover:bg-gray-200 ml-auto" title="清空聊天记录">
+                            <i class="fa fa-trash"></i> 清空
+                        </button>
+                    </div>
+                    <div class="flex gap-1">
+                        <input id="aiChatInput" type="text" placeholder="对 AI 说..."
+                            class="flex-1 border border-gray-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:border-love"
+                            onkeydown="if(event.key==='Enter')sendAiChat()">
+                        <button onclick="sendAiChat()" class="bg-love text-white px-3 py-1.5 rounded-lg text-sm hover:bg-loveDark flex-shrink-0">
+                            <i class="fa fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== 历史版本弹窗 ===== -->
+        <div id="historyModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+                <div class="flex items-center justify-between p-4 border-b">
+                    <h3 class="font-bold text-gray-700 flex items-center gap-2">
+                        <i class="fa fa-history text-purple-500"></i>
+                        <span id="historyTitle">历史版本</span>
+                    </h3>
+                    <button onclick="closeHistory()" class="text-gray-400 hover:text-gray-600 text-xl">
+                        <i class="fa fa-times"></i>
+                    </button>
+                </div>
+                <div id="historyList" class="flex-1 overflow-y-auto p-4 space-y-2">
+                    <div class="text-center text-gray-400 py-8">加载中...</div>
                 </div>
             </div>
         </div>
@@ -230,6 +314,7 @@
                 <button onclick="sqlExecPreset('policy')" class="bg-green-50 text-green-600 px-3 py-1 rounded-lg text-xs hover:bg-green-100 transition">🔒 RLS策略示例</button>
                 <button onclick="sqlExecPreset('drop')" class="bg-red-50 text-red-600 px-3 py-1 rounded-lg text-xs hover:bg-red-100 transition">🗑️ 删表示例</button>
                 <button onclick="sqlExecPreset('alter')" class="bg-yellow-50 text-yellow-600 px-3 py-1 rounded-lg text-xs hover:bg-yellow-100 transition">📝 加字段示例</button>
+                <button onclick="sqlExecPreset('backup')" class="bg-purple-50 text-purple-600 px-3 py-1 rounded-lg text-xs hover:bg-purple-100 transition">💾 版本备份表</button>
             </div>
 
             <textarea id="sqlExecInput" placeholder="-- 输入 SQL 语句，可多条以分号分隔&#10;CREATE TABLE IF NOT EXISTS my_table (&#10;    id BIGSERIAL PRIMARY KEY,&#10;    name TEXT NOT NULL&#10;);" class="w-full h-[200px] sm:h-[260px] bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs font-mono text-gray-700 focus:outline-none focus:border-love"></textarea>
@@ -404,7 +489,8 @@ ON CONFLICT (container_id) DO NOTHING;`;
             { path: 'js/calendar.js',        type: 'js', container: null, order: 19 },
             { path: 'js/game.js',            type: 'js', container: null, order: 20 },
             { path: 'js/background.js',      type: 'js', container: null, order: 21 },
-            { path: 'js/auth.js',            type: 'js', container: null, order: 22 },
+            { path: 'js/ai_chat.js',         type: 'js', container: null, order: 22 },
+            { path: 'js/auth.js',            type: 'js', container: null, order: 23 },
             { path: 'ARCHITECTURE.md',       type: 'md', container: null, order: 99 },
         ];
 
@@ -417,7 +503,22 @@ ON CONFLICT (container_id) DO NOTHING;`;
             const map = { local: 'Local', online: 'Online', sql: 'Sql', docs: 'Docs', containers: 'Containers', sqlexec: 'SqlExec' };
             document.getElementById('tab' + map[name]).classList.add('active');
             document.getElementById('panel' + map[name]).classList.remove('hidden');
-            if (name === 'online') loadAssets();
+            if (name === 'online') {
+                initMonacoEditor();
+                loadAssets();
+                // 恢复 AI 聊天记录
+                restoreAiChatUI();
+                // 轮询确保 Monaco 就绪后刷新布局（处理首次加载延迟）
+                let layoutTries = 0;
+                const layoutInterval = setInterval(() => {
+                    if (monoReady && monoEditor) {
+                        monoEditor.layout();
+                        clearInterval(layoutInterval);
+                    } else if (++layoutTries > 30) { // 最多等 3 秒
+                        clearInterval(layoutInterval);
+                    }
+                }, 100);
+            }
             if (name === 'docs') loadDoc();
             if (name === 'containers') loadContainers();
             if (name === 'sqlexec') checkExecDdl();
@@ -752,6 +853,617 @@ ON CONFLICT (container_id) DO NOTHING;`;
         let currentAssets = [];
         let currentPath = null;
 
+        // ===== Monaco 编辑器（懒加载，首次打开在线管理 Tab 时初始化） =====
+        let monoEditor = null;
+        let monoReady = false;
+        let monoInitStarted = false;
+
+        function initMonacoEditor() {
+            if (monoInitStarted) return;
+            monoInitStarted = true;
+            require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.52/min/vs' } });
+            require(['vs/editor/editor.main'], function () {
+                monoEditor = monaco.editor.create(document.getElementById('editorArea'), {
+                    value: '',
+                    language: 'javascript',
+                    theme: 'vs',
+                    fontSize: 13,
+                    lineNumbers: 'on',
+                    minimap: { enabled: true },
+                    scrollBeyondLastLine: false,
+                    automaticLayout: true,
+                    wordWrap: 'on',
+                    tabSize: 4,
+                    bracketPairColorization: { enabled: true },
+                    suggestOnTriggerCharacters: true,
+                    quickSuggestions: true,
+                });
+                monoReady = true;
+
+                monoEditor.onDidChangeCursorPosition(e => {
+                    document.getElementById('editorCursor').textContent = `Ln ${e.position.lineNumber}, Col ${e.position.column}`;
+                });
+
+                // 实时字符数统计
+                monoEditor.onDidChangeModelContent(() => {
+                    const count = monoEditor.getValue().length;
+                    const type = document.getElementById('metaType')?.value || 'js';
+                    const max = type === 'md' ? 20000 : 20000;
+                    const el = document.getElementById('editorCharCount');
+                    if (el) {
+                        el.textContent = `${count} / ${max} 字符`;
+                        el.className = count > max ? 'text-red-500 font-semibold' : 'text-gray-400';
+                    }
+                });
+
+                document.getElementById('editorLang').addEventListener('change', e => {
+                    monaco.editor.setModelLanguage(monoEditor.getModel(), e.target.value);
+                });
+                document.getElementById('editorTheme').addEventListener('change', e => {
+                    monaco.editor.setTheme(e.target.value);
+                    localStorage.setItem('mono_theme', e.target.value);
+                });
+
+                const savedTheme = localStorage.getItem('mono_theme');
+                if (savedTheme) {
+                    document.getElementById('editorTheme').value = savedTheme;
+                    monaco.editor.setTheme(savedTheme);
+                }
+
+                window.addEventListener('resize', () => monoEditor && monoEditor.layout());
+
+                // 初始化完成后确保布局正确（处理容器从隐藏变为显示的情况）
+                setTimeout(() => monoEditor && monoEditor.layout(), 100);
+                setTimeout(() => monoEditor && monoEditor.layout(), 500);
+
+                console.log('Monaco Editor 已就绪');
+            }, function (err) {
+                // 加载失败回退
+                console.error('Monaco 加载失败:', err);
+                document.getElementById('editorArea').innerHTML =
+                    '<div class="flex items-center justify-center h-full text-gray-400 text-sm">' +
+                    '<i class="fa fa-exclamation-circle mr-2"></i> 代码编辑器加载失败，请检查网络连接' +
+                    '<br><br>您仍可通过「本地上传」Tab 上传文件</div>';
+            });
+        }
+
+        // ===== 编辑器辅助函数 =====
+        function getEditorValue() {
+            return monoReady && monoEditor ? monoEditor.getValue() : '';
+        }
+        function setEditorValue(v) {
+            if (monoReady && monoEditor) {
+                monoEditor.setValue(v || '');
+            } else if (monoInitStarted) {
+                // Monaco 正在初始化，等待就绪后设置值
+                const trySet = setInterval(() => {
+                    if (monoReady) {
+                        monoEditor.setValue(v || '');
+                        clearInterval(trySet);
+                    }
+                }, 50);
+                setTimeout(() => clearInterval(trySet), 5000);
+            }
+        }
+        function setEditorLang(type) {
+            const langMap = { html: 'html', js: 'javascript', css: 'css', md: 'markdown', json: 'json', sql: 'sql' };
+            const lang = langMap[type] || 'javascript';
+            const langSel = document.getElementById('editorLang');
+            if (langSel) langSel.value = lang;
+            if (monoReady && monoEditor) monaco.editor.setModelLanguage(monoEditor.getModel(), lang);
+        }
+        function formatEditor() {
+            if (monoReady && monoEditor) {
+                monoEditor.getAction('editor.action.formatDocument').run();
+            }
+        }
+        // 暴露到 window
+        window.formatEditor = formatEditor;
+
+        // ===== AI 代码助手 =====
+        let aiCodeApiKey = '';
+        let aiCodeModel = 'glm-4.7-flash';
+        let aiCodeSending = false;
+        let aiReferencedFiles = []; // 用户手动引用的文件列表 [{file_path, content, type}]
+
+        // 聊天记录持久化（localStorage）
+        const AI_HISTORY_KEY = 'ai_chat_history';
+        function loadAiHistory() {
+            try {
+                const saved = localStorage.getItem(AI_HISTORY_KEY);
+                return saved ? JSON.parse(saved) : [];
+            } catch (e) { return []; }
+        }
+        function saveAiHistory() {
+            try {
+                localStorage.setItem(AI_HISTORY_KEY, JSON.stringify(aiCodeHistory));
+            } catch (e) { console.warn('保存聊天记录失败:', e); }
+        }
+        let aiCodeHistory = loadAiHistory();
+
+        // 恢复聊天记录到界面
+        function restoreAiChatUI() {
+            if (aiCodeHistory.length === 0) return;
+            const msgs = document.getElementById('aiChatMsgs');
+            msgs.innerHTML = '';
+            aiCodeHistory.forEach(h => {
+                addAiMsg(h.role, h.content);
+            });
+        }
+
+        // 读取 AI API Key
+        async function loadAiCodeKey() {
+            if (aiCodeApiKey) return aiCodeApiKey;
+            const { data } = await sb.from('app_config').select('config_value,config_key').in('config_key', ['zhipu_api_key', 'zhipu_model']);
+            if (data) {
+                data.forEach(r => {
+                    if (r.config_key === 'zhipu_api_key') aiCodeApiKey = r.config_value;
+                    if (r.config_key === 'zhipu_model' && r.config_value) aiCodeModel = r.config_value;
+                });
+            }
+            return aiCodeApiKey;
+        }
+
+        // ===== 引用文件管理 =====
+        function toggleRefFile(filePath) {
+            const asset = currentAssets.find(a => a.file_path === filePath);
+            if (!asset) return;
+            
+            const idx = aiReferencedFiles.findIndex(f => f.file_path === filePath);
+            if (idx >= 0) {
+                // 移除
+                aiReferencedFiles.splice(idx, 1);
+            } else {
+                // 添加
+                aiReferencedFiles.push({
+                    file_path: asset.file_path,
+                    content: asset.content,
+                    type: asset.type
+                });
+            }
+            renderAssetList(); // 重新渲染资源列表
+            renderRefFiles();  // 重新渲染引用文件列表
+        }
+
+        function isFileReferenced(filePath) {
+            return aiReferencedFiles.some(f => f.file_path === filePath);
+        }
+
+        function removeRefFile(filePath) {
+            aiReferencedFiles = aiReferencedFiles.filter(f => f.file_path !== filePath);
+            renderAssetList();
+            renderRefFiles();
+        }
+
+        function renderRefFiles() {
+            const container = document.getElementById('aiRefFiles');
+            if (!container) return;
+            
+            if (aiReferencedFiles.length === 0) {
+                container.innerHTML = '<div class="text-xs text-gray-400 text-center py-1">📎 点击资源列表的「引用」按钮添加文件</div>';
+                container.classList.add('hidden');
+                return;
+            }
+            
+            container.classList.remove('hidden');
+            container.innerHTML = '<div class="text-xs text-gray-500 mb-1">📎 已引用 ' + aiReferencedFiles.length + ' 个文件</div>' +
+                aiReferencedFiles.map(f => `
+                    <div class="flex items-center justify-between bg-rose-50 rounded px-2 py-1 mb-1 text-xs">
+                        <span class="truncate flex-1">${escapeHtml(f.file_path)}</span>
+                        <button onclick="removeRefFile('${f.file_path}')" class="text-red-400 hover:text-red-600 ml-1">
+                            <i class="fa fa-times"></i>
+                        </button>
+                    </div>
+                `).join('');
+        }
+
+        // 切换 AI 面板显示
+        function toggleAiPanel() {
+            const panel = document.getElementById('aiPanel');
+            if (panel.classList.contains('hidden')) {
+                panel.classList.remove('hidden');
+                panel.classList.add('flex');
+            } else {
+                panel.classList.add('hidden');
+                panel.classList.remove('flex');
+            }
+        }
+
+        // 快捷指令
+        function aiQuickCmd(cmd) {
+            document.getElementById('aiChatInput').value = cmd;
+            sendAiChat();
+        }
+
+        // 添加消息到聊天区
+        function addAiMsg(role, text, codeBlock) {
+            const msgs = document.getElementById('aiChatMsgs');
+            // 清除初始提示
+            if (msgs.children.length === 1 && msgs.children[0].classList.contains('text-center')) {
+                msgs.innerHTML = '';
+            }
+            const wrapper = document.createElement('div');
+            if (role === 'user') {
+                wrapper.className = 'bg-love/10 rounded-lg px-3 py-2 ml-4 text-xs text-gray-700';
+                wrapper.textContent = text;
+            } else {
+                wrapper.className = 'bg-gray-50 rounded-lg px-3 py-2 mr-4 text-xs text-gray-700';
+                wrapper.innerHTML = renderAiContent(text);
+            }
+            msgs.appendChild(wrapper);
+            msgs.scrollTop = msgs.scrollHeight;
+            return wrapper;
+        }
+
+        function renderAiContent(text) {
+            // 解析 markdown 代码块
+            const parts = text.split(/```(\w*)\n([\s\S]*?)```/);
+            let html = '';
+            for (let i = 0; i < parts.length; i++) {
+                if (i % 3 === 0 && parts[i].trim()) {
+                    html += `<p class="mb-1 whitespace-pre-wrap">${escapeHtml(parts[i].trim())}</p>`;
+                } else if (i % 3 === 2 && parts[i]) {
+                    const lang = parts[i - 1] || '';
+                    const code = parts[i];
+                    html += `<div class="my-2 border border-rose-200 rounded-lg overflow-hidden">
+                        <div class="flex items-center justify-between bg-rose-50 px-2 py-1">
+                            <span class="text-xs text-gray-500">${lang || 'code'}</span>
+                            <button onclick="applyAiCode(this)" class="text-xs text-love font-semibold hover:underline">应用到编辑器</button>
+                        </div>
+                        <pre class="bg-gray-800 text-gray-100 p-2 overflow-x-auto text-xs"><code>${escapeHtml(code)}</code></pre>
+                    </div>`;
+                }
+            }
+            // 处理未闭合的代码块（流式输出中）
+            if (html === '' && text.includes('```')) {
+                const idx = text.indexOf('```');
+                const before = text.substring(0, idx);
+                const codePart = text.substring(idx + 3);
+                if (before.trim()) html += `<p class="mb-1 whitespace-pre-wrap">${escapeHtml(before.trim())}</p>`;
+                html += `<div class="my-2 border border-rose-200 rounded-lg overflow-hidden">
+                    <div class="flex items-center justify-between bg-rose-50 px-2 py-1">
+                        <span class="text-xs text-gray-500">code</span>
+                        <button onclick="applyAiCode(this)" class="text-xs text-love font-semibold hover:underline">应用到编辑器</button>
+                    </div>
+                    <pre class="bg-gray-800 text-gray-100 p-2 overflow-x-auto text-xs"><code>${escapeHtml(codePart)}</code></pre>
+                </div>`;
+            }
+            return html || escapeHtml(text);
+        }
+
+        function escapeHtml(s) {
+            return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        // 应用 AI 返回的代码到编辑器
+        function applyAiCode(btn) {
+            const pre = btn.closest('.border-rose-200').querySelector('pre code');
+            const code = pre.textContent;
+            if (monoReady && monoEditor) {
+                monoEditor.setValue(code);
+                document.getElementById('saveStatus').textContent = '⚠️ 代码已应用，记得保存';
+                document.getElementById('saveStatus').className = 'text-sm text-orange-500 self-center';
+            }
+        }
+
+        // 发送 AI 聊天
+        async function sendAiChat() {
+            if (aiCodeSending) return;
+            const input = document.getElementById('aiChatInput');
+            const userMsg = input.value.trim();
+            if (!userMsg) return;
+
+            // 检查 API Key
+            await loadAiCodeKey();
+            if (!aiCodeApiKey) {
+                addAiMsg('assistant', '⚠️ 请先在主应用的「设置」页面配置智谱 AI API Key');
+                return;
+            }
+
+            input.value = '';
+            aiCodeSending = true;
+
+            // 自动加载所有 md 文件作为上下文
+            let mdContext = '';
+            try {
+                const { data: mdFiles } = await sb.from('app_assets')
+                    .select('file_path, content')
+                    .eq('type', 'md')
+                    .eq('is_active', true);
+                if (mdFiles && mdFiles.length > 0) {
+                    mdContext = '## 项目文档（请参考以下文档回答问题）\n\n';
+                    mdFiles.forEach(f => {
+                        mdContext += `### ${f.file_path}\n\`\`\`\n${(f.content || '').substring(0, 20000)}\n\`\`\`\n\n`;
+                    });
+                }
+            } catch (e) {
+                console.warn('加载 md 文件失败:', e);
+            }
+
+            // 用户手动引用的文件
+            let refContext = '';
+            if (aiReferencedFiles.length > 0) {
+                refContext = '\n## 用户引用的代码文件\n\n';
+                aiReferencedFiles.forEach(f => {
+                    refContext += `### ${f.file_path}\n\`\`\`${f.type}\n${f.content || ''}\n\`\`\`\n\n`;
+                });
+            }
+
+            const fullCtx = mdContext + refContext + `\n## 用户请求\n${userMsg}`;
+
+            addAiMsg('user', userMsg);
+
+            // loading
+            const loadingEl = addAiMsg('assistant', '思考中...');
+
+            // 构建对话历史
+            const messages = [{ role: 'system', content: '你是一个专业的编程助手，擅长阅读项目文档并帮助修改代码。请参考提供的项目文档和用户引用的代码文件，根据用户请求帮助修改、优化、解释代码。返回代码时请用 ```代码块``` 包裹，用户可以一键应用到编辑器。' }];
+            aiCodeHistory.forEach(h => messages.push(h));
+            messages.push({ role: 'user', content: fullCtx });
+
+            try {
+                const res = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + aiCodeApiKey,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: aiCodeModel,
+                        messages: messages,
+                        temperature: 0.5,
+                        stream: true
+                    })
+                });
+
+                if (!res.ok) {
+                    const errData = await res.json().catch(() => ({}));
+                    throw new Error(errData.error?.message || `HTTP ${res.status}`);
+                }
+
+                // 流式读取
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder();
+                let reply = '';
+                let buffer = '';
+                let firstChunk = true;
+
+                // 替换 loading 为流式消息容器
+                loadingEl.remove();
+                const streamEl = document.createElement('div');
+                streamEl.className = 'bg-gray-50 rounded-lg px-3 py-2 mr-4 text-xs text-gray-700';
+                document.getElementById('aiChatMsgs').appendChild(streamEl);
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop(); // 保留最后不完整的行
+
+                    for (const line of lines) {
+                        const trimmed = line.trim();
+                        if (!trimmed || !trimmed.startsWith('data:')) continue;
+                        const data = trimmed.slice(5).trim();
+                        if (data === '[DONE]') continue;
+
+                        try {
+                            const json = JSON.parse(data);
+                            const delta = json.choices?.[0]?.delta?.content || '';
+                            if (delta) {
+                                if (firstChunk) { firstChunk = false; }
+                                reply += delta;
+                                // 实时渲染
+                                streamEl.innerHTML = renderAiContent(reply);
+                                document.getElementById('aiChatMsgs').scrollTop = document.getElementById('aiChatMsgs').scrollHeight;
+                            }
+                        } catch (e) { /* 忽略解析错误 */ }
+                    }
+                }
+
+                if (!reply) reply = '无回复';
+
+                // 保存到历史（只保存用户消息和回复，不保存完整上下文以节省 token）
+                aiCodeHistory.push({ role: 'user', content: userMsg });
+                aiCodeHistory.push({ role: 'assistant', content: reply });
+                // 限制历史长度
+                if (aiCodeHistory.length > 10) aiCodeHistory = aiCodeHistory.slice(-10);
+                // 持久化到 localStorage
+                saveAiHistory();
+            } catch (e) {
+                loadingEl.remove();
+                addAiMsg('assistant', '❌ 请求失败: ' + e.message);
+            } finally {
+                aiCodeSending = false;
+            }
+        }
+
+        // 暴露到 window
+        window.toggleAiPanel = toggleAiPanel;
+        window.aiQuickCmd = aiQuickCmd;
+        window.sendAiChat = sendAiChat;
+        window.applyAiCode = applyAiCode;
+        window.toggleRefFile = toggleRefFile;
+        // 清空聊天记录
+        function clearAiChat() {
+            if (aiCodeHistory.length === 0) return;
+            if (!confirm('确认清空所有聊天记录？')) return;
+            aiCodeHistory = [];
+            saveAiHistory();
+            document.getElementById('aiChatMsgs').innerHTML = '<div class="text-center text-gray-400 text-xs py-4"><i class="fa fa-comments block mb-1"></i>自动加载项目文档，可手动引用代码文件</div>';
+        }
+
+        window.removeRefFile = removeRefFile;
+        window.clearAiChat = clearAiChat;
+
+        // ===== 全部下载为 ZIP =====
+        async function downloadAllAssets() {
+            if (!currentAssets || currentAssets.length === 0) {
+                alert('暂无资源可下载');
+                return;
+            }
+            if (typeof JSZip === 'undefined') {
+                alert('JSZip 未加载，请检查网络');
+                return;
+            }
+
+            const btn = event?.currentTarget;
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> 打包中...';
+            }
+
+            try {
+                const zip = new JSZip();
+
+                // 遍历资源并添加到 ZIP
+                currentAssets.forEach(a => {
+                    if (!a.file_path || !a.content) return;
+                    // 清理路径，防止 ../ 攻击
+                    let safePath = a.file_path.replace(/\\/g, '/').replace(/^\//, '');
+                    // 去除 .. 目录
+                    safePath = safePath.split('/').filter(p => p !== '..').join('/');
+                    zip.file(safePath, a.content);
+                });
+
+                // 同时生成容器配置 JSON
+                try {
+                    const { data: containers } = await sb.from('app_containers')
+                        .select('*')
+                        .order('sort_order', { ascending: true });
+                    if (containers && containers.length > 0) {
+                        zip.file('app_containers.json', JSON.stringify(containers, null, 2));
+                    }
+                } catch (e) { /* 忽略容器配置错误 */ }
+
+                // 生成 ZIP 文件
+                const date = new Date();
+                const dateStr = `${date.getFullYear()}${String(date.getMonth()+1).padStart(2,'0')}${String(date.getDate()).padStart(2,'0')}_${String(date.getHours()).padStart(2,'0')}${String(date.getMinutes()).padStart(2,'0')}`;
+                const zipBlob = await zip.generateAsync({ type: 'blob' });
+
+                // 下载
+                const url = URL.createObjectURL(zipBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `情侣空间_资源备份_${dateStr}.zip`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+            } catch (e) {
+                alert('下载失败: ' + e.message);
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fa fa-download"></i> 全部下载（ZIP）';
+                }
+            }
+        }
+        window.downloadAllAssets = downloadAllAssets;
+
+        // ===== 历史版本管理 =====
+        let historyBackups = [];
+        let _skipBackup = false;
+
+        async function showHistory() {
+            if (!currentPath) return;
+            document.getElementById('historyTitle').textContent = '历史版本 - ' + currentPath;
+            document.getElementById('historyModal').classList.remove('hidden');
+            document.getElementById('historyList').innerHTML = '<div class="text-center text-gray-400 py-8">加载中...</div>';
+
+            try {
+                const { data, error } = await sb.from('asset_backups')
+                    .select('id, version, content, created_at, type, container_id, load_order, is_active')
+                    .eq('file_path', currentPath)
+                    .order('version', { ascending: false });
+
+                if (error) throw error;
+                historyBackups = data || [];
+                renderHistoryList();
+            } catch (e) {
+                document.getElementById('historyList').innerHTML =
+                    '<div class="text-center text-red-500 py-4">加载失败: ' + e.message + '<br><br>请先在「执行」Tab 创建 asset_backups 表</div>';
+            }
+        }
+
+        function closeHistory() {
+            document.getElementById('historyModal').classList.add('hidden');
+        }
+
+        function renderHistoryList() {
+            const list = document.getElementById('historyList');
+            if (historyBackups.length === 0) {
+                list.innerHTML = '<div class="text-center text-gray-400 py-8">暂无历史版本<br><span class="text-xs">保存文件时会自动创建备份</span></div>';
+                return;
+            }
+            list.innerHTML = historyBackups.map((b, i) => `
+                <div class="border border-gray-200 rounded-xl p-3 hover:border-purple-300 transition">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="bg-purple-100 text-purple-600 text-xs px-2 py-1 rounded-full font-semibold">v${b.version}</span>
+                            <span class="text-xs text-gray-500">${new Date(b.created_at).toLocaleString('zh-CN')}</span>
+                        </div>
+                        <div class="flex gap-1">
+                            <button onclick="previewBackup(${i})" class="text-xs text-blue-500 hover:underline px-2">预览</button>
+                            <button onclick="restoreBackup(${i})" class="text-xs text-green-500 hover:underline px-2">还原</button>
+                            <button onclick="deleteBackup(${b.id})" class="text-xs text-red-500 hover:underline px-2">删除</button>
+                        </div>
+                    </div>
+                    <div class="text-xs text-gray-400 truncate">${escapeHtml((b.content || '').substring(0, 100))}${(b.content || '').length > 100 ? '...' : ''}</div>
+                </div>
+            `).join('');
+        }
+
+        function previewBackup(idx) {
+            const b = historyBackups[idx];
+            if (!b) return;
+            setEditorValue(b.content || '');
+            setEditorLang(b.type || 'js');
+            // 高亮预览版本
+            const status = document.getElementById('saveStatus');
+            status.textContent = '👀 预览 v' + b.version + '（未保存，切换文件会丢失）';
+            status.className = 'text-sm text-blue-500 self-center';
+        }
+
+        async function restoreBackup(idx) {
+            const b = historyBackups[idx];
+            if (!b) return;
+            if (!confirm(`确认还原到 v${b.version}？\n\n将还原历史版本，保存时不创建新备份。`)) return;
+
+            // 标记：还原操作，保存时跳过备份
+            _skipBackup = true;
+
+            // 还原历史版本
+            setEditorValue(b.content || '');
+            setEditorLang(b.type || 'js');
+            const status = document.getElementById('saveStatus');
+            status.textContent = '⏪ 已还原到 v' + b.version + '（点保存生效，不创建新备份）';
+            status.className = 'text-sm text-orange-500 self-center';
+
+            closeHistory();
+        }
+
+        async function deleteBackup(id) {
+            if (!confirm('确认删除此历史版本？')) return;
+            try {
+                const { error } = await sb.from('asset_backups').delete().eq('id', id);
+                if (error) throw error;
+                historyBackups = historyBackups.filter(b => b.id !== id);
+                renderHistoryList();
+            } catch (e) {
+                alert('删除失败: ' + e.message);
+            }
+        }
+
+        // 暴露到 window
+        window.showHistory = showHistory;
+        window.closeHistory = closeHistory;
+        window.previewBackup = previewBackup;
+        window.restoreBackup = restoreBackup;
+        window.deleteBackup = deleteBackup;
+
         async function loadAssets() {
             const listEl = document.getElementById('assetList');
             listEl.innerHTML = '<div class="text-center text-gray-400 text-sm py-4">加载中...</div>';
@@ -764,6 +1476,7 @@ ON CONFLICT (container_id) DO NOTHING;`;
             }
             currentAssets = data || [];
             renderAssetList();
+            renderRefFiles();
         }
 
         function renderAssetList() {
@@ -772,21 +1485,31 @@ ON CONFLICT (container_id) DO NOTHING;`;
                 listEl.innerHTML = '<div class="text-center text-gray-400 text-sm py-4">暂无资源<br>点击"新增"创建</div>';
                 return;
             }
-            listEl.innerHTML = currentAssets.map(a => `
-                <div class="asset-item ${a.file_path === currentPath ? 'active' : ''} flex items-center justify-between px-3 py-2 rounded-lg text-sm" onclick="editAsset('${a.file_path}')">
-                    <div class="flex items-center gap-2 min-w-0">
+            listEl.innerHTML = currentAssets.map(a => {
+                const ref = isFileReferenced(a.file_path);
+                return `
+                <div class="asset-item ${a.file_path === currentPath ? 'active' : ''} flex items-center justify-between px-3 py-2 rounded-lg text-sm group">
+                    <div class="flex items-center gap-2 min-w-0 flex-1 cursor-pointer" onclick="editAsset('${a.file_path}')">
                         <i class="fa ${a.type === 'html' ? 'fa-file-code-o' : 'fa-file-text-o'} text-xs"></i>
                         <span class="truncate">${a.file_path}</span>
                     </div>
-                    <span class="text-xs ${a.is_active ? 'text-green-500' : 'text-gray-400'} flex-shrink-0">${a.is_active ? '●' : '○'}</span>
-                </div>
-            `).join('');
+                    <div class="flex items-center gap-1 flex-shrink-0">
+                        <button onclick="event.stopPropagation();toggleRefFile('${a.file_path}')" 
+                            title="${ref ? '取消引用' : '引用此文件到 AI'}"
+                            class="text-xs px-1.5 py-0.5 rounded transition ${ref ? 'bg-love text-white' : 'bg-gray-100 text-gray-500 hover:bg-rose-100 hover:text-love'}">
+                            ${ref ? '✓' : '📎'}
+                        </button>
+                        <span class="text-xs ${a.is_active ? 'text-green-500' : 'text-gray-400'}">${a.is_active ? '●' : '○'}</span>
+                    </div>
+                </div>`;
+            }).join('');
         }
 
         function editAsset(filePath) {
             const asset = currentAssets.find(a => a.file_path === filePath);
             if (!asset) return;
             currentPath = filePath;
+            _skipBackup = false;
             document.getElementById('editorPath').textContent = filePath;
             document.getElementById('editorType').textContent = asset.type;
             document.getElementById('editorType').className = 'text-xs px-2 py-0.5 rounded ' + (asset.type === 'html' ? 'bg-blue-100 text-blue-600' : 'bg-yellow-100 text-yellow-600');
@@ -796,23 +1519,74 @@ ON CONFLICT (container_id) DO NOTHING;`;
             document.getElementById('metaContainer').value = asset.container_id || '';
             document.getElementById('metaOrder').value = asset.load_order;
             document.getElementById('metaActive').checked = asset.is_active;
-            document.getElementById('editorArea').value = asset.content || '';
+            setEditorLang(asset.type);
+            setEditorValue(asset.content || '');
+            // 更新字符数显示
+            const _count = (asset.content || '').length;
+            const _max = asset.type === 'md' ? 20000 : 20000;
+            const _el = document.getElementById('editorCharCount');
+            if (_el) {
+                _el.textContent = `${_count} / ${_max} 字符`;
+                _el.className = _count > _max ? 'text-red-500 font-semibold' : 'text-gray-400';
+            }
             document.getElementById('saveBtn').disabled = false;
             document.getElementById('deleteBtn').disabled = false;
             document.getElementById('copyBtn').disabled = false;
             document.getElementById('downloadBtn').disabled = false;
+            document.getElementById('historyBtn').disabled = false;
             document.getElementById('saveStatus').textContent = '';
             renderAssetList();
         }
 
         async function saveAsset() {
             if (!currentPath) return;
-            const content = document.getElementById('editorArea').value;
+            const content = getEditorValue();
             const type = document.getElementById('metaType').value;
             const container = document.getElementById('metaContainer').value || null;
             const order = parseInt(document.getElementById('metaOrder').value) || 99;
             const active = document.getElementById('metaActive').checked;
+
+            // 字符数限制：代码文件 20000，md 文件 20000
+            const maxChars = type === 'md' ? 20000 : 20000;
+            if (content.length > maxChars) {
+                document.getElementById('saveStatus').textContent = `❌ 内容超限：${content.length} 字符，最大允许 ${maxChars} 字符`;
+                document.getElementById('saveStatus').className = 'text-sm text-red-500 self-center';
+                return;
+            }
+
             document.getElementById('saveStatus').textContent = '保存中...';
+
+            // 如果不是还原操作，则备份当前版本
+            if (!_skipBackup) {
+                try {
+                    const currentAsset = currentAssets.find(a => a.file_path === currentPath);
+                    if (currentAsset) {
+                        // 计算下一个版本号
+                        const { data: backups } = await sb.from('asset_backups')
+                            .select('version')
+                            .eq('file_path', currentPath)
+                            .order('version', { ascending: false })
+                            .limit(1);
+                        const nextVersion = (backups && backups.length > 0 ? backups[0].version : 0) + 1;
+
+                        await sb.from('asset_backups').insert({
+                            file_path: currentPath,
+                            content: currentAsset.content,
+                            type: currentAsset.type,
+                            container_id: currentAsset.container_id,
+                            load_order: currentAsset.load_order,
+                            is_active: currentAsset.is_active,
+                            version: nextVersion,
+                        });
+
+                        // 清理超过10个版本的旧备份
+                        await sb.rpc('prune_backups', { file: currentPath });
+                    }
+                } catch (be) {
+                    console.warn('备份失败（不影响保存）:', be.message);
+                }
+            }
+
             const { error } = await sb.from('app_assets').update({
                 content, type, container_id: container, load_order: order, is_active: active,
             }).eq('file_path', currentPath);
@@ -820,7 +1594,9 @@ ON CONFLICT (container_id) DO NOTHING;`;
                 document.getElementById('saveStatus').textContent = '保存失败: ' + error.message;
                 return;
             }
-            document.getElementById('saveStatus').textContent = '✅ 已保存';
+            document.getElementById('saveStatus').textContent = _skipBackup ? '✅ 已还原（未创建新备份）' : '✅ 已保存（已备份）';
+            // 还原标记清除
+            _skipBackup = false;
             // 更新本地缓存
             const idx = currentAssets.findIndex(a => a.file_path === currentPath);
             if (idx >= 0) {
@@ -836,7 +1612,7 @@ ON CONFLICT (container_id) DO NOTHING;`;
             if (error) { alert('删除失败: ' + error.message); return; }
             currentAssets = currentAssets.filter(a => a.file_path !== currentPath);
             currentPath = null;
-            document.getElementById('editorArea').value = '';
+            setEditorValue('');
             document.getElementById('editorPath').textContent = '未选择资源';
             document.getElementById('editorType').textContent = '';
             document.getElementById('editorMeta').classList.add('hidden');
@@ -844,13 +1620,14 @@ ON CONFLICT (container_id) DO NOTHING;`;
             document.getElementById('deleteBtn').disabled = true;
             document.getElementById('copyBtn').disabled = true;
             document.getElementById('downloadBtn').disabled = true;
+            document.getElementById('historyBtn').disabled = true;
             renderAssetList();
         }
 
         // ===== 复制/下载资源 =====
         async function copyAsset() {
             if (!currentPath) return;
-            const text = document.getElementById('editorArea').value;
+            const text = getEditorValue();
             const ok = await copyText(text);
             const status = document.getElementById('saveStatus');
             if (ok) {
@@ -862,7 +1639,7 @@ ON CONFLICT (container_id) DO NOTHING;`;
 
         function downloadAsset() {
             if (!currentPath) return;
-            const text = document.getElementById('editorArea').value;
+            const text = getEditorValue();
             const filename = currentPath.split('/').pop();
             downloadFile(filename, text);
         }
@@ -927,6 +1704,34 @@ DROP TABLE IF EXISTS my_table CASCADE;`,
             alter: `-- 给已有表添加字段
 ALTER TABLE my_table ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE my_table ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN DEFAULT false;`,
+            backup: `-- 创建版本备份表（上传文件历史版本）
+CREATE TABLE IF NOT EXISTS asset_backups (
+    id          BIGSERIAL PRIMARY KEY,
+    file_path   TEXT NOT NULL,
+    content     TEXT,
+    type        TEXT DEFAULT 'js',
+    container_id TEXT,
+    load_order  INTEGER DEFAULT 50,
+    is_active   BOOLEAN DEFAULT true,
+    version     INTEGER DEFAULT 1,
+    created_at  TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE asset_backups ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow_read_backups" ON asset_backups FOR SELECT USING (true);
+CREATE POLICY "allow_write_backups" ON asset_backups FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE INDEX IF NOT EXISTS idx_backups_filepath ON asset_backups(file_path);
+
+-- 清理函数：每个文件最多保留10个版本
+CREATE OR REPLACE FUNCTION prune_backups(file TEXT) RETURNS void AS $$
+BEGIN
+    DELETE FROM asset_backups WHERE id IN (
+        SELECT id FROM asset_backups
+        WHERE file_path = file
+        ORDER BY id DESC
+        OFFSET 10
+    );
+END;
+$$ LANGUAGE plpgsql;`,
         };
 
         async function checkExecDdl() {

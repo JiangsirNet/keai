@@ -82,6 +82,10 @@
         if (map.emailjs_service_id) { EMAILJS_SERVICE_ID = map.emailjs_service_id; window.EMAILJS_SERVICE_ID = map.emailjs_service_id; }
         if (map.emailjs_template_id) { EMAILJS_TEMPLATE_ID = map.emailjs_template_id; window.EMAILJS_TEMPLATE_ID = map.emailjs_template_id; }
         if (map.emailjs_public_key) { EMAILJS_PUBLIC_KEY = map.emailjs_public_key; window.EMAILJS_PUBLIC_KEY = map.emailjs_public_key; }
+        // AI 聊天配置（供 ai_chat.js 使用）
+        if (map.zhipu_api_key) window._aiApiKey = map.zhipu_api_key;
+        if (map.zhipu_model) window._aiModel = map.zhipu_model;
+        if (map.zhipu_system_prompt) window._aiSystemPrompt = map.zhipu_system_prompt;
         // 初始化 EmailJS
         if (EMAILJS_PUBLIC_KEY && window.emailjs) {
             try { emailjs.init(EMAILJS_PUBLIC_KEY); } catch (e) { console.warn("EmailJS初始化失败:", e); }

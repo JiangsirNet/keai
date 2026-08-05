@@ -41,6 +41,7 @@ js/                     — JS 模块
 ├── calendar.js         — 日历/打卡/纪念日
 ├── game.js             — 猜拳/骗子酒馆
 ├── background.js       — 背景图设置
+├── ai_chat.js          — 智谱 AI 聊天助手
 └── auth.js             — 认证 + 页面初始化（必须最后加载）
 ARCHITECTURE.md         — 本架构文档（type=md, 供 upload.html 渲染用）
 ```
@@ -65,14 +66,14 @@ ARCHITECTURE.md         — 本架构文档（type=md, 供 upload.html 渲染用
 ### 加载顺序
 
 ```
-CSS (0) → HTML (1-6) → JS (10-22)
+CSS (0) → HTML (1-6) → JS (10-23)
 ```
 
 | 类型 | load_order 范围 | 说明 |
 |---|---|---|
 | `css` | 0 | 所有样式最先加载，确保页面渲染时样式已就绪 |
 | `html` | 1-6 | 全局容器(1-2) → 各页面容器(3-6) |
-| `js` | 10-22 | 功能模块(10-21) → auth.js(22) |
+| `js` | 10-23 | 功能模块(10-22) → ai_chat.js(22) → auth.js(23) |
 | `md` | 99 | 仅供 upload.html 渲染，不参与页面加载 |
 
 ### JS 加载顺序（依赖关系）
@@ -81,7 +82,7 @@ CSS (0) → HTML (1-6) → JS (10-22)
 config_page.js (10) → notifications.js (11) → weather.js (12) → audio.js (13)
 → music.js (14) → pets.js (15) → characters.js (16) → home.js (17)
 → journal.js (18) → calendar.js (19) → game.js (20) → background.js (21)
-→ auth.js (22)
+→ ai_chat.js (22) → auth.js (23)
 ```
 
 > **关键**：`auth.js` 必须最后加载，因为它的 `initPage()` 会调用所有模块的初始化函数。
@@ -121,11 +122,29 @@ config_page.js (10) → notifications.js (11) → weather.js (12) → audio.js (
 
 > `type=md` 仅供 upload.html 的"架构文档"Tab 渲染用，不参与页面加载。
 
+### `asset_backups`（版本备份表）
+
+| 字段 | 说明 |
+|---|---|
+| `id` | 自增主键 |
+| `file_path` | 文件路径（与 app_assets.file_path 对应） |
+| `content` | 备份的文件内容 |
+| `type` | 文件类型（css/html/js/md） |
+| `container_id` | 容器ID（HTML 专用） |
+| `load_order` | 加载顺序 |
+| `is_active` | 是否启用 |
+| `version` | 版本号（自动递增） |
+| `created_at` | 备份时间 |
+
+> **自动备份机制**：在 upload.html「在线管理」Tab 保存文件时，系统自动备份当前版本到 asset_backups 表。每个文件最多保留 10 个版本，超过自动清理最早版本（通过 prune_backups RPC 函数实现）。
+
+> **还原功能**：点击编辑器下方「历史版本」按钮可查看所有备份版本，支持预览、还原、删除操作。
+
 ### 业务表
 
 | 表名 | 用途 | 关键字段 |
 |---|---|---|
-| `app_config` | 全局配置（人物名、API Key、背景图等） | `config_key`, `config_value` |
+| `app_config` | 全局配置（人物名、API Key、背景图、AI配置等） | `config_key`, `config_value` |
 | `profiles` | 用户信息 | `email`, `boy_name`, `girl_name` 等 |
 | `messages` | 留言 | `content`, `author_email`, `likes` |
 | `gallery` | 相册 | `image_url`, `uploader_email` |
@@ -337,6 +356,9 @@ GRANT EXECUTE ON FUNCTION exec_ddl(TEXT) TO authenticated;
 | `window.boyDbQuotes` | Array | 男生话语列表（数据库） |
 | `window.girlDbQuotes` | Array | 女生话语列表（数据库） |
 | `window._defaultPage` | string | 默认页面名（容器表第1个 page 类容器的 page_name） |
+| `window._aiApiKey` | string | 智谱 AI API Key |
+| `window._aiModel` | string | 智谱 AI 模型名 |
+| `window._aiSystemPrompt` | string | 智谱 AI 系统提示词 |
 
 ### 全局函数参考
 
@@ -347,8 +369,71 @@ GRANT EXECUTE ON FUNCTION exec_ddl(TEXT) TO authenticated;
 | `window.compressImage(file, maxW, quality)` | auth.js | 压缩图片 |
 | `window.loadGallery()` | home.js | 加载相册 |
 | `window.clearBackground()` | background.js | 清除背景图 |
+| `window.toggleAiSettings()` | ai_chat.js | 切换 AI 设置面板显示 |
+| `window.saveAiAllOptions()` | ai_chat.js | 保存 AI 配置（API Key/模型/提示词） |
+| `window.sendAiMessage()` | ai_chat.js | 发送消息给 AI |
+| `window.clearAiChat()` | ai_chat.js | 清空对话记录 |
 
-## 十四、开发规范
+## 十四、智谱 AI 聊天助手
+
+### 功能概述
+
+在设置页面底部，提供与智谱 AI 的对话功能，支持多轮对话、模型切换、系统提示词自定义。
+
+### 配置存储
+
+AI 配置存储在 `app_config` 表中：
+
+| config_key | 说明 |
+|---|---|
+| `zhipu_api_key` | 智谱 AI API Key |
+| `zhipu_model` | 模型名称（如 `glm-4.7-flash`） |
+| `zhipu_system_prompt` | 系统提示词 |
+
+### 免费模型推荐
+
+| 模型 | 特点 |
+|---|---|
+| `glm-4.7-flash` | 最新旗舰免费版，200K 上下文 |
+| `glm-4-flash` | 稳定免费版，128K 上下文 |
+| `glm-4-flashx-250414` | Flash 极速增强版 |
+
+> 新用户注册智谱 AI 即送 2000 万 Token 永久免费额度。
+
+### 使用流程
+
+1. 进入「设置」页面，找到「AI 聊天助手」卡片
+2. 点击「⚙️ 设置」展开配置面板
+3. 填入 API Key（从 https://open.bigmodel.cn 获取）
+4. 选择模型（默认 `glm-4.7-flash`）
+5. 可选：自定义系统提示词
+6. 点击「💾 保存所有设置」
+7. 在聊天框输入问题或点击快捷话题开始对话
+
+### API 调用
+
+```
+POST https://open.bigmodel.cn/api/paas/v4/chat/completions
+Headers:
+  Authorization: Bearer <API_KEY>
+  Content-Type: application/json
+Body:
+  {
+    "model": "glm-4.7-flash",
+    "messages": [
+      {"role": "system", "content": "你是我们的恋爱小助手..."},
+      {"role": "user", "content": "你好"}
+    ],
+    "temperature": 0.8
+  }
+```
+
+### 文件结构
+
+- HTML: `partials/config.html` 底部的 AI 聊天助手卡片
+- JS: `js/ai_chat.js`（load_order=22，在 auth.js 之前）
+
+## 十五、开发规范
 
 1. **JS 模块必须用 IIFE 包裹**，避免全局变量冲突
 2. **不要用 `const sb` / `const CONFIG` 顶层声明**，用 `window.sb` / `window.CONFIG`
@@ -362,5 +447,5 @@ GRANT EXECUTE ON FUNCTION exec_ddl(TEXT) TO authenticated;
 10. **Modal/模态框替代原生弹窗**：upload.html 中使用自定义模态框表单（containerModal）和自定义确认框（confirmModal），不使用 prompt/confirm
 11. **CSS 文件 type=css, load_order=0**，确保最先加载
 12. **HTML 文件必须指定 container_id**，对应 app_containers 表中的 container_id
-13. **JS 文件 load_order 必须在 10-22 之间**，auth.js(22) 必须最后
+13. **JS 文件 load_order 必须在 10-23 之间**，ai_chat.js(22) 在 auth.js(23) 之前
 14. **新增文件后需更新两处**：upload.html 的 FILES 数组（本地上传用）和本文档的文件结构
