@@ -59,7 +59,7 @@
         // 记录默认页面
         window._defaultPage = firstPage || 'home';
 
-        // ---- 第2步：查询资源，注入 HTML + 执行 JS ----
+        // ---- 第2步：查询资源，加载 CSS + 注入 HTML + 执行 JS ----
         const { data: assets, error: aErr } = await window.sb
             .from('app_assets')
             .select('file_path, type, container_id, content, load_order')
@@ -75,6 +75,17 @@
             console.warn('loader: 数据库中无资源');
             return;
         }
+
+        // 加载 CSS 样式
+        assets.filter(a => a.type === 'css').forEach(a => {
+            try {
+                const style = document.createElement('style');
+                style.textContent = a.content;
+                document.head.appendChild(style);
+            } catch (e) {
+                console.error(`loader: 加载 CSS ${a.file_path} 失败`, e);
+            }
+        });
 
         // 注入 HTML 片段
         assets.filter(a => a.type === 'html').forEach(a => {
@@ -98,6 +109,10 @@
                 console.error(`loader: 执行 ${a.file_path} 失败`, e);
             }
         });
+
+        // 隐藏 loading 指示器
+        const loading = document.getElementById('appLoading');
+        if (loading) loading.style.display = 'none';
     }
 
     init().catch(err => {

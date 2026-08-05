@@ -8,21 +8,27 @@
 
 ## 二、文件结构
 
+### 本地文件（仅 3 个，不存数据库）
+
 ```
-index.html              — 入口文件（本地，仅3个占位容器，内容全动态生成）
-styles.css              — 所有 CSS 样式（本地，不存数据库）
-upload.html             — 资源管理工具（本地，5个Tab：上传/编辑/SQL/文档/容器配置）
-js/config.js            — Supabase 连接配置（本地，不存数据库）
-js/loader.js            — 动态资源加载器（本地，不存数据库）
-ARCHITECTURE.md         — 本架构文档，通过 upload.html 上传到数据库动态渲染
-partials/               — HTML 片段（本地开发用，通过 upload.html 上传到数据库）
+index.html              — 入口文件（本地，仅包含 loading 指示器 + 占位容器 + 最小初始样式）
+js/config.js            — Supabase 连接配置（本地）
+js/loader.js            — 动态资源加载器（本地）
+upload.html             — 资源管理工具（本地开发用，6个Tab）
+```
+
+### 数据库文件（通过 upload.html 上传到 app_assets 表）
+
+```
+styles.css              — 所有 CSS 样式（type=css, order=0, 最先加载）
+partials/               — HTML 片段
 ├── login.html          — 登录面板
 ├── preview.html        — 大图预览弹窗
 ├── home.html           — 首页（相册/留言）
 ├── journal.html        — 日志 + 日历打卡 + 纪念日
 ├── game.html           — 游戏页
 └── config.html         — 设置页
-js/                     — JS 模块（本地开发用，通过 upload.html 上传到数据库）
+js/                     — JS 模块
 ├── config_page.js      — 人物话语管理
 ├── notifications.js    — 通知系统（sendNotification）
 ├── weather.js          — 天气组件
@@ -36,21 +42,53 @@ js/                     — JS 模块（本地开发用，通过 upload.html 上
 ├── game.js             — 猜拳/骗子酒馆
 ├── background.js       — 背景图设置
 └── auth.js             — 认证 + 页面初始化（必须最后加载）
+ARCHITECTURE.md         — 本架构文档（type=md, 供 upload.html 渲染用）
 ```
 
 ## 三、资源加载机制
 
-### 本地文件（仅 5 个，不存数据库）
+### loader.js 工作流程
 
-| 文件 | 作用 |
-|---|---|
-| `index.html` | 入口，仅包含全局元素 + 3 个占位容器，加载 config.js 和 loader.js |
-| `styles.css` | 所有 CSS |
-| `js/config.js` | Supabase 连接配置，导出 `window.sb`、`window.CONFIG` 等 |
-| `js/loader.js` | 从 `app_containers` 生成容器导航，从 `app_assets` 加载 HTML/JS |
-| `upload.html` | 资源管理工具（上传/在线编辑/SQL/文档/容器配置） |
+```javascript
+// 第1步：查询 app_containers，按 sort_order 排序
+//    placement=global → 在 <div id="globalContainers"> 里创建容器
+//    placement=page   → 在 <nav id="navBar"> 里创建导航按钮，在 <div id="pageContainers"> 里创建容器
 
-### 数据库表：`app_containers`（容器配置表）
+// 第2步：查询 app_assets（is_active=true），按 load_order 排序
+//    type=css   → 创建 <style> 标签插入 <head>
+//    type=html  → 找到 container_id 对应的 DOM，innerHTML = content
+//    type=js    → 创建 <script> 标签插入 body 执行
+
+// 第3步：隐藏 loading 指示器
+```
+
+### 加载顺序
+
+```
+CSS (0) → HTML (1-6) → JS (10-22)
+```
+
+| 类型 | load_order 范围 | 说明 |
+|---|---|---|
+| `css` | 0 | 所有样式最先加载，确保页面渲染时样式已就绪 |
+| `html` | 1-6 | 全局容器(1-2) → 各页面容器(3-6) |
+| `js` | 10-22 | 功能模块(10-21) → auth.js(22) |
+| `md` | 99 | 仅供 upload.html 渲染，不参与页面加载 |
+
+### JS 加载顺序（依赖关系）
+
+```
+config_page.js (10) → notifications.js (11) → weather.js (12) → audio.js (13)
+→ music.js (14) → pets.js (15) → characters.js (16) → home.js (17)
+→ journal.js (18) → calendar.js (19) → game.js (20) → background.js (21)
+→ auth.js (22)
+```
+
+> **关键**：`auth.js` 必须最后加载，因为它的 `initPage()` 会调用所有模块的初始化函数。
+
+## 四、数据库表结构
+
+### `app_containers`（容器配置表）
 
 存储所有页面容器和导航按钮配置。**新增/修改页面不需要改 index.html，只需改这个表。**
 
@@ -70,12 +108,12 @@ js/                     — JS 模块（本地开发用，通过 upload.html 上
 (placement=page)   pageHomeContainer🏠 → pageJournalContainer📖 → pageGameContainer🎮 → pageConfigContainer⚙️
 ```
 
-### 数据库表：`app_assets`（资源表）
+### `app_assets`（资源表）
 
 | 字段 | 说明 |
 |---|---|
-| `file_path` | 文件路径，唯一键（如 `partials/home.html`、`js/auth.js`、`ARCHITECTURE.md`） |
-| `type` | `html` / `js` / `md` |
+| `file_path` | 文件路径，唯一键（如 `styles.css`、`partials/home.html`、`js/auth.js`、`ARCHITECTURE.md`） |
+| `type` | `css` / `html` / `js` / `md` |
 | `container_id` | HTML 专用，注入到哪个 DOM 容器（与 app_containers.container_id 对应） |
 | `content` | 文件内容（纯文本） |
 | `load_order` | 加载顺序，数字小的先加载 |
@@ -83,30 +121,27 @@ js/                     — JS 模块（本地开发用，通过 upload.html 上
 
 > `type=md` 仅供 upload.html 的"架构文档"Tab 渲染用，不参与页面加载。
 
-### loader.js 工作流程
+### 业务表
 
-```javascript
-// 第1步：查询 app_containers，按 sort_order 排序
-//    placement=global → 在 <div id="globalContainers"> 里创建容器
-//    placement=page   → 在 <nav id="navBar"> 里创建导航按钮，在 <div id="pageContainers"> 里创建容器
+| 表名 | 用途 | 关键字段 |
+|---|---|---|
+| `app_config` | 全局配置（人物名、API Key、背景图等） | `config_key`, `config_value` |
+| `profiles` | 用户信息 | `email`, `boy_name`, `girl_name` 等 |
+| `messages` | 留言 | `content`, `author_email`, `likes` |
+| `gallery` | 相册 | `image_url`, `uploader_email` |
+| `journals` | 日志 | `title`, `content`, `author_email` |
+| `calendar_checkins` | 日历打卡 | `check_date`, `user_email` |
+| `anniversaries` | 纪念日 | `date`, `title` |
+| `music` | 音乐 | `title`, `url`, `uploader_email` |
+| `rps_games` | 猜拳游戏记录 | `player_email`, `choice` |
 
-// 第2步：查询 app_assets（is_active=true），按 load_order 排序
-//    type=html → 找到 container_id 对应的 DOM，innerHTML = content
-//    type=js   → 创建 <script> 标签插入 body 执行
-```
+### RLS 策略规则
 
-### JS 加载顺序（依赖关系）
+- **公开读**：`app_containers`、`app_assets`、`app_config`、`messages`、`gallery`、`journals`、`music` 等允许匿名 SELECT
+- **认证写**：所有表允许 `authenticated` 用户 INSERT/UPDATE/DELETE
+- 新建表时务必添加这两条策略
 
-```
-config_page.js (10) → notifications.js (11) → weather.js (12) → audio.js (13)
-→ music.js (14) → pets.js (15) → characters.js (16) → home.js (17)
-→ journal.js (18) → calendar.js (19) → game.js (20) → background.js (21)
-→ auth.js (22)
-```
-
-> **关键**：`auth.js` 必须最后加载，因为它的 `initPage()` 会调用所有模块的初始化函数。
-
-## 四、如何新增页面
+## 五、如何新增页面
 
 **不需要改 index.html！** 所有操作通过 upload.html 完成。
 
@@ -164,6 +199,8 @@ config_page.js (10) → notifications.js (11) → weather.js (12) → audio.js (
 
 **5. 如需新数据表，在 Supabase 执行建表 SQL**
 
+可以使用 upload.html 的"SQL 执行"Tab，通过 `exec_ddl` RPC 函数执行：
+
 ```sql
 CREATE TABLE IF NOT EXISTS favorites (
     id          BIGSERIAL PRIMARY KEY,
@@ -175,7 +212,7 @@ CREATE POLICY "allow_public_read_xxx" ON favorites FOR SELECT USING (true);
 CREATE POLICY "allow_auth_write_xxx" ON favorites FOR ALL TO authenticated USING (true) WITH CHECK (true);
 ```
 
-## 五、如何修改现有页面
+## 六、如何修改现有页面
 
 ### 方式一：在线编辑（推荐，发布后也可用）
 
@@ -189,7 +226,7 @@ CREATE POLICY "allow_auth_write_xxx" ON favorites FOR ALL TO authenticated USING
 1. 编辑本地 `partials/` 或 `js/` 目录下的文件
 2. 打开 `upload.html` → "本地上传" → "全部上传"
 
-## 六、如何往已有页面追加内容
+## 七、如何往已有页面追加内容
 
 **问题**：两个 HTML 文件设同一个 `container_id`，后加载的会覆盖前者。
 
@@ -202,7 +239,7 @@ CREATE POLICY "allow_auth_write_xxx" ON favorites FOR ALL TO authenticated USING
 
 2. 新建 HTML 文件，`container_id` 设为 `customConfigContainer`，`load_order` 设为比父页面大的值（确保父页面先加载，子容器先存在于 DOM 中）
 
-## 七、如何修改容器/导航配置
+## 八、如何修改容器/导航配置
 
 打开 `upload.html` → "容器配置" Tab：
 - **新增**：点"新增容器" → 模态框表单填写
@@ -212,7 +249,14 @@ CREATE POLICY "allow_auth_write_xxx" ON favorites FOR ALL TO authenticated USING
 
 > 模态框表单字段：container_id、page_name、位置（page/global）、导航文字、图标、排序、启用。全部通过表单输入，无原生 prompt/confirm/alert。
 
-## 八、如何新增 JS 模块
+## 九、如何新增 CSS 样式
+
+1. 编辑本地 `styles.css` 文件
+2. 或通过 upload.html → "在线管理" → 找到 `styles.css` → 编辑保存
+
+> CSS 文件的 `load_order` 应为 0（最先加载），确保所有 HTML/JS 渲染前样式已就绪。
+
+## 十、如何新增 JS 模块
 
 1. 创建 `js/xxx.js`，用 IIFE 包裹：
 ```javascript
@@ -233,43 +277,46 @@ CREATE POLICY "allow_auth_write_xxx" ON favorites FOR ALL TO authenticated USING
 
 > **注意**：不要在顶层用 `const sb` 或 `const CONFIG`，会与 `config.js` 冲突。用 IIFE 或 `window.sb` 访问。
 
-## 九、upload.html 功能
+## 十一、upload.html 功能
 
-5 个 Tab，全部不使用原生弹窗（prompt/confirm/alert 除错误外）：
+6 个 Tab，全部不使用原生弹窗（prompt/confirm/alert 除错误外）：
 
 | Tab | 功能 |
 |---|---|
-| 本地上传 | 读取本地 FILES 数组列出的文件，批量 fetch + upsert 到 app_assets 表 |
-| 在线管理 | 左侧列表 app_assets 记录 → 右侧文本框实时编辑、保存、删除、新增（type/container_id/load_order 都可改） |
-| 建表 SQL | 包含三张表的建表 SQL + RLS 策略 + app_containers 初始数据。一键复制 |
-| 架构文档 | 从数据库读取 `ARCHITECTURE.md` 记录 → 用 marked.js 实时渲染 Markdown → 可在线编辑并保存回数据库 |
+| 本地上传 | 读取本地 FILES 数组列出的文件（含 styles.css），批量 fetch + upsert 到 app_assets 表 |
+| 在线管理 | 左侧列表 app_assets 记录 → 右侧文本框实时编辑、保存、删除、新增（type/container_id/load_order 都可改），支持 css/html/js/md 四种类型 |
+| 建表 SQL | 包含所有表的建表 SQL + RLS 策略 + app_containers 初始数据。支持复制/下载 |
+| 架构文档 | 从数据库读取 `ARCHITECTURE.md` 记录 → 用 marked.js 实时渲染 Markdown → 可在线编辑并保存回数据库。支持复制/下载 |
 | 容器配置 | 管理 app_containers 表：新增/编辑/删除容器，控制导航栏和页面布局。使用模态框表单，不用 prompt |
+| SQL 执行 | 通过 `exec_ddl` RPC 函数执行 DDL 语句（建表/删表/改表/加策略）。支持预设模板、复制、执行结果展示 |
 
-## 十、数据库结构
+## 十二、SQL 执行器
 
-### 主要表
+### 安装 exec_ddl 函数
 
-| 表名 | 用途 | 关键字段 |
-|---|---|---|
-| `app_containers` | **容器配置（导航+容器动态生成）** | `container_id`, `page_name`, `nav_label`, `nav_icon`, `sort_order`, `placement`, `is_active` |
-| `app_assets` | HTML 片段、JS 模块、Markdown 文档 | `file_path`, `type`, `container_id`, `content`, `load_order`, `is_active` |
-| `app_config` | 全局配置（人物名、API Key、背景图等） | `config_key`, `config_value` |
-| `profiles` | 用户信息 | `email`, `boy_name`, `girl_name` 等 |
-| `messages` | 留言 | `content`, `author_email`, `likes` |
-| `gallery` | 相册 | `image_url`, `uploader_email` |
-| `journals` | 日志 | `title`, `content`, `author_email` |
-| `calendar_checkins` | 日历打卡 | `check_date`, `user_email` |
-| `anniversaries` | 纪念日 | `date`, `title` |
-| `music` | 音乐 | `title`, `url`, `uploader_email` |
-| `rps_games` | 猜拳游戏记录 | `player_email`, `choice` |
+首次使用前，需在 Supabase Dashboard → SQL Editor 执行：
 
-### RLS 策略规则
+```sql
+CREATE OR REPLACE FUNCTION exec_ddl(sql_text TEXT)
+RETURNS void AS $$
+BEGIN
+    EXECUTE sql_text;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+REVOKE EXECUTE ON FUNCTION exec_ddl(TEXT) FROM anon, public;
+GRANT EXECUTE ON FUNCTION exec_ddl(TEXT) TO authenticated;
+```
 
-- **公开读**：`app_containers`、`app_assets`、`app_config`、`messages`、`gallery`、`journals`、`music` 等允许匿名 SELECT
-- **认证写**：所有表允许 `authenticated` 用户 INSERT/UPDATE/DELETE
-- 新建表时务必添加这两条策略
+### 使用
 
-## 十一、全局变量参考
+打开 upload.html → "SQL 执行" Tab：
+- 输入 SQL 语句（支持多条分号分隔）
+- 或点击预设模板（建表/RLS策略/删表/加字段）
+- 点"执行" → 查看结果
+
+> **安全**：`exec_ddl` 仅允许 `authenticated` 角色调用，匿名用户无权执行。
+
+## 十三、全局变量参考
 
 以下变量在 `config.js` 中定义并导出到 `window`，所有模块可通过 `window.xxx` 访问：
 
@@ -301,7 +348,7 @@ CREATE POLICY "allow_auth_write_xxx" ON favorites FOR ALL TO authenticated USING
 | `window.loadGallery()` | home.js | 加载相册 |
 | `window.clearBackground()` | background.js | 清除背景图 |
 
-## 十二、开发规范
+## 十四、开发规范
 
 1. **JS 模块必须用 IIFE 包裹**，避免全局变量冲突
 2. **不要用 `const sb` / `const CONFIG` 顶层声明**，用 `window.sb` / `window.CONFIG`
@@ -313,3 +360,7 @@ CREATE POLICY "allow_auth_write_xxx" ON favorites FOR ALL TO authenticated USING
 8. **发送通知用 `window.sendNotification`**，自带去重机制
 9. **新增页面不用改 index.html**，用 upload.html 的"容器配置"Tab 加一条记录即可
 10. **Modal/模态框替代原生弹窗**：upload.html 中使用自定义模态框表单（containerModal）和自定义确认框（confirmModal），不使用 prompt/confirm
+11. **CSS 文件 type=css, load_order=0**，确保最先加载
+12. **HTML 文件必须指定 container_id**，对应 app_containers 表中的 container_id
+13. **JS 文件 load_order 必须在 10-22 之间**，auth.js(22) 必须最后
+14. **新增文件后需更新两处**：upload.html 的 FILES 数组（本地上传用）和本文档的文件结构

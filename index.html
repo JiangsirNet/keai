@@ -22,10 +22,15 @@
             }
         }
     </script>
-    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* 初始加载样式，防止闪烁 */
+        body { font-family: system-ui, -apple-system, sans-serif; background: #fef2f4; margin: 0; }
+        #appLoading { display: flex; align-items: center; justify-content: center; height: 100vh; color: #ff6b8b; font-size: 18px; }
+    </style>
 </head>
 
 <body>
+    <div id="appLoading"><i class="fa fa-spinner fa-spin"></i> 加载中...</div>
     <div id="heartBox"></div>
 
     <!-- 男生 Live2D 风格互动形象 -->

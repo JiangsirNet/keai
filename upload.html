@@ -78,7 +78,7 @@
         <!-- ===== Tab: 本地上传 ===== -->
         <div id="panelLocal" class="bg-white rounded-xl p-4 shadow mb-6">
             <h2 class="font-bold text-gray-700 mb-2">上传本地文件到数据库</h2>
-            <p class="text-sm text-gray-500 mb-3">读取本地 partials/ 和 js/ 目录的文件并上传。仅在本地服务器可用。</p>
+            <p class="text-sm text-gray-500 mb-3">读取本地 styles.css、partials/ 和 js/ 目录的文件并上传。仅在本地服务器可用。</p>
             <button onclick="uploadAll()" id="uploadBtn" class="bg-love text-white px-6 py-3 rounded-xl font-semibold hover:bg-loveDark transition">
                 <i class="fa fa-upload"></i> 全部上传
             </button>
@@ -108,8 +108,10 @@
                     <div id="editorMeta" class="hidden flex flex-wrap gap-2 mb-3 text-xs">
                         <label class="flex items-center gap-1">类型:
                             <select id="metaType" class="border border-gray-200 rounded px-2 py-1">
+                                <option value="css">css</option>
                                 <option value="js">js</option>
                                 <option value="html">html</option>
+                                <option value="md">md</option>
                             </select>
                         </label>
                         <label class="flex items-center gap-1">容器ID:
@@ -383,6 +385,7 @@ ON CONFLICT (container_id) DO NOTHING;`;
 
         // ===== 本地上传文件清单 =====
         const FILES = [
+            { path: 'styles.css',           type: 'css',  container: null, order: 0 },
             { path: 'partials/login.html',   type: 'html', container: 'loginPanelContainer',   order: 1 },
             { path: 'partials/preview.html', type: 'html', container: 'previewModalContainer', order: 2 },
             { path: 'partials/home.html',    type: 'html', container: 'pageHomeContainer',     order: 3 },
@@ -876,11 +879,15 @@ ON CONFLICT (container_id) DO NOTHING;`;
         }
 
         function showNewForm() {
-            const path = prompt('输入资源路径（如 partials/new.html 或 js/new.js）:');
+            const path = prompt('输入资源路径（如 styles.css 或 partials/new.html 或 js/new.js）:');
             if (!path) return;
-            const type = path.endsWith('.html') ? 'html' : 'js';
+            let type = 'js';
+            if (path.endsWith('.html')) type = 'html';
+            else if (path.endsWith('.css')) type = 'css';
+            else if (path.endsWith('.md')) type = 'md';
+            else type = 'js';
             const container = type === 'html' ? prompt('容器ID（如 pageHomeContainer，可留空）:') || null : null;
-            const order = parseInt(prompt('加载顺序（数字，小的先加载）:', '50')) || 50;
+            const order = parseInt(prompt('加载顺序（数字，小的先加载，CSS 建议 0）:', '50')) || 50;
             // 插入空记录
             sb.from('app_assets').upsert({
                 file_path: path, type, container_id: container,
