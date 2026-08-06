@@ -4,6 +4,10 @@ let calSelectedDate = null;
 let calCheckins = [];
 let calTodos = [];
 let calMemos = [];
+// 事件数据 map（供下方事件展示区使用）
+let calMemoMap = {};
+let calCheckinNamesMap = {};
+let calTodoTitlesMap = {};
 
 const CAL_MONTHS = ["一月","二月","三月","四月","五月","六月","七月","八月","九月","十月","十一月","十二月"];
 
@@ -98,6 +102,11 @@ async function refreshCalendar() {
     if (!memoMap[startMd]) memoMap[startMd] = [];
     memoMap[startMd].push("相恋起始日");
 
+    // 暴露给事件展示区
+    calMemoMap = memoMap;
+    calCheckinNamesMap = checkinNamesMap;
+    calTodoTitlesMap = todoTitlesMap;
+
     const grid = document.getElementById("calGrid");
     grid.innerHTML = "";
     const todayStr = fmtCalDate(new Date());
@@ -129,16 +138,6 @@ async function refreshCalendar() {
 
         const memoTitles = memoMap[dateMd] || [];
         const todoTitles = todoTitlesMap[dateStr] || [];
-        let labelHtml = "";
-        memoTitles.forEach(t => {
-            labelHtml += `<div class="cal-label memo-label">${t}</div>`;
-        });
-        if (checkinNames.length) {
-            labelHtml += `<div class="cal-label checkin-label">${checkinNames.join("·")}打卡</div>`;
-        }
-        todoTitles.forEach(t => {
-            labelHtml += `<div class="cal-label todo-label">${t}</div>`;
-        });
 
         const titleParts = [];
         if (memoTitles.length) titleParts.push("纪念日：" + memoTitles.join("、"));
@@ -146,7 +145,7 @@ async function refreshCalendar() {
         if (todoTitles.length) titleParts.push("代办(" + todoTitles.length + ")：" + todoTitles.join("、"));
         const titleAttr = titleParts.length ? ` title="${titleParts.join('&#10;')}"` : "";
 
-        grid.innerHTML += `<div class="${classes.join(" ")}" onclick="selectCalDate('${dateStr}')"${titleAttr}><span>${d}</span>${labelHtml}${dotsHtml}</div>`;
+        grid.innerHTML += `<div class="${classes.join(" ")}" onclick="selectCalDate('${dateStr}')"${titleAttr}><span>${d}</span>${dotsHtml}</div>`;
     }
     const totalCells = firstDay + daysInMonth;
     const tail = (7 - (totalCells % 7)) % 7;
@@ -234,8 +233,42 @@ function updateCheckinBtn() {
         if (u === (window.CONFIG.girlEmail || "").toLowerCase()) return window.CONFIG.girlName;
         return u || "匿名";
     });
-    document.getElementById("calSelectedDate").innerText =
-        calSelectedDate + (names.length ? `  (${names.join("、")} 已打卡)` : "");
+    document.getElementById("calSelectedDate").innerText = calSelectedDate;
+    renderCalEvents(names);
+}
+
+// 渲染选中日期的事件列表（纪念日 / 打卡 / 代办）到日历下方
+function renderCalEvents(checkinNames) {
+    const box = document.getElementById("calEventList");
+    if (!box) return;
+    if (!calSelectedDate) { box.innerHTML = ""; return; }
+    if (!checkinNames) {
+        const set = (calCheckinNamesMap[calSelectedDate] || []);
+        checkinNames = set;
+    }
+    const dateMd = calSelectedDate.slice(5);
+    const memos = calMemoMap[dateMd] || [];
+    const todos = calTodoTitlesMap[calSelectedDate] || [];
+    const items = [];
+    memos.forEach(t => items.push({ type: "memo", text: t }));
+    if (checkinNames && checkinNames.length) items.push({ type: "checkin", text: checkinNames.join("、") + " 打卡" });
+    todos.forEach(t => items.push({ type: "todo", text: t }));
+
+    if (items.length === 0) {
+        box.innerHTML = '<div class="text-xs text-gray-400 py-1">当日暂无事件</div>';
+        return;
+    }
+    const styleMap = {
+        memo: 'color:#8b5cf6;background:#f5f3ff;',
+        checkin: 'color:#6b7280;background:#f9fafb;',
+        todo: 'color:#f59e0b;background:#fffbeb;'
+    };
+    const iconMap = { memo: "fa-heart", checkin: "fa-check-circle", todo: "fa-flag" };
+    box.innerHTML = items.map(it => {
+        return `<div class="cal-event" style="${styleMap[it.type]}">
+            <i class="fa ${iconMap[it.type]}"></i><span>${it.text}</span>
+        </div>`;
+    }).join("");
 }
 
 async function addTodo() {

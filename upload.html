@@ -8,8 +8,8 @@
     <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.staticfile.org/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.52/min/vs/loader.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script>
         tailwind.config = {
             theme: { extend: { colors: { love: '#ff6b8b', loveDark: '#e04c6e' } } }
@@ -471,6 +471,8 @@ ON CONFLICT (container_id) DO NOTHING;`;
         // ===== 本地上传文件清单 =====
         const FILES = [
             { path: 'styles.css',           type: 'css',  container: null, order: 0 },
+            { path: 'styles_layout.css',    type: 'css',  container: null, order: 0 },
+            { path: 'styles_mobile.css',    type: 'css',  container: null, order: 0 },
             { path: 'partials/login.html',   type: 'html', container: 'loginPanelContainer',   order: 1 },
             { path: 'partials/preview.html', type: 'html', container: 'previewModalContainer', order: 2 },
             { path: 'partials/home.html',    type: 'html', container: 'pageHomeContainer',     order: 3 },
@@ -484,13 +486,16 @@ ON CONFLICT (container_id) DO NOTHING;`;
             { path: 'js/music.js',           type: 'js', container: null, order: 14 },
             { path: 'js/pets.js',            type: 'js', container: null, order: 15 },
             { path: 'js/characters.js',      type: 'js', container: null, order: 16 },
-            { path: 'js/home.js',            type: 'js', container: null, order: 17 },
-            { path: 'js/journal.js',         type: 'js', container: null, order: 18 },
-            { path: 'js/calendar.js',        type: 'js', container: null, order: 19 },
-            { path: 'js/game.js',            type: 'js', container: null, order: 20 },
-            { path: 'js/background.js',      type: 'js', container: null, order: 21 },
-            { path: 'js/ai_chat.js',         type: 'js', container: null, order: 22 },
-            { path: 'js/auth.js',            type: 'js', container: null, order: 23 },
+            { path: 'js/characters_girl.js', type: 'js', container: null, order: 17 },
+            { path: 'js/home.js',            type: 'js', container: null, order: 18 },
+            { path: 'js/journal.js',         type: 'js', container: null, order: 19 },
+            { path: 'js/calendar.js',        type: 'js', container: null, order: 20 },
+            { path: 'js/game.js',            type: 'js', container: null, order: 21 },
+            { path: 'js/game_liar.js',       type: 'js', container: null, order: 22 },
+            { path: 'js/background.js',      type: 'js', container: null, order: 23 },
+            { path: 'js/ai_chat.js',         type: 'js', container: null, order: 24 },
+            { path: 'js/pull_refresh.js',    type: 'js', container: null, order: 25 },
+            { path: 'js/auth.js',            type: 'js', container: null, order: 26 },
             { path: 'ARCHITECTURE.md',       type: 'md', container: null, order: 99 },
         ];
 
@@ -508,6 +513,8 @@ ON CONFLICT (container_id) DO NOTHING;`;
                 loadAssets();
                 // 恢复 AI 聊天记录
                 restoreAiChatUI();
+                // 预加载自动引用的 md 文件，供用户查看和手动取消
+                loadAutoMdFiles();
                 // 轮询确保 Monaco 就绪后刷新布局（处理首次加载延迟）
                 let layoutTries = 0;
                 const layoutInterval = setInterval(() => {
@@ -573,6 +580,7 @@ ON CONFLICT (container_id) DO NOTHING;`;
             document.getElementById('docView').classList.remove('hidden');
             document.getElementById('docEdit').classList.add('hidden');
             status.textContent = '✅ 已保存';
+            bumpAssetsVersion();
         }
 
         // ===== 容器配置管理 =====
@@ -757,6 +765,7 @@ ON CONFLICT (container_id) DO NOTHING;`;
             }
             closeContainerModal();
             loadContainers();
+            bumpAssetsVersion();
         }
 
         function deleteContainer(id) {
@@ -766,6 +775,7 @@ ON CONFLICT (container_id) DO NOTHING;`;
                 const { error } = await sb.from('app_containers').delete().eq('id', id);
                 if (error) { alert('删除失败: ' + error.message); return; }
                 loadContainers();
+                bumpAssetsVersion();
             });
         }
 
@@ -845,6 +855,7 @@ ON CONFLICT (container_id) DO NOTHING;`;
                 }
             }
             log(`完成！成功 ${ok}，失败 ${fail}`, ok === FILES.length ? 'ok' : 'err');
+            if (ok > 0) bumpAssetsVersion();
             btn.disabled = false;
             btn.innerHTML = '<i class="fa fa-upload"></i> 全部上传';
         }
@@ -965,6 +976,7 @@ ON CONFLICT (container_id) DO NOTHING;`;
         let aiCodeModel = 'glm-4.7-flash';
         let aiCodeSending = false;
         let aiReferencedFiles = []; // 用户手动引用的文件列表 [{file_path, content, type}]
+        let aiAutoMdFiles = []; // 自动加载的 md 文件列表 [{file_path, content}]
 
         // 聊天记录持久化（localStorage）
         const AI_HISTORY_KEY = 'ai_chat_history';
@@ -1035,26 +1047,75 @@ ON CONFLICT (container_id) DO NOTHING;`;
             renderRefFiles();
         }
 
+        // 自动加载所有 md 文件到引用列表
+        async function loadAutoMdFiles() {
+            try {
+                const { data: mdFiles } = await sb.from('app_assets')
+                    .select('file_path, content')
+                    .eq('type', 'md')
+                    .eq('is_active', true);
+                aiAutoMdFiles = (mdFiles || []).map(f => ({
+                    file_path: f.file_path,
+                    content: f.content || ''
+                }));
+            } catch (e) {
+                console.warn('加载 md 文件失败:', e);
+                aiAutoMdFiles = [];
+            }
+            renderRefFiles();
+        }
+
+        // 从自动加载列表移除某个 md 文件
+        function removeAutoMdFile(filePath) {
+            aiAutoMdFiles = aiAutoMdFiles.filter(f => f.file_path !== filePath);
+            renderRefFiles();
+        }
+
+        // 清空所有引用文件（自动 + 手动）
+        function clearAllRefFiles() {
+            aiAutoMdFiles = [];
+            aiReferencedFiles = [];
+            renderAssetList();
+            renderRefFiles();
+        }
+
         function renderRefFiles() {
             const container = document.getElementById('aiRefFiles');
             if (!container) return;
-            
-            if (aiReferencedFiles.length === 0) {
+
+            const total = aiAutoMdFiles.length + aiReferencedFiles.length;
+            if (total === 0) {
                 container.innerHTML = '<div class="text-xs text-gray-400 text-center py-1">📎 点击资源列表的「引用」按钮添加文件</div>';
                 container.classList.add('hidden');
                 return;
             }
-            
+
             container.classList.remove('hidden');
-            container.innerHTML = '<div class="text-xs text-gray-500 mb-1">📎 已引用 ' + aiReferencedFiles.length + ' 个文件</div>' +
-                aiReferencedFiles.map(f => `
-                    <div class="flex items-center justify-between bg-rose-50 rounded px-2 py-1 mb-1 text-xs">
-                        <span class="truncate flex-1">${escapeHtml(f.file_path)}</span>
-                        <button onclick="removeRefFile('${f.file_path}')" class="text-red-400 hover:text-red-600 ml-1">
+            let html = '<div class="text-xs text-gray-500 mb-1">📎 已引用 ' + total + ' 个文件（发送后自动清空）</div>';
+
+            // 自动加载的 md 文件
+            aiAutoMdFiles.forEach(f => {
+                html += `
+                    <div class="flex items-center justify-between bg-blue-50 rounded px-2 py-1 mb-1 text-xs">
+                        <span class="truncate flex-1"><span class="text-blue-500">[自动]</span> ${escapeHtml(f.file_path)}</span>
+                        <button onclick="removeAutoMdFile('${f.file_path}')" class="text-red-400 hover:text-red-600 ml-1" title="取消引用">
                             <i class="fa fa-times"></i>
                         </button>
-                    </div>
-                `).join('');
+                    </div>`;
+            });
+
+            // 手动引用的文件
+            aiReferencedFiles.forEach(f => {
+                html += `
+                    <div class="flex items-center justify-between bg-rose-50 rounded px-2 py-1 mb-1 text-xs">
+                        <span class="truncate flex-1">${escapeHtml(f.file_path)}</span>
+                        <button onclick="removeRefFile('${f.file_path}')" class="text-red-400 hover:text-red-600 ml-1" title="取消引用">
+                            <i class="fa fa-times"></i>
+                        </button>
+                    </div>`;
+            });
+
+            container.innerHTML = html;
         }
 
         // 切换 AI 面板显示
@@ -1163,21 +1224,13 @@ ON CONFLICT (container_id) DO NOTHING;`;
             input.value = '';
             aiCodeSending = true;
 
-            // 自动加载所有 md 文件作为上下文
+            // 用当前引用列表构造上下文（不在此处自动加载，发送后即清空）
             let mdContext = '';
-            try {
-                const { data: mdFiles } = await sb.from('app_assets')
-                    .select('file_path, content')
-                    .eq('type', 'md')
-                    .eq('is_active', true);
-                if (mdFiles && mdFiles.length > 0) {
-                    mdContext = '## 项目文档（请参考以下文档回答问题）\n\n';
-                    mdFiles.forEach(f => {
-                        mdContext += `### ${f.file_path}\n\`\`\`\n${(f.content || '').substring(0, 20000)}\n\`\`\`\n\n`;
-                    });
-                }
-            } catch (e) {
-                console.warn('加载 md 文件失败:', e);
+            if (aiAutoMdFiles.length > 0) {
+                mdContext = '## 项目文档（请参考以下文档回答问题）\n\n';
+                aiAutoMdFiles.forEach(f => {
+                    mdContext += `### ${f.file_path}\n\`\`\`\n${(f.content || '').substring(0, 20000)}\n\`\`\`\n\n`;
+                });
             }
 
             // 用户手动引用的文件
@@ -1276,6 +1329,8 @@ ON CONFLICT (container_id) DO NOTHING;`;
                 addAiMsg('assistant', '❌ 请求失败: ' + e.message);
             } finally {
                 aiCodeSending = false;
+                // 本轮对话结束，自动清空所有引用文件
+                clearAllRefFiles();
             }
         }
 
@@ -1295,24 +1350,67 @@ ON CONFLICT (container_id) DO NOTHING;`;
         }
 
         window.removeRefFile = removeRefFile;
+        window.removeAutoMdFile = removeAutoMdFile;
         window.clearAiChat = clearAiChat;
 
         // ===== 全部下载为 ZIP =====
+        // 动态加载脚本（加载 UMD 库时临时禁用 AMD，避免与 Monaco 的 define 冲突）
+        function loadScript(url, disableAmd) {
+            return new Promise((resolve, reject) => {
+                let savedAmd;
+                if (disableAmd && window.define && window.define.amd) {
+                    savedAmd = window.define.amd;
+                    window.define.amd = false;
+                }
+                const s = document.createElement('script');
+                s.src = url;
+                s.onload = () => {
+                    if (savedAmd !== undefined && window.define) window.define.amd = savedAmd;
+                    resolve(true);
+                };
+                s.onerror = () => {
+                    if (savedAmd !== undefined && window.define) window.define.amd = savedAmd;
+                    reject(new Error('load failed: ' + url));
+                };
+                document.head.appendChild(s);
+            });
+        }
+        // 确保 JSZip 已加载，主 CDN 失败则尝试备用 CDN
+        async function ensureJSZip() {
+            if (typeof JSZip !== 'undefined') return true;
+            const cdns = [
+                'https://cdn.staticfile.org/jszip/3.10.1/jszip.min.js',
+                'https://cdn.bootcdn.net/ajax/libs/jszip/3.10.1/jszip.min.js',
+                'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js',
+                'https://unpkg.com/jszip@3.10.1/dist/jszip.min.js'
+            ];
+            for (const url of cdns) {
+                try {
+                    await loadScript(url, true);
+                    if (typeof JSZip !== 'undefined') return true;
+                } catch (e) { /* 尝试下一个 CDN */ }
+            }
+            return false;
+        }
+
         async function downloadAllAssets() {
             if (!currentAssets || currentAssets.length === 0) {
                 alert('暂无资源可下载');
                 return;
             }
-            if (typeof JSZip === 'undefined') {
-                alert('JSZip 未加载，请检查网络');
-                return;
-            }
-
             const btn = event?.currentTarget;
             if (btn) {
                 btn.disabled = true;
-                btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> 打包中...';
+                btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> 加载中...';
             }
+            // 确保 JSZip 可用（主 CDN 失败自动尝试备用）
+            const ok = await ensureJSZip();
+            if (!ok) {
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa fa-download"></i> 全部下载（ZIP）'; }
+                alert('JSZip 加载失败，请检查网络后重试');
+                return;
+            }
+            if (btn) btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> 打包中...';
 
             try {
                 const zip = new JSZip();
@@ -1464,6 +1562,16 @@ ON CONFLICT (container_id) DO NOTHING;`;
         window.restoreBackup = restoreBackup;
         window.deleteBackup = deleteBackup;
 
+        // 更新资源版本号（loader.js 据此判断是否需要重新加载资源）
+        async function bumpAssetsVersion() {
+            try {
+                await sb.from('app_config').upsert({
+                    config_key: 'assets_version',
+                    config_value: new Date().toISOString()
+                }, { onConflict: 'config_key' });
+            } catch (e) { console.warn('更新资源版本号失败:', e); }
+        }
+
         async function loadAssets() {
             const listEl = document.getElementById('assetList');
             listEl.innerHTML = '<div class="text-center text-gray-400 text-sm py-4">加载中...</div>';
@@ -1603,6 +1711,7 @@ ON CONFLICT (container_id) DO NOTHING;`;
                 currentAssets[idx] = { ...currentAssets[idx], content, type, container_id: container, load_order: order, is_active: active };
             }
             renderAssetList();
+            bumpAssetsVersion();
         }
 
         async function deleteAsset() {
@@ -1622,6 +1731,7 @@ ON CONFLICT (container_id) DO NOTHING;`;
             document.getElementById('downloadBtn').disabled = true;
             document.getElementById('historyBtn').disabled = true;
             renderAssetList();
+            bumpAssetsVersion();
         }
 
         // ===== 复制/下载资源 =====
@@ -1671,6 +1781,7 @@ ON CONFLICT (container_id) DO NOTHING;`;
                 content: '', load_order: order, is_active: true,
             }, { onConflict: 'file_path' }).then(({ error }) => {
                 if (error) { alert('创建失败: ' + error.message); return; }
+                bumpAssetsVersion();
                 loadAssets().then(() => editAsset(path));
             });
         }

@@ -4,7 +4,7 @@
 
 ## 一、项目概述
 
-情侣空间是一个双人互动 Web 应用，功能包括：相册、留言、日志、日历打卡、猜拳游戏、骗子酒馆、Live2D 风格人物形象、宠物动画、音乐播放器、天气组件、背景图自定义等。
+情侣空间是一个双人互动 Web 应用，功能包括：相册、留言、日志、日历打卡、猜拳游戏、骗子酒馆、Live2D 风格人物形象、宠物动画、音乐播放器、天气组件、背景图自定义、智谱 AI 聊天助手、下拉刷新、资源本地缓存等。
 
 ## 二、文件结构
 
@@ -20,7 +20,9 @@ upload.html             — 资源管理工具（本地开发用，6个Tab）
 ### 数据库文件（通过 upload.html 上传到 app_assets 表）
 
 ```
-styles.css              — 所有 CSS 样式（type=css, order=0, 最先加载）
+styles.css              — 基础样式 + 相册 + 留言 + 音乐 + 天气 + 下拉刷新（type=css, order=0）
+styles_layout.css       — 日历 + BGM + 显示设置 + 骗子酒馆 + 语音 + 宠物 + 删除按钮（type=css, order=0）
+styles_mobile.css       — 导航栏 + Live2D 人物 + 手机端适配（type=css, order=0）
 partials/               — HTML 片段
 ├── login.html          — 登录面板
 ├── preview.html        — 大图预览弹窗
@@ -35,13 +37,16 @@ js/                     — JS 模块
 ├── audio.js            — BGM / 音效
 ├── music.js            — 音乐播放器
 ├── pets.js             — 宠物动画
-├── characters.js       — 人物互动形象
+├── characters.js       — 男生 Live2D 人物形象
+├── characters_girl.js  — 女生 Live2D 人物形象
 ├── home.js             — 首页逻辑
 ├── journal.js          — 日志逻辑
 ├── calendar.js         — 日历/打卡/纪念日
-├── game.js             — 猜拳/骗子酒馆
+├── game.js             — 猜拳对战
+├── game_liar.js        — 骗子酒馆
 ├── background.js       — 背景图设置
 ├── ai_chat.js          — 智谱 AI 聊天助手
+├── pull_refresh.js     — 下拉刷新（橡皮条）
 └── auth.js             — 认证 + 页面初始化（必须最后加载）
 ARCHITECTURE.md         — 本架构文档（type=md, 供 upload.html 渲染用）
 ```
@@ -51,38 +56,58 @@ ARCHITECTURE.md         — 本架构文档（type=md, 供 upload.html 渲染用
 ### loader.js 工作流程
 
 ```javascript
-// 第1步：查询 app_containers，按 sort_order 排序
+// 第1步：读取 localStorage 缓存（容器 + 资源 + 版本号）
+//    有缓存 → 立即渲染页面（秒开）
+
+// 第2步：查 app_config 表的 assets_version（仅1条，轻量）
+//    版本一致 + 有缓存 → 直接 return，不查资源表
+//    版本不一致/无缓存 → 查全量资源表，更新缓存
+
+// 第3步：查询 app_containers，按 sort_order 排序
 //    placement=global → 在 <div id="globalContainers"> 里创建容器
 //    placement=page   → 在 <nav id="navBar"> 里创建导航按钮，在 <div id="pageContainers"> 里创建容器
 
-// 第2步：查询 app_assets（is_active=true），按 load_order 排序
+// 第4步：查询 app_assets（is_active=true），按 load_order + type + file_path 排序
 //    type=css   → 创建 <style> 标签插入 <head>
 //    type=html  → 找到 container_id 对应的 DOM，innerHTML = content
 //    type=js    → 创建 <script> 标签插入 body 执行
 
-// 第3步：隐藏 loading 指示器
+// 第5步：隐藏 loading 指示器，更新 localStorage 缓存 + 版本号
 ```
+
+### 资源缓存机制（版本号对比 + stale-while-revalidate）
+
+| 场景 | 行为 |
+|---|---|
+| 首次加载（无缓存） | 查全量资源 → 渲染 → 存 localStorage |
+| 有缓存 + 版本一致 | **直接用缓存渲染，不查资源表**（秒开） |
+| 有缓存 + 版本不一致 | 查全量资源 → 渲染 → 更新缓存 |
+| 接口失败 + 有缓存 | 用缓存兜底，不影响使用 |
+
+- **版本号**：`app_config` 表中 `config_key='assets_version'`，值为 ISO 时间戳
+- **更新时机**：upload.html 保存/删除资源、保存容器、本地上传时自动调用 `bumpAssetsVersion()` 更新版本号
+- **缓存key**：`ls_containers_v2`（容器）、`ls_assets_v2`（资源）、`ls_assets_version`（版本号）
 
 ### 加载顺序
 
 ```
-CSS (0) → HTML (1-6) → JS (10-23)
+CSS (0) → HTML (1-6) → JS (10-26)
 ```
 
 | 类型 | load_order 范围 | 说明 |
 |---|---|---|
-| `css` | 0 | 所有样式最先加载，确保页面渲染时样式已就绪 |
+| `css` | 0 | 所有样式最先加载（按 file_path 排序），确保页面渲染时样式已就绪 |
 | `html` | 1-6 | 全局容器(1-2) → 各页面容器(3-6) |
-| `js` | 10-23 | 功能模块(10-22) → ai_chat.js(22) → auth.js(23) |
+| `js` | 10-26 | 功能模块(10-25) → auth.js(26) |
 | `md` | 99 | 仅供 upload.html 渲染，不参与页面加载 |
 
 ### JS 加载顺序（依赖关系）
 
 ```
 config_page.js (10) → notifications.js (11) → weather.js (12) → audio.js (13)
-→ music.js (14) → pets.js (15) → characters.js (16) → home.js (17)
-→ journal.js (18) → calendar.js (19) → game.js (20) → background.js (21)
-→ ai_chat.js (22) → auth.js (23)
+→ music.js (14) → pets.js (15) → characters.js (16) → characters_girl.js (17)
+→ home.js (18) → journal.js (19) → calendar.js (20) → game.js (21) → game_liar.js (22)
+→ background.js (23) → ai_chat.js (24) → pull_refresh.js (25) → auth.js (26)
 ```
 
 > **关键**：`auth.js` 必须最后加载，因为它的 `initPage()` 会调用所有模块的初始化函数。
@@ -302,8 +327,8 @@ CREATE POLICY "allow_auth_write_xxx" ON favorites FOR ALL TO authenticated USING
 
 | Tab | 功能 |
 |---|---|
-| 本地上传 | 读取本地 FILES 数组列出的文件（含 styles.css），批量 fetch + upsert 到 app_assets 表 |
-| 在线管理 | 左侧列表 app_assets 记录 → 右侧文本框实时编辑、保存、删除、新增（type/container_id/load_order 都可改），支持 css/html/js/md 四种类型 |
+| 本地上传 | 读取本地 FILES 数组列出的文件（含 styles.css），批量 fetch + upsert 到 app_assets 表，自动更新版本号 |
+| 在线管理 | 三栏布局：资源列表 + Monaco 编辑器 + AI 代码助手。支持编辑/保存/删除/新增、历史版本备份与还原、复制/下载、全部下载（ZIP）。AI 助手自动引用 md 文档、手动引用代码文件、流式输出、发送后自动清空引用 |
 | 建表 SQL | 包含所有表的建表 SQL + RLS 策略 + app_containers 初始数据。支持复制/下载 |
 | 架构文档 | 从数据库读取 `ARCHITECTURE.md` 记录 → 用 marked.js 实时渲染 Markdown → 可在线编辑并保存回数据库。支持复制/下载 |
 | 容器配置 | 管理 app_containers 表：新增/编辑/删除容器，控制导航栏和页面布局。使用模态框表单，不用 prompt |
@@ -359,6 +384,7 @@ GRANT EXECUTE ON FUNCTION exec_ddl(TEXT) TO authenticated;
 | `window._aiApiKey` | string | 智谱 AI API Key |
 | `window._aiModel` | string | 智谱 AI 模型名 |
 | `window._aiSystemPrompt` | string | 智谱 AI 系统提示词 |
+| `window._assetsVersion` | string | 资源版本号（用于缓存对比） |
 
 ### 全局函数参考
 
@@ -378,7 +404,19 @@ GRANT EXECUTE ON FUNCTION exec_ddl(TEXT) TO authenticated;
 
 ### 功能概述
 
-在设置页面底部，提供与智谱 AI 的对话功能，支持多轮对话、模型切换、系统提示词自定义。
+在设置页面底部，提供与智谱 AI 的对话功能，支持多轮对话、流式输出、历史记录持久化、模型切换、系统提示词自定义。
+
+### 流式输出
+
+- 请求参数 `stream: true`，通过 `ReadableStream + TextDecoder` 逐块读取 SSE 响应
+- 实时渲染到聊天气泡（打字机效果），自动滚动到底部
+- 设置页 AI 助手和 upload.html AI 代码助手均使用流式输出
+
+### 历史记录持久化
+
+- 聊天记录存储在 `localStorage`（key: `ai_chat_history_settings`），刷新页面后恢复
+- 发给 API 的历史限制为最近 20 条（避免 token 过大导致首字延迟），localStorage 保存全量
+- `clearAiChat()` 同时清除 localStorage
 
 ### 配置存储
 
@@ -431,9 +469,66 @@ Body:
 ### 文件结构
 
 - HTML: `partials/config.html` 底部的 AI 聊天助手卡片
-- JS: `js/ai_chat.js`（load_order=22，在 auth.js 之前）
+- JS: `js/ai_chat.js`（load_order=24，在 auth.js 之前）
 
-## 十五、开发规范
+## 十五、下拉刷新（橡皮条）
+
+- **文件**：`js/pull_refresh.js`（load_order=25）
+- **HTML**：`index.html` 中的 `#pullRefreshIndicator` 元素
+- **CSS**：`styles.css` 中的 `.pull-refresh-indicator` 样式
+- **触发条件**：页面在顶部（`scrollY === 0`）时手指下拉超过 70px
+- **排除元素**：拖拽人物/宠物（`.boy-pet, .girl-pet, .husky-pet, .cat-pet`）时不触发
+- **流程**：下拉显示指示器 → 超过阈值显示"松开刷新" → 松手刷新页面
+
+## 十六、分页功能
+
+相册、留言、日志均使用上一页/下一页分页（非"加载更多"）：
+
+| 模块 | 文件 | 每页数量 | 分页器 ID |
+|---|---|---|---|
+| 相册 | `js/home.js` | 6 张 | `galleryPager` |
+| 留言 | `js/home.js` | 5 条 | `messagePager` |
+| 日志 | `js/journal.js` | 5 条 | `journalPager` |
+
+- 分页器样式：`[上一页] 1 / 3 [下一页]`，首尾页禁用对应按钮
+- 删除当前页最后一项时自动修正页码
+- 分页函数通过 `window.xxxPrevPage` / `window.xxxNextPage` 暴露给 onclick
+
+## 十七、upload.html AI 代码助手
+
+### 功能
+
+在「在线管理」Tab 右侧面板，集成智谱 AI 代码助手：
+- **自动引用**：切到 Tab 时预加载所有 md 文件作为上下文
+- **手动引用**：资源列表中点 📎 按钮引用代码文件
+- **流式输出**：与设置页 AI 助手相同的流式读取机制
+- **代码应用**：AI 回复中的代码块有「应用到编辑器」按钮
+- **发送后清空**：每轮对话发送后自动清空所有引用文件
+
+### 引用机制
+
+| 引用类型 | 标识 | 行为 |
+|---|---|---|
+| 自动引用（md） | 🔵 蓝底 `[自动]` | 切 Tab 时预加载，可点 × 取消 |
+| 手动引用（代码） | 🩷 粉底 | 点 📎 按钮添加，可点 × 取消 |
+
+> 发送对话后，所有引用（自动 + 手动）全部清空。下次切 Tab 时重新预加载 md 文件。
+
+## 十八、upload.html 资源版本备份
+
+### 自动备份
+
+- 在「在线管理」Tab 保存文件时，系统自动备份当前版本到 `asset_backups` 表
+- 每个文件最多保留 10 个版本，超过自动清理最早版本（通过 `prune_backups` RPC 函数）
+- **还原后保存不创建新备份**：通过 `_skipBackup` 标志控制，还原操作后保存直接更新文件不备份
+
+### 全部下载（ZIP）
+
+- 点击「全部下载（ZIP）」按钮，将所有资源打包为 ZIP 下载
+- ZIP 结构：`styles.css`、`styles_layout.css`、`styles_mobile.css`、`ARCHITECTURE.md`、`app_containers.json`、`partials/`、`js/`
+- JSZip 动态加载（多 CDN 备用），加载前禁用 AMD 避免与 Monaco 冲突
+
+## 十九、开发规范
 
 1. **JS 模块必须用 IIFE 包裹**，避免全局变量冲突
 2. **不要用 `const sb` / `const CONFIG` 顶层声明**，用 `window.sb` / `window.CONFIG`
@@ -445,7 +540,9 @@ Body:
 8. **发送通知用 `window.sendNotification`**，自带去重机制
 9. **新增页面不用改 index.html**，用 upload.html 的"容器配置"Tab 加一条记录即可
 10. **Modal/模态框替代原生弹窗**：upload.html 中使用自定义模态框表单（containerModal）和自定义确认框（confirmModal），不使用 prompt/confirm
-11. **CSS 文件 type=css, load_order=0**，确保最先加载
+11. **CSS 文件 type=css, load_order=0**，确保最先加载（多个 CSS 文件按 file_path 排序）
 12. **HTML 文件必须指定 container_id**，对应 app_containers 表中的 container_id
-13. **JS 文件 load_order 必须在 10-23 之间**，ai_chat.js(22) 在 auth.js(23) 之前
+13. **JS 文件 load_order 必须在 10-26 之间**，auth.js(26) 必须最后
 14. **新增文件后需更新两处**：upload.html 的 FILES 数组（本地上传用）和本文档的文件结构
+15. **upload.html 保存资源后必须调用 `bumpAssetsVersion()`** 更新版本号，否则用户缓存不会刷新
+16. **文件字符数限制 20000**：超过的文件必须拆分（如 styles.css 拆成 3 个、characters.js 拆成 2 个、game.js 拆成 2 个）

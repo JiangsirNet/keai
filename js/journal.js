@@ -17,56 +17,7 @@ window.journalPhotos = journalPhotos;
     };
     const lbSfxBtn = document.getElementById("lbSfxToggle");
     if (lbSfxBtn) lbSfxBtn.addEventListener("click", window.toggleBgm);
-
-    initPullToRefresh();
 })();
-
-function initPullToRefresh() {
-    const indicator = document.getElementById("pullRefreshIndicator");
-    const icon = document.getElementById("pullRefreshIcon");
-    const text = document.getElementById("pullRefreshText");
-    const THRESHOLD = 70;
-    let startY = 0, pulling = false, refreshing = false;
-
-    document.addEventListener("touchstart", (e) => {
-        if (refreshing || window.scrollY > 0) return;
-        startY = e.touches[0].clientY;
-        pulling = true;
-    }, { passive: true });
-
-    document.addEventListener("touchmove", (e) => {
-        if (!pulling || refreshing) return;
-        const dist = e.touches[0].clientY - startY;
-        if (dist <= 0) { indicator.style.top = "-60px"; return; }
-        const offset = Math.min(dist * 0.5, THRESHOLD + 20);
-        indicator.style.top = (offset - 50) + "px";
-        if (dist >= THRESHOLD) {
-            indicator.classList.add("ready");
-            text.textContent = "松开刷新";
-        } else {
-            indicator.classList.remove("ready");
-            text.textContent = "下拉刷新";
-        }
-    }, { passive: true });
-
-    document.addEventListener("touchend", () => {
-        if (!pulling || refreshing) return;
-        pulling = false;
-        const dist = parseInt(indicator.style.top || "-60") + 50;
-        if (dist >= THRESHOLD) {
-            refreshing = true;
-            indicator.style.top = "10px";
-            indicator.classList.remove("ready");
-            indicator.classList.add("refreshing");
-            icon.className = "fa fa-refresh";
-            text.textContent = "刷新中...";
-            setTimeout(() => location.reload(), 600);
-        } else {
-            indicator.style.top = "-60px";
-            indicator.classList.remove("ready");
-        }
-    }, { passive: true });
-}
 
 function renderJournalPreview() {
     const wrap = document.getElementById("journalPhotoPreview");
@@ -117,34 +68,57 @@ async function addJournal() {
     }
 }
 
+let journalData = [];
+let journalCommentsMap = {};
+let journalLikesMap = {};
+let journalPage = 1;
+const JOURNAL_PAGE_SIZE = 5;
+
 async function loadJournal() {
     const wrap = document.getElementById("journalList");
     wrap.innerHTML = `<div class="text-center text-gray-400 py-4 loading">加载日志...</div>`;
     const { data } = await sb.from("journal").select("*").order("created_at", { ascending: false });
     if (!data || data.length === 0) {
+        journalData = [];
         wrap.innerHTML = `<div class="text-center text-gray-400 py-4">还没有日志，记录你们的第一篇故事吧💫</div>`;
         return;
     }
     const journalIds = data.map(d => d.id);
-    let commentsMap = {}, likesMap = {};
+    journalCommentsMap = {};
+    journalLikesMap = {};
     try {
         const [cRes, lRes] = await Promise.all([
             sb.from("journal_comments").select("id,journal_id,username,content,created_at").in("journal_id", journalIds).order("created_at", { ascending: true }),
             sb.from("journal_likes").select("journal_id,username").in("journal_id", journalIds)
         ]);
         (cRes.data || []).forEach(c => {
-            if (!commentsMap[c.journal_id]) commentsMap[c.journal_id] = [];
-            commentsMap[c.journal_id].push(c);
+            if (!journalCommentsMap[c.journal_id]) journalCommentsMap[c.journal_id] = [];
+            journalCommentsMap[c.journal_id].push(c);
         });
         (lRes.data || []).forEach(l => {
-            if (!likesMap[l.journal_id]) likesMap[l.journal_id] = [];
-            likesMap[l.journal_id].push(l.username);
+            if (!journalLikesMap[l.journal_id]) journalLikesMap[l.journal_id] = [];
+            journalLikesMap[l.journal_id].push(l.username);
         });
     } catch (e) { console.warn("加载评论点赞失败:", e); }
 
-    const me = (window.myRpsEmail || "").toLowerCase();
+    journalData = data;
+    journalPage = 1;
+    renderJournalList();
+}
+
+function renderJournalList() {
+    const wrap = document.getElementById("journalList");
     wrap.innerHTML = "";
-    data.forEach(item => {
+    if (journalData.length === 0) {
+        wrap.innerHTML = `<div class="text-center text-gray-400 py-4">还没有日志，记录你们的第一篇故事吧💫</div>`;
+        return;
+    }
+    const totalPages = Math.ceil(journalData.length / JOURNAL_PAGE_SIZE);
+    if (journalPage > totalPages) journalPage = totalPages;
+    if (journalPage < 1) journalPage = 1;
+    const items = journalData.slice((journalPage - 1) * JOURNAL_PAGE_SIZE, journalPage * JOURNAL_PAGE_SIZE);
+    const me = (window.myRpsEmail || "").toLowerCase();
+    items.forEach(item => {
         const email = item.username || "";
         let name = email || "匿名";
         if (email === CONFIG.boyEmail) name = CONFIG.boyName;
@@ -156,8 +130,8 @@ async function loadJournal() {
             ? `<div class="flex gap-2 flex-wrap mt-2">${photos.map(url => `<img src="${url}" class="w-20 h-20 object-cover rounded-lg cursor-pointer" onclick="openPreview('${url}')">`).join("")}</div>`
             : "";
         const jid = String(item.id);
-        const likes = likesMap[jid] || [];
-        const comments = commentsMap[jid] || [];
+        const likes = journalLikesMap[jid] || [];
+        const comments = journalCommentsMap[jid] || [];
         const liked = likes.some(u => (u || "").toLowerCase() === me);
         const likerNames = likes.map(u => {
             if (u === CONFIG.boyEmail) return CONFIG.boyName;
@@ -208,6 +182,13 @@ async function loadJournal() {
             </div>
         </div>`;
     });
+    if (totalPages > 1) {
+        wrap.innerHTML += `<div class="text-center py-3 flex items-center justify-center gap-4">
+            <button onclick="window.journalPrevPage()" ${journalPage <= 1 ? 'disabled class="text-gray-300 text-sm cursor-not-allowed"' : 'class="text-love text-sm hover:underline"'}>上一页</button>
+            <span class="text-sm text-gray-500">${journalPage} / ${totalPages}</span>
+            <button onclick="window.journalNextPage()" ${journalPage >= totalPages ? 'disabled class="text-gray-300 text-sm cursor-not-allowed"' : 'class="text-love text-sm hover:underline"'}>下一页</button>
+        </div>`;
+    }
 }
 
 async function deleteJournal(id) {
@@ -262,10 +243,12 @@ async function addComment(jid) {
 }
 
 // ===== 导出公共 API =====
-window.initPullToRefresh = initPullToRefresh;
 window.renderJournalPreview = renderJournalPreview;
 window.addJournal = addJournal;
 window.loadJournal = loadJournal;
+window.renderJournalList = renderJournalList;
+window.journalPrevPage = () => { journalPage--; renderJournalList(); };
+window.journalNextPage = () => { journalPage++; renderJournalList(); };
 window.deleteJournal = deleteJournal;
 window.toggleLike = toggleLike;
 window.toggleComments = toggleComments;

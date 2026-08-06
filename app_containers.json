@@ -1,0 +1,68 @@
+[
+  {
+    "id": 3,
+    "container_id": "pageHomeContainer",
+    "page_name": "home",
+    "nav_label": "首页",
+    "nav_icon": "🏠",
+    "sort_order": 1,
+    "placement": "page",
+    "is_active": true,
+    "created_at": "2026-08-04T12:22:12.966723+00:00"
+  },
+  {
+    "id": 1,
+    "container_id": "loginPanelContainer",
+    "page_name": null,
+    "nav_label": null,
+    "nav_icon": null,
+    "sort_order": 1,
+    "placement": "global",
+    "is_active": true,
+    "created_at": "2026-08-04T12:22:12.966723+00:00"
+  },
+  {
+    "id": 2,
+    "container_id": "previewModalContainer",
+    "page_name": null,
+    "nav_label": null,
+    "nav_icon": null,
+    "sort_order": 2,
+    "placement": "global",
+    "is_active": true,
+    "created_at": "2026-08-04T12:22:12.966723+00:00"
+  },
+  {
+    "id": 4,
+    "container_id": "pageJournalContainer",
+    "page_name": "journal",
+    "nav_label": "日志",
+    "nav_icon": "📖",
+    "sort_order": 2,
+    "placement": "page",
+    "is_active": true,
+    "created_at": "2026-08-04T12:22:12.966723+00:00"
+  },
+  {
+    "id": 5,
+    "container_id": "pageGameContainer",
+    "page_name": "game",
+    "nav_label": "游戏",
+    "nav_icon": "🎮",
+    "sort_order": 3,
+    "placement": "page",
+    "is_active": true,
+    "created_at": "2026-08-04T12:22:12.966723+00:00"
+  },
+  {
+    "id": 6,
+    "container_id": "pageConfigContainer",
+    "page_name": "config",
+    "nav_label": "设置",
+    "nav_icon": "⚙️",
+    "sort_order": 4,
+    "placement": "page",
+    "is_active": true,
+    "created_at": "2026-08-04T12:22:12.966723+00:00"
+  }
+]

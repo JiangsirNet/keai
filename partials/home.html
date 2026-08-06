@@ -1,7 +1,7 @@
 <!-- 首页 -->
 <div id="page-home" class="page-content">
-    <div class="flex justify-end mb-4">
-        <button onclick="logout()" class="px-3 py-1 bg-gray-200 rounded-lg text-sm">退出登录</button>
+    <div class="flex justify-end mb-4 logout-wrap">
+        <button id="logoutBtn" onclick="logout()" class="px-3 py-1 bg-gray-200 rounded-lg text-sm">退出登录</button>
     </div>
     <div class="bg-white/80 backdrop-blur rounded-3xl p-6 md:p-10 card-shadow text-center mb-8">
         <h1 class="text-[clamp(1.8rem,5vw,2.8rem)] font-bold text-love mb-3">
@@ -25,7 +25,7 @@
                 class="w-full border border-dashed border-love rounded-xl py-3 text-love mb-4 hover:bg-rose-50 transition">
                 <i class="fa fa-upload mr-1"></i>上传照片
             </button>
-            <div id="galleryWrap" class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div id="galleryWrap" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 overflow-hidden">
                 <div class="text-center text-gray-400 py-10 loading">加载相册...</div>
             </div>
         </div>

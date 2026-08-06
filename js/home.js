@@ -75,13 +75,13 @@ async function deletePhoto(id, deleteLink) {
 
 // ===== 相册 =====
 let galleryData = [];
-let galleryShowCount = 10;
+let galleryPage = 1;
 const GALLERY_PAGE_SIZE = 10;
 
 async function loadGallery() {
     const { data } = await sb.from("gallery").select("*").order("create_at", { ascending: false });
     galleryData = data || [];
-    galleryShowCount = GALLERY_PAGE_SIZE;
+    galleryPage = 1;
     renderGallery();
 }
 
@@ -92,7 +92,10 @@ function renderGallery() {
         wrap.innerHTML = `<div class="col-span-2 text-center text-gray-400 py-10">暂无照片，上传第一张合照吧💖</div>`;
         return;
     }
-    const items = galleryData.slice(0, galleryShowCount);
+    const totalPages = Math.ceil(galleryData.length / GALLERY_PAGE_SIZE);
+    if (galleryPage > totalPages) galleryPage = totalPages;
+    if (galleryPage < 1) galleryPage = 1;
+    const items = galleryData.slice((galleryPage - 1) * GALLERY_PAGE_SIZE, galleryPage * GALLERY_PAGE_SIZE);
     items.forEach(item => {
         const div = document.createElement("div");
         div.className = "img-card relative group";
@@ -112,10 +115,14 @@ function renderGallery() {
         wrap.appendChild(div);
         checkImgTimeout(item.id);
     });
-    if (galleryData.length > galleryShowCount) {
+    if (totalPages > 1) {
         const pager = document.createElement("div");
-        pager.className = "col-span-2 text-center py-4";
-        pager.innerHTML = `<button onclick="galleryShowCount+=${GALLERY_PAGE_SIZE};renderGallery()" class="text-love text-sm hover:underline">加载更多（${galleryData.length - galleryShowCount} 张）</button>`;
+        pager.className = "col-span-2 text-center py-4 flex items-center justify-center gap-4";
+        pager.innerHTML = `
+            <button onclick="window.galleryPrevPage()" ${galleryPage <= 1 ? 'disabled class="text-gray-300 text-sm cursor-not-allowed"' : 'class="text-love text-sm hover:underline"'}>上一页</button>
+            <span class="text-sm text-gray-500">${galleryPage} / ${totalPages}</span>
+            <button onclick="window.galleryNextPage()" ${galleryPage >= totalPages ? 'disabled class="text-gray-300 text-sm cursor-not-allowed"' : 'class="text-love text-sm hover:underline"'}>下一页</button>
+        `;
         wrap.appendChild(pager);
     }
 }
@@ -251,13 +258,13 @@ async function sendMessage() {
 }
 
 let msgData = [];
-let msgShowCount = 10;
+let msgPage = 1;
 const MSG_PAGE_SIZE = 10;
 
 async function loadMessages() {
     const { data } = await sb.from("messages").select("*").order("create_at", { ascending: false });
     msgData = data || [];
-    msgShowCount = MSG_PAGE_SIZE;
+    msgPage = 1;
     renderMessages();
 }
 
@@ -268,7 +275,10 @@ function renderMessages() {
         wrap.innerHTML = `<div class="text-center text-gray-400 py-4">还没有留言，写下第一句话吧</div>`;
         return;
     }
-    const items = msgData.slice(0, msgShowCount);
+    const totalPages = Math.ceil(msgData.length / MSG_PAGE_SIZE);
+    if (msgPage > totalPages) msgPage = totalPages;
+    if (msgPage < 1) msgPage = 1;
+    const items = msgData.slice((msgPage - 1) * MSG_PAGE_SIZE, msgPage * MSG_PAGE_SIZE);
     items.forEach(item => {
         const time = new Date(item.create_at).toLocaleString();
         const email = item.username || "";
@@ -288,8 +298,12 @@ function renderMessages() {
                 </button>
             </div>`;
     });
-    if (msgData.length > msgShowCount) {
-        wrap.innerHTML += `<div class="text-center py-3"><button onclick="msgShowCount+=${MSG_PAGE_SIZE};renderMessages()" class="text-love text-sm hover:underline">加载更多（${msgData.length - msgShowCount} 条）</button></div>`;
+    if (totalPages > 1) {
+        wrap.innerHTML += `<div class="text-center py-3 flex items-center justify-center gap-4">
+            <button onclick="window.msgPrevPage()" ${msgPage <= 1 ? 'disabled class="text-gray-300 text-sm cursor-not-allowed"' : 'class="text-love text-sm hover:underline"'}>上一页</button>
+            <span class="text-sm text-gray-500">${msgPage} / ${totalPages}</span>
+            <button onclick="window.msgNextPage()" ${msgPage >= totalPages ? 'disabled class="text-gray-300 text-sm cursor-not-allowed"' : 'class="text-love text-sm hover:underline"'}>下一页</button>
+        </div>`;
     }
 }
 
@@ -308,6 +322,8 @@ window.uploadImageToImgBB = uploadImageToImgBB;
 window.deletePhoto = deletePhoto;
 window.loadGallery = loadGallery;
 window.renderGallery = renderGallery;
+window.galleryPrevPage = () => { galleryPage--; renderGallery(); };
+window.galleryNextPage = () => { galleryPage++; renderGallery(); };
 window.onImgLoaded = onImgLoaded;
 window.onImgError = onImgError;
 window.retryImg = retryImg;
@@ -317,6 +333,8 @@ window.toggleVoiceRecord = toggleVoiceRecord;
 window.sendMessage = sendMessage;
 window.loadMessages = loadMessages;
 window.renderMessages = renderMessages;
+window.msgPrevPage = () => { msgPage--; renderMessages(); };
+window.msgNextPage = () => { msgPage++; renderMessages(); };
 window.deleteMessage = deleteMessage;
 
 })();

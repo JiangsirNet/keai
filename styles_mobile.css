@@ -1,0 +1,452 @@
+/* ==================== 导航栏 ==================== */
+.nav-bar {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 6px;
+    box-shadow: 0 4px 20px rgba(255, 107, 139, 0.12);
+    margin-bottom: 24px;
+    position: sticky;
+    top: 12px;
+    z-index: 50;
+}
+
+.nav-btn {
+    flex: 1;
+    max-width: 160px;
+    padding: 10px 20px;
+    border-radius: 14px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #999;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.25s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.nav-btn:hover {
+    color: #ff6b8b;
+    background: rgba(255, 107, 139, 0.06);
+}
+
+.nav-btn.active {
+    background: linear-gradient(135deg, #ff6b8b, #ffb4c4);
+    color: white;
+    box-shadow: 0 3px 10px rgba(255, 107, 139, 0.3);
+}
+
+.page-content {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ==================== 男生 Live2D 风格 ==================== */
+.boy-pet {
+    position: fixed;
+    bottom: 120px;
+    left: 0px;
+    z-index: 85;
+    width: 120px;
+    height: 160px;
+    cursor: pointer;
+    user-select: none;
+    touch-action: none;
+}
+
+.boy-pet canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    filter: drop-shadow(2px 4px 8px rgba(0,0,0,0.15));
+}
+
+.boy-pet.walking {
+    animation: boy-walk-bounce 0.5s ease infinite alternate;
+}
+@keyframes boy-walk-bounce {
+    from { transform: translateY(0); }
+    to { transform: translateY(-4px); }
+}
+
+.boy-pet.happy {
+    animation: boy-happy 0.6s ease;
+}
+@keyframes boy-happy {
+    0%, 100% { transform: scale(1); }
+    25% { transform: scale(1.12) rotate(-4deg); }
+    75% { transform: scale(1.12) rotate(4deg); }
+}
+
+.boy-bubble {
+    position: absolute;
+    top: -32px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(219, 234, 254, 0.95);
+    color: #0369a1;
+    font-size: 12px;
+    padding: 5px 10px;
+    border-radius: 14px;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+}
+.boy-bubble:after {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: rgba(219, 234, 254, 0.95);
+}
+.boy-bubble.show { opacity: 1; }
+
+.boy-heart {
+    position: absolute;
+    color: #f43f5e;
+    font-size: 16px;
+    pointer-events: none;
+    animation: heart-float 1.2s ease-out forwards;
+}
+
+/* ==================== 女生 Live2D 风格 ==================== */
+.girl-pet {
+    position: fixed;
+    bottom: 120px;
+    right: 0px;
+    z-index: 85;
+    width: 120px;
+    height: 160px;
+    cursor: pointer;
+    user-select: none;
+    touch-action: none;
+}
+
+.girl-pet canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    filter: drop-shadow(2px 4px 8px rgba(0,0,0,0.15));
+}
+
+.girl-pet.walking {
+    animation: girl-walk-bounce 0.5s ease infinite alternate;
+}
+@keyframes girl-walk-bounce {
+    from { transform: translateY(0); }
+    to { transform: translateY(-4px); }
+}
+
+.girl-pet.happy {
+    animation: girl-happy 0.6s ease;
+}
+@keyframes girl-happy {
+    0%, 100% { transform: scale(1); }
+    25% { transform: scale(1.12) rotate(4deg); }
+    75% { transform: scale(1.12) rotate(-4deg); }
+}
+
+.girl-bubble {
+    position: absolute;
+    top: -32px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(252, 231, 243, 0.95);
+    color: #be185d;
+    font-size: 12px;
+    padding: 5px 10px;
+    border-radius: 14px;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+}
+.girl-bubble:after {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: rgba(252, 231, 243, 0.95);
+}
+.girl-bubble.show { opacity: 1; }
+
+.girl-heart {
+    position: absolute;
+    color: #ec4899;
+    font-size: 16px;
+    pointer-events: none;
+    animation: heart-float 1.2s ease-out forwards;
+}
+
+@keyframes heart-float {
+    0% { transform: translate(0, 0) scale(1); opacity: 1; }
+    100% { transform: translate(var(--dx), -40px) scale(1.5); opacity: 0; }
+}
+
+/* ==================== 手机端适配 ==================== */
+@media (max-width: 768px) {
+    /* 主容器减小内边距，顶部留出天气/音乐/BGM按钮空间 */
+    .container {
+        padding: 60px 12px 80px 12px !important;
+    }
+
+    /* 卡片减小内边距 */
+    .bg-white\/80 {
+        padding: 16px !important;
+        border-radius: 20px !important;
+    }
+
+    /* 标题缩小 */
+    .bg-white\/80 h2 {
+        font-size: 1.05rem !important;
+    }
+
+    /* 相册网格单列 */
+    #galleryWrap {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px !important;
+    }
+
+    /* 日志标题和日期改为纵向排列 */
+    #journalTitle,
+    #journalDate {
+        width: 100% !important;
+        flex: none !important;
+    }
+
+    .flex.gap-2.mb-3 {
+        flex-direction: column;
+        gap: 8px !important;
+    }
+
+    /* 留言和日志高度适配 */
+    #msgInput {
+        height: 80px !important;
+    }
+
+    #journalContent {
+        height: 100px !important;
+    }
+
+    /* 日志列表高度限制 */
+    #journalList {
+        max-height: 350px !important;
+    }
+
+    /* 音乐面板适配 */
+    .music-panel {
+        width: calc(100vw - 24px) !important;
+        right: 12px !important;
+        top: 60px !important;
+        padding: 14px !important;
+    }
+
+    /* 音乐按钮和退出登录不重叠 */
+    .music-toggle {
+        top: 12px !important;
+        right: 12px !important;
+        width: 38px !important;
+        height: 38px !important;
+        font-size: 15px !important;
+    }
+
+    .bell-toggle {
+        top: 12px !important;
+        right: 54px !important;
+        width: 38px !important;
+        height: 38px !important;
+        font-size: 15px !important;
+    }
+
+    .bell-panel {
+        top: 56px !important;
+        right: 8px !important;
+        width: calc(100vw - 16px) !important;
+        max-width: 320px !important;
+        max-height: 350px !important;
+    }
+
+    .weather-widget {
+        top: 12px !important;
+        left: 12px !important;
+        padding: 4px 10px 4px 6px !important;
+        font-size: 12px !important;
+        max-width: 140px !important;
+    }
+    .weather-widget .w-icon { font-size: 18px !important; }
+    .weather-widget .w-city { max-width: 40px !important; }
+
+    /* 手机端导航栏固定在底部 */
+    .nav-bar {
+        position: fixed !important;
+        bottom: 0 !important;
+        top: auto !important;
+        left: 0 !important;
+        right: 0 !important;
+        margin: 0 !important;
+        border-radius: 20px 20px 0 0 !important;
+        padding: 8px 6px calc(8px + env(safe-area-inset-bottom)) !important;
+        z-index: 95 !important;
+        box-shadow: 0 -4px 20px rgba(255, 107, 139, 0.12) !important;
+    }
+
+    .nav-btn {
+        padding: 8px 4px !important;
+        font-size: 13px !important;
+        flex-direction: column !important;
+        gap: 2px !important;
+    }
+
+    .nav-btn .nav-icon {
+        font-size: 20px;
+    }
+
+    /* 底部留出导航栏空间 */
+    .container {
+        padding-bottom: 90px !important;
+    }
+
+    /* 退出登录按钮固定到右上角，和音乐/通知按钮并排 */
+    .logout-wrap {
+        display: none !important;
+    }
+    #logoutBtn {
+        position: fixed !important;
+        top: 12px !important;
+        right: 96px !important;
+        width: 38px !important;
+        height: 38px !important;
+        padding: 0 !important;
+        border-radius: 50% !important;
+        background: #fde8ee !important;
+        color: #ff6b8b !important;
+        font-size: 0 !important;
+        z-index: 90 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border: none !important;
+    }
+    #logoutBtn::before {
+        content: "\f08b";
+        font-family: FontAwesome;
+        font-size: 15px;
+    }
+
+    /* 删除按钮缩小 */
+    .del-btn {
+        width: 22px !important;
+        height: 22px !important;
+        min-width: 22px !important;
+        min-height: 22px !important;
+        max-width: 22px !important;
+        max-height: 22px !important;
+        font-size: 10px !important;
+    }
+
+    /* 宠物缩小 */
+    .husky-pet,
+    .cat-pet {
+        width: 70px !important;
+        height: 70px !important;
+    }
+
+    /* 人物贴着宠物 */
+    .boy-pet,
+    .girl-pet {
+        bottom: 90px !important;
+    }
+
+    .husky-pet {
+        left: 10px;
+    }
+
+    .cat-pet {
+        right: 10px;
+    }
+
+    /* 大图预览 */
+    .img-preview-modal img {
+        max-width: 95vw !important;
+        max-height: 80vh !important;
+    }
+
+    /* 登录面板 */
+    #loginPanel > div {
+        padding: 20px !important;
+    }
+
+    /* 留言列表项优化 */
+    #msgList > div {
+        padding: 10px 12px !important;
+        font-size: 0.85rem !important;
+    }
+
+    /* 日志项优化 */
+    .journal-item {
+        padding: 12px !important;
+    }
+
+    .journal-item h3 {
+        font-size: 0.9rem !important;
+    }
+
+    .journal-item p {
+        font-size: 0.8rem !important;
+    }
+
+    /* 按钮触摸友好 */
+    button {
+        min-height: 40px;
+    }
+
+    /* 底部留白给宠物 */
+    #mainPage {
+        padding-bottom: 90px !important;
+    }
+}
+
+/* 超小屏幕（<375px） */
+@media (max-width: 374px) {
+    .container {
+        padding: 60px 8px 80px 8px !important;
+    }
+
+    .bg-white\/80 {
+        padding: 12px !important;
+    }
+
+    #galleryWrap {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 6px !important;
+    }
+
+    .husky-pet,
+    .cat-pet {
+        width: 56px !important;
+        height: 56px !important;
+    }
+
+    .boy-pet,
+    .girl-pet {
+        bottom: 76px !important;
+    }
+}
