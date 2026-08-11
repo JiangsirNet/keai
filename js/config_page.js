@@ -1,3 +1,8 @@
+/**
+ * 人物话语管理
+ * 负责男生/女生话语的数据库读写、界面渲染与增删操作
+ */
+
 let boyDbQuotes = [];
 let girlDbQuotes = [];
 let currentQuoteTab = "boy";

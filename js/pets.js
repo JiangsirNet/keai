@@ -1,3 +1,8 @@
+/**
+ * 宠物动画
+ * 哈士奇与暹罗猫的 Canvas 渲染、拖拽、抱抱交互
+ */
+
 window.boyHugging = false;
 window.girlHugging = false;
 

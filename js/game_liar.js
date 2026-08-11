@@ -1,3 +1,8 @@
+/**
+ * 骗子酒馆
+ * 左轮手枪轮盘 + 扑克骗术对战（Supabase Realtime）
+ */
+
 (function() {
 const sb = window.sb;
 const CONFIG = window.CONFIG;

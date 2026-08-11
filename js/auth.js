@@ -1,3 +1,9 @@
+/**
+ * 认证 + 页面初始化
+ * 登录/注册/登出、配置加载（loadConfig）、页面切换（showPage）、initPage 调用所有模块初始化
+ * 必须最后加载（load_order=26）
+ */
+
 (function() {
     'use strict';
 
@@ -45,9 +51,8 @@
         if (window.hugState) window.releaseHug();
         document.getElementById("mainPage").classList.add("hidden");
         document.getElementById("loginPanel").classList.remove("hidden");
-        document.getElementById("musicToggle").classList.add("hidden");
-        document.getElementById("musicPanel").classList.add("hidden-panel");
         document.getElementById("musicAudio").pause();
+        document.getElementById("musicAudio").src = "";
         // 停止 BGM
         if (window.bgmPlaying) window.toggleBgm();
         document.getElementById("weatherWidget").classList.add("hidden");
@@ -131,6 +136,7 @@
     }
 
     //页面业务初始化
+    const _pageInited = {};
     function initPage() {
         document.getElementById('boy').innerText = CONFIG.boyName;
         document.getElementById('girl').innerText = CONFIG.girlName;
@@ -138,26 +144,52 @@
         calcLoveDay();
         setInterval(calcLoveDay, 60000);
         createHeartLoop();
-        window.loadGallery();
-        window.loadMessages();
-        window.loadJournal();
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById("journalDate").value = today;
-        window.initCalendar();
         document.getElementById("fileInput").onchange = window.uploadImageToImgBB;
-        document.getElementById("musicToggle").classList.remove("hidden");
         document.getElementById("weatherWidget").classList.remove("hidden");
         document.getElementById("bellToggle").classList.remove("hidden");
-        window.loadMusicList();
+        applyDisplaySettings();
+        // 首页默认子 Tab 初始化
+        initHomePage();
+    }
+
+    // 首页初始化（天气 + 通知 + 人物 + 宠物，相册/留言/AI/音乐 走子Tab懒加载）
+    function initHomePage() {
+        if (_pageInited.home) return;
+        _pageInited.home = true;
         window.initHusky();
         window.initCat();
         window.initBoy();
         window.initGirl();
-        window.initRpsGame();
-        window.loadCharacterQuotes();
         window.initWeather();
         window.initNotifications();
-        applyDisplaySettings();
+        // 默认子 Tab 是相册，立即加载
+        _subTabInited.gallery = true;
+        window.loadGallery();
+        _subTabInited.message = true;
+        window.loadMessages();
+    }
+
+    // 日历页初始化
+    function initJournalPage() {
+        if (_pageInited.journal) return;
+        _pageInited.journal = true;
+        if (window.initCalendar) window.initCalendar();
+        window.refreshCalendar();
+    }
+
+    // 游戏页初始化
+    function initGamePage() {
+        if (_pageInited.game) return;
+        _pageInited.game = true;
+        window.initRpsGame();
+        window.syncLbBgmBtn();
+    }
+
+    // 设置页初始化
+    function initConfigPage() {
+        if (_pageInited.config) return;
+        _pageInited.config = true;
+        window.loadCharacterQuotes();
     }
 
     // ==================== 显示设置（localStorage 记忆）====================
@@ -210,9 +242,48 @@
         document.querySelectorAll('.nav-btn').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.page === name);
         });
-        if (name === "game") window.syncLbBgmBtn();
-        if (name === "journal") window.refreshCalendar();
+        if (name === "home") initHomePage();
+        if (name === "journal") initJournalPage();
+        if (name === "game") initGamePage();
+        if (name === "config") initConfigPage();
         window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    // 首页内子 Tab 切换
+    const _subTabInited = {};
+    function switchSubTab(sub) {
+        // 切换按钮高亮
+        document.querySelectorAll('.sub-tab').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.sub === sub);
+        });
+        // 切换内容
+        document.querySelectorAll('.sub-tab-content').forEach(el => {
+            el.classList.toggle('hidden', el.id !== 'subTab-' + sub);
+        });
+        // 懒加载：首次切换时初始化
+        if (sub === 'gallery' && !_subTabInited.gallery) {
+            _subTabInited.gallery = true;
+            window.loadGallery();
+        }
+        if (sub === 'message' && !_subTabInited.message) {
+            _subTabInited.message = true;
+            window.loadMessages();
+        }
+        if (sub === 'journal' && !_subTabInited.journal) {
+            _subTabInited.journal = true;
+            const today = new Date().toISOString().split('T')[0];
+            const jd = document.getElementById("journalDate");
+            if (jd) jd.value = today;
+            if (window.loadJournal) window.loadJournal();
+        }
+        if (sub === 'ai' && !_subTabInited.ai) {
+            _subTabInited.ai = true;
+            if (window.initAiChat) window.initAiChat();
+        }
+        if (sub === 'music' && !_subTabInited.music) {
+            _subTabInited.music = true;
+            if (window.loadMusicList) window.loadMusicList();
+        }
     }
 
     //相恋天数
@@ -282,6 +353,7 @@
     window.downloadPreviewImage = downloadPreviewImage;
     window.initPage = initPage;
     window.showPage = showPage;
+    window.switchSubTab = switchSubTab;
     window.calcLoveDay = calcLoveDay;
     window.createHeart = createHeart;
     window.createHeartLoop = createHeartLoop;

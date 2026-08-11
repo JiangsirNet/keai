@@ -1,3 +1,8 @@
+/**
+ * Supabase 连接配置
+ * 定义全局变量 sb、CONFIG、IMGBB_KEY、EMAILJS_* 等，所有模块通过 window.xxx 访问
+ */
+
 // =====================【修改这里】=====================
 // 以下配置（除 SUPABASE_URL 和 SUPABASE_ANON_KEY 外）均从数据库 app_config 表读取
 const CONFIG = {

@@ -1,3 +1,45 @@
+/*
+ * 布局与组件样式
+ * 包含：子Tab、日历、纪念日弹窗、BGM 控制、显示设置、骗子酒馆卡牌、语音录制、哈士奇/暹罗猫宠物、删除按钮
+ * load_order=0
+ */
+
+/* ============ 首页子 Tab ============ */
+.sub-tab-bar {
+    display: flex;
+    justify-content: flex-start;
+    gap: 6px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+}
+.sub-tab-bar::-webkit-scrollbar { display: none; }
+.sub-tab {
+    padding: 8px 20px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.8);
+    color: #888;
+    font-size: 14px;
+    font-weight: 600;
+    border: 1px solid rgba(255, 107, 139, 0.15);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.sub-tab:hover {
+    color: #ff6b8b;
+    background: rgba(255, 107, 139, 0.06);
+}
+.sub-tab.active {
+    background: linear-gradient(135deg, #ff6b8b, #ffb4c4);
+    color: white;
+    border-color: transparent;
+    box-shadow: 0 3px 10px rgba(255, 107, 139, 0.3);
+}
+
 /* ============ 日历 & 纪念日弹窗 ============ */
 .cal-grid {
     display: grid;

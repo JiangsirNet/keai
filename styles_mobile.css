@@ -1,3 +1,9 @@
+/*
+ * 导航栏与手机端适配样式
+ * 包含：底部导航栏、男生/女生 Live2D 人物容器、手机端响应式适配（@media）
+ * load_order=0
+ */
+
 /* ==================== 导航栏 ==================== */
 .nav-bar {
     display: flex;
@@ -251,26 +257,61 @@
         max-height: 350px !important;
     }
 
-    /* 音乐面板适配 */
-    .music-panel {
-        width: calc(100vw - 24px) !important;
-        right: 12px !important;
-        top: 60px !important;
+    /* 音乐播放器适配 */
+    .modern-player {
         padding: 14px !important;
+        gap: 10px !important;
     }
-
-    /* 音乐按钮和退出登录不重叠 */
-    .music-toggle {
-        top: 12px !important;
-        right: 12px !important;
-        width: 38px !important;
-        height: 38px !important;
-        font-size: 15px !important;
+    .mp-cover-wrap {
+        width: 160px !important;
+        height: 160px !important;
+    }
+    .mp-cover {
+        width: 140px !important;
+        height: 140px !important;
+    }
+    .mp-cover-ring {
+        width: 175px !important;
+        height: 175px !important;
+    }
+    .mp-cover-text {
+        font-size: 44px !important;
+    }
+    .mp-cover-icon {
+        font-size: 38px !important;
+    }
+    .mp-title {
+        font-size: 16px !important;
+        max-width: 240px !important;
+    }
+    .mp-controls {
+        gap: 12px !important;
+    }
+    .mp-btn {
+        width: 34px !important;
+        height: 34px !important;
+        font-size: 13px !important;
+    }
+    .mp-btn.mp-play {
+        width: 50px !important;
+        height: 50px !important;
+        font-size: 16px !important;
+    }
+    .mp-lyrics {
+        max-height: 100px !important;
+        font-size: 12px !important;
+    }
+    .mp-playlist #mpList {
+        max-height: 160px !important;
+    }
+    .mp-sort-btn {
+        font-size: 10px !important;
+        padding: 3px 6px !important;
     }
 
     .bell-toggle {
         top: 12px !important;
-        right: 54px !important;
+        right: 12px !important;
         width: 38px !important;
         height: 38px !important;
         font-size: 15px !important;
@@ -322,33 +363,6 @@
     /* 底部留出导航栏空间 */
     .container {
         padding-bottom: 90px !important;
-    }
-
-    /* 退出登录按钮固定到右上角，和音乐/通知按钮并排 */
-    .logout-wrap {
-        display: none !important;
-    }
-    #logoutBtn {
-        position: fixed !important;
-        top: 12px !important;
-        right: 96px !important;
-        width: 38px !important;
-        height: 38px !important;
-        padding: 0 !important;
-        border-radius: 50% !important;
-        background: #fde8ee !important;
-        color: #ff6b8b !important;
-        font-size: 0 !important;
-        z-index: 90 !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        border: none !important;
-    }
-    #logoutBtn::before {
-        content: "\f08b";
-        font-family: FontAwesome;
-        font-size: 15px;
     }
 
     /* 删除按钮缩小 */

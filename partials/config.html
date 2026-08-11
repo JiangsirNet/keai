@@ -67,78 +67,10 @@
         <div id="bgPreview" class="mt-3"></div>
     </div>
 
-    <!-- AI 聊天助手 -->
-    <div class="bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow mt-6">
-        <div class="flex items-center justify-between mb-4">
-            <h2 class="text-xl font-bold text-love flex items-center">
-                <i class="fa fa-rocket mr-2"></i>AI 聊天助手
-            </h2>
-            <button onclick="toggleAiSettings()" id="aiSettingsBtn" class="text-gray-500 hover:text-love text-sm">
-                <i class="fa fa-cog"></i> 设置
-            </button>
-        </div>
-
-        <!-- AI 配置面板 -->
-        <div id="aiSettings" class="hidden bg-rose-50 rounded-xl p-4 mb-4 space-y-3">
-            <div>
-                <label class="text-xs text-gray-500 block mb-1">API Key（从智谱开放平台获取）</label>
-                <input id="aiApiKey" type="password" placeholder="输入 API Key"
-                    class="w-full border border-rose-200 rounded-lg p-2 text-sm outline-none focus:border-love">
-                <p class="text-xs text-gray-400 mt-1">Key 存储在数据库 app_config 表，仅管理员可见。</p>
-            </div>
-            <div>
-                <label class="text-xs text-gray-500 block mb-1">模型 <span class="text-green-500">（🆓 免费）</span></label>
-                <select id="aiModel" class="w-full border border-rose-200 rounded-lg p-2 text-sm outline-none focus:border-love">
-                    <optgroup label="🆓 永久免费">
-                        <option value="glm-4.7-flash">glm-4.7-flash（最新旗舰·200K）</option>
-                        <option value="glm-4-flash">glm-4-flash（稳定版·128K）</option>
-                        <option value="glm-4-flashx-250414">glm-4-flashx（极速增强版）</option>
-                    </optgroup>
-                    <optgroup label="💎 付费模型">
-                        <option value="glm-5.2">glm-5.2（旗舰）</option>
-                        <option value="glm-4">glm-4（高智能）</option>
-                        <option value="glm-4-air">glm-4-air（高性价比）</option>
-                        <option value="glm-4-airx">glm-4-airx（高速版）</option>
-                        <option value="glm-4-plus">glm-4-plus（最强推理）</option>
-                    </optgroup>
-                </select>
-                <p class="text-xs text-gray-400 mt-1">新用户赠送 2000万 Token 免费额度</p>
-            </div>
-            <div>
-                <label class="text-xs text-gray-500 block mb-1">系统提示词（让 AI 以什么身份聊天）</label>
-                <textarea id="aiSystemPrompt" rows="2"
-                    class="w-full border border-rose-200 rounded-lg p-2 text-sm outline-none focus:border-love"
-                    placeholder="你可以告诉 AI 它是谁，比如：你是我们的恋爱军师，温柔贴心..."></textarea>
-            </div>
-            <button id="aiSaveBtn" class="w-full bg-love hover:bg-loveDark text-white py-2 rounded-lg text-sm transition font-semibold">
-                <i class="fa fa-save"></i> 保存所有设置
-            </button>
-        </div>
-
-        <!-- 聊天消息区域 -->
-        <div id="aiChatBox" class="bg-rose-50 rounded-xl p-3 mb-4 h-64 overflow-y-auto space-y-3 text-sm">
-            <div class="text-center text-gray-400 py-6 text-xs">AI 助手待命中，快来和它聊聊吧～</div>
-        </div>
-
-        <!-- 快捷话题 -->
-        <div class="flex flex-wrap gap-2 mb-3" id="aiQuickTopics"></div>
-
-        <!-- 输入区 -->
-        <div class="flex gap-2">
-            <input id="aiChatInput" placeholder="和 AI 聊聊..."
-                class="flex-1 border border-rose-200 rounded-lg p-2 outline-none focus:border-love"
-                onkeydown="if(event.key==='Enter') sendAiMessage()">
-            <button onclick="sendAiMessage()" id="aiSendBtn"
-                class="bg-love hover:bg-loveDark disabled:bg-gray-300 text-white px-5 py-2 rounded-lg transition">
-                <i class="fa fa-paper-plane"></i>
-            </button>
-        </div>
-
-        <div class="flex justify-between items-center mt-2">
-            <span id="aiStatus" class="text-xs text-gray-400"></span>
-            <button onclick="clearAiChat()" class="text-xs text-gray-400 hover:text-love">
-                <i class="fa fa-trash-o"></i> 清空对话
-            </button>
-        </div>
+    <!-- 退出登录 -->
+    <div class="bg-white rounded-2xl shadow p-5 mb-4 text-center">
+        <button onclick="logout()" class="px-6 py-2 bg-gray-100 hover:bg-red-50 text-gray-600 hover:text-red-500 rounded-lg text-sm font-semibold transition">
+            <i class="fa fa-sign-out mr-1"></i> 退出登录
+        </button>
     </div>
 </div>

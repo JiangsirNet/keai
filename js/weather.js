@@ -1,3 +1,8 @@
+/**
+ * 天气组件
+ * 调用免费天气 API 获取实时天气并渲染到首页
+ */
+
 let weatherData = null;
 let weatherLatLon = null;
 const WEATHER_CACHE_KEY = 'weather_cache';

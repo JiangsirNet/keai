@@ -1,4 +1,8 @@
-// AI 聊天助手（智谱 AI）
+/**
+ * 智谱 AI 聊天助手
+ * 设置页 AI 对话：流式输出、多轮对话、localStorage 历史记录持久化
+ */
+
 (function () {
     const ZHIPU_API_URL = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
     const DEFAULT_MODEL = "glm-4.7-flash";

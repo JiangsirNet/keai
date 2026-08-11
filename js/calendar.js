@@ -1,4 +1,8 @@
-// ==================== 日历 / 打卡 / 代办 / 纪念日 ====================
+/**
+ * 日历/打卡/纪念日
+ * 月历渲染、打卡、代办事项、纪念日管理、事件下方展示
+ */
+
 let calCurrent = new Date();
 let calSelectedDate = null;
 let calCheckins = [];

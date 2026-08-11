@@ -1,9 +1,7 @@
-<!-- 首页 -->
+<!-- 首页（含子Tab：相册/留言/日志/AI） -->
 <div id="page-home" class="page-content">
-    <div class="flex justify-end mb-4 logout-wrap">
-        <button id="logoutBtn" onclick="logout()" class="px-3 py-1 bg-gray-200 rounded-lg text-sm">退出登录</button>
-    </div>
-    <div class="bg-white/80 backdrop-blur rounded-3xl p-6 md:p-10 card-shadow text-center mb-8">
+    <!-- 恋爱计时器 -->
+    <div class="bg-white/80 backdrop-blur rounded-3xl p-6 md:p-10 card-shadow text-center mb-6">
         <h1 class="text-[clamp(1.8rem,5vw,2.8rem)] font-bold text-love mb-3">
             <span id="boy"></span>
             <i class="fa fa-heart mx-3 animate-pulse"></i>
@@ -14,9 +12,28 @@
         <p class="text-sm text-gray-500 mt-2">朝朝暮暮，岁岁年年</p>
     </div>
 
-    <div class="grid md:grid-cols-2 gap-6">
-        <!--相册模块 -->
-        <div class="bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow md:col-span-2">
+    <!-- 子 Tab 切换 -->
+    <div class="sub-tab-bar mb-6">
+        <button onclick="switchSubTab('gallery')" class="sub-tab active" data-sub="gallery">
+            <i class="fa fa-camera"></i> 相册
+        </button>
+        <button onclick="switchSubTab('message')" class="sub-tab" data-sub="message">
+            <i class="fa fa-comment"></i> 留言
+        </button>
+        <button onclick="switchSubTab('journal')" class="sub-tab" data-sub="journal">
+            <i class="fa fa-book"></i> 日志
+        </button>
+        <button onclick="switchSubTab('ai')" class="sub-tab" data-sub="ai">
+            <i class="fa fa-rocket"></i> AI
+        </button>
+        <button onclick="switchSubTab('music')" class="sub-tab" data-sub="music">
+            <i class="fa fa-music"></i> 音乐
+        </button>
+    </div>
+
+    <!-- ===== 子Tab：相册 ===== -->
+    <div id="subTab-gallery" class="sub-tab-content">
+        <div class="bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow">
             <h2 class="text-xl font-bold text-love flex items-center mb-4">
                 <i class="fa fa-camera mr-2"></i>恋爱相册
             </h2>
@@ -29,9 +46,11 @@
                 <div class="text-center text-gray-400 py-10 loading">加载相册...</div>
             </div>
         </div>
+    </div>
 
-        <!--留言板-->
-        <div class="md:col-span-2 bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow">
+    <!-- ===== 子Tab：留言 ===== -->
+    <div id="subTab-message" class="sub-tab-content hidden">
+        <div class="bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow">
             <h2 class="text-xl font-bold text-love flex items-center mb-4">
                 <i class="fa fa-comment mr-2"></i>留言
             </h2>
@@ -49,6 +68,152 @@
             </div>
             <div class="mt-5 space-y-3" id="msgList">
                 <div class="text-center text-gray-400 py-6 loading">加载留言...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 子Tab：日志 ===== -->
+    <div id="subTab-journal" class="sub-tab-content hidden">
+        <div class="bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow">
+            <h2 class="text-xl font-bold text-love flex items-center mb-4">
+                <i class="fa fa-book mr-2"></i>我们的日志
+            </h2>
+            <div class="flex gap-2 mb-3">
+                <input id="journalTitle" placeholder="标题（可选）"
+                    class="flex-1 border border-rose-200 rounded-lg p-2 outline-none focus:border-love">
+                <input id="journalDate" type="date"
+                    class="border border-rose-200 rounded-lg p-2 outline-none focus:border-love">
+            </div>
+            <textarea id="journalContent"
+                class="w-full border border-rose-200 rounded-xl p-4 outline-none focus:border-love resize-none h-32"
+                placeholder="记录今天的故事、心情、趣事..."></textarea>
+            <div class="mt-2 flex items-center gap-2 flex-wrap">
+                <input type="file" id="journalFileInput" accept="image/jpeg,image/png,image/webp" class="hidden" multiple>
+                <button onclick="document.getElementById('journalFileInput').click()"
+                    class="border border-rose-300 text-love px-4 py-2 rounded-full text-sm hover:bg-rose-50 transition flex items-center gap-1">
+                    <i class="fa fa-image"></i> 添加照片
+                </button>
+                <div id="journalPhotoPreview" class="flex gap-2 flex-wrap"></div>
+            </div>
+            <button onclick="addJournal()"
+                class="mt-3 bg-love hover:bg-loveDark text-white px-6 py-2 rounded-full transition-all">
+                <i class="fa fa-pencil mr-1"></i>写下这一篇
+            </button>
+            <div class="mt-5 space-y-4 max-h-[500px] overflow-y-auto" id="journalList">
+                <div class="text-center text-gray-400 py-6 loading">加载日志...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 子Tab：AI 聊天（接入豆包网页版） ===== -->
+    <div id="subTab-ai" class="sub-tab-content hidden">
+        <div class="bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold text-love flex items-center">
+                    <i class="fa fa-rocket mr-2"></i>AI 聊天助手
+                </h2>
+                <a href="https://www.doubao.com/chat/" target="_blank" rel="noopener"
+                   class="ai-open-external">
+                    <i class="fa fa-external-link"></i> 新窗口打开
+                </a>
+            </div>
+
+            <div class="ai-iframe-wrap" id="aiIframeWrap">
+                <iframe id="aiDoubaoFrame"
+                        src="https://www.doubao.com/chat/"
+                        class="ai-iframe"
+                        frameborder="0"
+                        allow="microphone; camera; clipboard-write"
+                        referrerpolicy="no-referrer"
+                        sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"></iframe>
+                <div class="ai-iframe-loading" id="aiIframeLoading">
+                    <i class="fa fa-spinner fa-spin"></i>
+                    <span>正在加载豆包 AI...</span>
+                </div>
+            </div>
+
+            <p class="ai-tip">
+                <i class="fa fa-info-circle"></i>
+                若上方空白，说明豆包限制了嵌入，请点击右上角"新窗口打开"使用完整功能。
+            </p>
+        </div>
+    </div>
+
+    <!-- ===== 子Tab：音乐 ===== -->
+    <div id="subTab-music" class="sub-tab-content hidden">
+        <div class="bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow">
+            <h2 class="text-xl font-bold text-love flex items-center mb-4">
+                <i class="fa fa-music mr-2"></i>音乐播放器
+            </h2>
+
+            <!-- 现代音乐播放器 -->
+            <div class="modern-player">
+                <!-- 封面区 -->
+                <div class="mp-cover-wrap">
+                    <div class="mp-cover-ring"></div>
+                    <div class="mp-cover" id="mpCover">
+                        <i class="fa fa-music mp-cover-icon"></i>
+                    </div>
+                </div>
+
+                <!-- 歌曲信息 -->
+                <div class="mp-info">
+                    <div class="mp-title" id="mpTitle">暂无歌曲</div>
+                    <div class="mp-subtitle">情侣空间 · 共享音乐</div>
+                </div>
+
+                <!-- 进度条 -->
+                <div class="mp-progress" id="mpProgress" onclick="seekMusic(event)">
+                    <div class="mp-progress-bar" id="mpProgressBar"></div>
+                    <div class="mp-progress-thumb" id="mpProgressThumb"></div>
+                </div>
+                <div class="mp-time">
+                    <span id="mpCurrent">0:00</span>
+                    <span id="mpDuration">0:00</span>
+                </div>
+
+                <!-- 控制按钮：模式 / 上一首 / 播放 / 下一首 / 歌词 -->
+                <div class="mp-controls">
+                    <button class="mp-btn" onclick="togglePlayMode()" id="mpModeBtn" title="列表循环"></button>
+                    <button class="mp-btn" onclick="prevMusic()" title="上一首">
+                        <i class="fa fa-step-backward"></i>
+                    </button>
+                    <button class="mp-btn mp-play" id="mpPlayBtn" onclick="togglePlay()" title="播放/暂停">
+                        <i class="fa fa-play"></i>
+                    </button>
+                    <button class="mp-btn" onclick="nextMusic()" title="下一首">
+                        <i class="fa fa-step-forward"></i>
+                    </button>
+                    <button class="mp-btn active" onclick="toggleLyricsView()" id="mpLyricsBtn" title="歌词">
+                        <i class="fa fa-align-left"></i>
+                    </button>
+                </div>
+
+                <!-- 歌词展示区 -->
+                <div class="mp-lyrics" id="mpLyrics">
+                    <div class="mp-lyrics-empty">暂无歌词</div>
+                </div>
+
+                <!-- 折叠的播放列表 -->
+                <div class="mp-playlist-toggle" onclick="togglePlaylist()" id="mpPlaylistToggle">
+                    <span><i class="fa fa-list"></i> 播放列表 <span id="mpListCount">(0)</span></span>
+                    <i class="fa fa-chevron-down" id="mpPlaylistChevron"></i>
+                </div>
+                <div class="mp-playlist hidden" id="mpPlaylist">
+                    <div id="mpList"></div>
+                    <div class="mp-sort-bar">
+                        <button class="mp-sort-btn" onclick="changeMusicSort('date_desc')" id="sortDateDesc">最新</button>
+                        <button class="mp-sort-btn" onclick="changeMusicSort('date_asc')" id="sortDateAsc">最早</button>
+                        <button class="mp-sort-btn" onclick="changeMusicSort('title_asc')" id="sortTitleAsc">A-Z</button>
+                        <button class="mp-sort-btn" onclick="changeMusicSort('title_desc')" id="sortTitleDesc">Z-A</button>
+                    </div>
+                </div>
+
+                <!-- 上传区 -->
+                <label class="mp-upload">
+                    <i class="fa fa-upload"></i> 上传歌曲
+                    <input type="file" id="musicUpload" accept="audio/*" class="hidden" onchange="uploadMusic(event)">
+                </label>
             </div>
         </div>
     </div>

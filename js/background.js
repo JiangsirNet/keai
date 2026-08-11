@@ -1,3 +1,8 @@
+/**
+ * 背景图设置
+ * 自定义网页背景图的上传、预览、清除
+ */
+
 (function() {
     // 应用背景图
     function applyBackground(url) {

@@ -1,3 +1,8 @@
+/**
+ * 通知系统
+ * 提供 sendNotification 全局函数，带 500ms 去重机制
+ */
+
 let notificationChannel = null;
 let notifications = [];
 let unreadCount = 0;

@@ -1,4 +1,8 @@
-// ==================== 女生 Live2D 风格 ====================
+/**
+ * 女生 Live2D 风格人物形象
+ * Canvas 渲染、表情切换、拖拽、抚摸、拥抱交互
+ */
+
 const girlPhrases = ["哼哼~", "干嘛呀", "抱抱", "亲亲", "讨厌啦", "喜欢你", "呜呜呜", "嘻嘻"];
 let girlDragging = false;
 let girlCanvas, girlCtx, girlImg = null, girlImgLoaded = false;

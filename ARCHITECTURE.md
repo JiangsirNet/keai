@@ -4,7 +4,7 @@
 
 ## 一、项目概述
 
-情侣空间是一个双人互动 Web 应用，功能包括：相册、留言、日志、日历打卡、猜拳游戏、骗子酒馆、Live2D 风格人物形象、宠物动画、音乐播放器、天气组件、背景图自定义、智谱 AI 聊天助手、下拉刷新、资源本地缓存等。
+情侣空间是一个双人互动 Web 应用，功能包括：相册、留言、日志、日历打卡、猜拳游戏、骗子酒馆、Live2D 风格人物形象、宠物动画、现代音乐播放器（封面/歌词/播放模式）、天气组件、背景图自定义、AI 标签页（嵌入豆包网页版）、下拉刷新、资源本地缓存等。
 
 ## 二、文件结构
 
@@ -45,7 +45,7 @@ js/                     — JS 模块
 ├── game.js             — 猜拳对战
 ├── game_liar.js        — 骗子酒馆
 ├── background.js       — 背景图设置
-├── ai_chat.js          — 智谱 AI 聊天助手
+├── ai_chat.js          — ⚠️ 已废弃（智谱 AI 聊天，不再被 loader.js 加载，文件保留备用）
 ├── pull_refresh.js     — 下拉刷新（橡皮条）
 └── auth.js             — 认证 + 页面初始化（必须最后加载）
 ARCHITECTURE.md         — 本架构文档（type=md, 供 upload.html 渲染用）
@@ -107,10 +107,11 @@ CSS (0) → HTML (1-6) → JS (10-26)
 config_page.js (10) → notifications.js (11) → weather.js (12) → audio.js (13)
 → music.js (14) → pets.js (15) → characters.js (16) → characters_girl.js (17)
 → home.js (18) → journal.js (19) → calendar.js (20) → game.js (21) → game_liar.js (22)
-→ background.js (23) → ai_chat.js (24) → pull_refresh.js (25) → auth.js (26)
+→ background.js (23) → pull_refresh.js (25) → auth.js (26)
 ```
 
 > **关键**：`auth.js` 必须最后加载，因为它的 `initPage()` 会调用所有模块的初始化函数。
+> **注**：`ai_chat.js` (24) 已废弃，loader.js 不再加载（AI 标签页改为 iframe 嵌入豆包网页版）。
 
 ## 四、数据库表结构
 
@@ -176,7 +177,7 @@ config_page.js (10) → notifications.js (11) → weather.js (12) → audio.js (
 | `journals` | 日志 | `title`, `content`, `author_email` |
 | `calendar_checkins` | 日历打卡 | `check_date`, `user_email` |
 | `anniversaries` | 纪念日 | `date`, `title` |
-| `music` | 音乐 | `title`, `url`, `uploader_email` |
+| `music` | 音乐 | `title`, `url`, `uploader_email`, `cover_url`(可选), `lyrics`(可选) |
 | `rps_games` | 猜拳游戏记录 | `player_email`, `choice` |
 
 ### RLS 策略规则
@@ -395,83 +396,115 @@ GRANT EXECUTE ON FUNCTION exec_ddl(TEXT) TO authenticated;
 | `window.compressImage(file, maxW, quality)` | auth.js | 压缩图片 |
 | `window.loadGallery()` | home.js | 加载相册 |
 | `window.clearBackground()` | background.js | 清除背景图 |
-| `window.toggleAiSettings()` | ai_chat.js | 切换 AI 设置面板显示 |
-| `window.saveAiAllOptions()` | ai_chat.js | 保存 AI 配置（API Key/模型/提示词） |
-| `window.sendAiMessage()` | ai_chat.js | 发送消息给 AI |
-| `window.clearAiChat()` | ai_chat.js | 清空对话记录 |
+| `window.togglePlayMode()` | music.js | 切换播放模式（列表循环/单曲循环/随机） |
+| `window.togglePlaylist()` | music.js | 折叠/展开播放列表 |
+| `window.toggleLyricsView()` | music.js | 显示/隐藏歌词区 |
 
-## 十四、智谱 AI 聊天助手
+> ⚠️ 表中 `window.toggleAiSettings` / `sendAiMessage` / `clearAiChat` / `saveAiAllOptions` 已废弃（ai_chat.js 不再加载）。
+
+## 十四、AI 标签页（嵌入豆包网页版）
 
 ### 功能概述
 
-在设置页面底部，提供与智谱 AI 的对话功能，支持多轮对话、流式输出、历史记录持久化、模型切换、系统提示词自定义。
+首页「AI」子 Tab 通过 iframe 直接嵌入豆包网页版（`https://www.doubao.com/chat/`），用户无需配置 API Key 即可使用。
 
-### 流式输出
+### 实现方式
 
-- 请求参数 `stream: true`，通过 `ReadableStream + TextDecoder` 逐块读取 SSE 响应
-- 实时渲染到聊天气泡（打字机效果），自动滚动到底部
-- 设置页 AI 助手和 upload.html AI 代码助手均使用流式输出
+- **HTML**：`partials/home.html` 的 `#subTab-ai` 内放 `<iframe>` 加载豆包
+- **JS**：无需专属 JS 模块（原 `js/ai_chat.js` 已废弃，loader.js 不再加载）
+- **降级方案**：右上角"新窗口打开"按钮（紫蓝渐变）跳转豆包官网；iframe 加载中显示 loading 动画；底部小字提示用户空白时改用新窗口
 
-### 历史记录持久化
+### iframe 参数
 
-- 聊天记录存储在 `localStorage`（key: `ai_chat_history_settings`），刷新页面后恢复
-- 发给 API 的历史限制为最近 20 条（避免 token 过大导致首字延迟），localStorage 保存全量
-- `clearAiChat()` 同时清除 localStorage
-
-### 配置存储
-
-AI 配置存储在 `app_config` 表中：
-
-| config_key | 说明 |
-|---|---|
-| `zhipu_api_key` | 智谱 AI API Key |
-| `zhipu_model` | 模型名称（如 `glm-4.7-flash`） |
-| `zhipu_system_prompt` | 系统提示词 |
-
-### 免费模型推荐
-
-| 模型 | 特点 |
-|---|---|
-| `glm-4.7-flash` | 最新旗舰免费版，200K 上下文 |
-| `glm-4-flash` | 稳定免费版，128K 上下文 |
-| `glm-4-flashx-250414` | Flash 极速增强版 |
-
-> 新用户注册智谱 AI 即送 2000 万 Token 永久免费额度。
-
-### 使用流程
-
-1. 进入「设置」页面，找到「AI 聊天助手」卡片
-2. 点击「⚙️ 设置」展开配置面板
-3. 填入 API Key（从 https://open.bigmodel.cn 获取）
-4. 选择模型（默认 `glm-4.7-flash`）
-5. 可选：自定义系统提示词
-6. 点击「💾 保存所有设置」
-7. 在聊天框输入问题或点击快捷话题开始对话
-
-### API 调用
-
+```html
+<iframe src="https://www.doubao.com/chat/"
+        sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
+        allow="microphone; camera; clipboard-write"
+        referrerpolicy="no-referrer"></iframe>
 ```
-POST https://open.bigmodel.cn/api/paas/v4/chat/completions
-Headers:
-  Authorization: Bearer <API_KEY>
-  Content-Type: application/json
-Body:
-  {
-    "model": "glm-4.7-flash",
-    "messages": [
-      {"role": "system", "content": "你是我们的恋爱小助手..."},
-      {"role": "user", "content": "你好"}
-    ],
-    "temperature": 0.8
-  }
-```
+
+### 已知限制
+
+- 豆包官网可能设置 `X-Frame-Options: SAMEORIGIN` 或 CSP `frame-ancestors`，导致 iframe 被拦截
+- 被拦截时浏览器显示空白或"拒绝连接"，用户需点击"新窗口打开"使用完整功能
+- 跨域无法共享登录态，用户首次需在新窗口登录豆包
+
+### ⚠️ 废弃说明：智谱 AI 聊天
+
+原「智谱 AI 聊天助手」已从设置页移除，相关代码保留但停用：
+
+| 资源 | 状态 |
+|---|---|
+| `js/ai_chat.js` | ⚠️ 保留但 loader.js 不加载（load_order=24 已移除）|
+| `partials/home.html` 中的 AI 设置面板/聊天框 | ❌ 已删除，替换为 iframe |
+| `app_config` 表 `zhipu_api_key` / `zhipu_model` / `zhipu_system_prompt` | 保留但暂未使用 |
+| `window._aiApiKey` / `window._aiModel` / `window._aiSystemPrompt` | 仍由 auth.js loadConfig() 读取，供未来恢复使用 |
+| `window.toggleAiSettings` / `sendAiMessage` / `clearAiChat` / `saveAiAllOptions` | ❌ 不再存在 |
+
+> 如需恢复智谱 AI 接入：在 loader.js 的 LOCAL_FILES 中恢复 `ai_chat.js` 条目（order=24），并在 home.html 中恢复原 AI 聊天 UI。
+> 智谱 GLM-4 系列支持 `web_search` 工具实现联网搜索（详见 [官方文档](https://docs.bigmodel.cn/cn/guide/tools/web-search)），每次搜索约增加 1000 tokens 消耗。
+
+## 十五、现代音乐播放器
+
+### 功能特性
+
+- **旋转大封面**：180px 圆形封面 + 外圈虚线环，播放时旋转；无封面时显示歌名首字
+- **歌词同步**：支持 LRC 时间戳格式（自动高亮+滚动）和纯文本格式（仅展示）
+- **播放模式**：列表循环 / 单曲循环（带"1"角标）/ 随机播放，3 种模式循环切换
+- **折叠列表**：默认收起，点击展开，每项含小封面+标题+删除按钮
+- **歌词开关**：右下角按钮可隐藏/显示歌词区
+- **进度条**：渐变色 + hover 显示拖拽圆点
+- **mask-image 渐变遮罩**：歌词上下边缘自然淡出
 
 ### 文件结构
 
-- HTML: `partials/config.html` 底部的 AI 聊天助手卡片
-- JS: `js/ai_chat.js`（load_order=24，在 auth.js 之前）
+| 文件 | 作用 |
+|---|---|
+| `partials/home.html` `#subTab-music` | 播放器 HTML 结构（.modern-player 容器） |
+| `styles.css` `.modern-player` / `.mp-*` | 播放器样式（行 225-542） |
+| `styles_mobile.css` | 移动端适配（封面/按钮缩小） |
+| `js/music.js` | 播放逻辑、歌词解析、播放模式、列表折叠 |
 
-## 十五、下拉刷新（橡皮条）
+### 数据库字段（music 表）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `id` | bigserial | ✅ | 主键 |
+| `title` | text | ✅ | 歌曲名 |
+| `url` | text | ✅ | 音频文件 URL（Storage music 桶） |
+| `cover_url` | text | ❌ | 封面图 URL（缺省显示歌名首字） |
+| `lyrics` | text | ❌ | 歌词文本（LRC 或纯文本） |
+| `created_at` | timestamptz | ✅ | 创建时间 |
+
+> 启用封面/歌词功能需在 Supabase 执行：
+> ```sql
+> ALTER TABLE music ADD COLUMN IF NOT EXISTS cover_url text;
+> ALTER TABLE music ADD COLUMN IF NOT EXISTS lyrics text;
+> ```
+
+### 歌词格式
+
+**LRC 格式（推荐，可同步高亮+滚动）**：
+```
+[00:12.50]月亮代表我的心
+[00:18.30]你问我爱你有多深
+```
+
+**纯文本格式（不滚动，仅展示）**：
+```
+月亮代表我的心
+你问我爱你有多深
+```
+
+### 关键实现细节
+
+- **歌词滚动**：用 `getBoundingClientRect()` 计算行在容器内的相对偏移（避免 `offsetTop` 因 offsetParent 不是容器导致失真），二分法查找当前行
+- **CSS 遮罩**：`mask-image: linear-gradient(...)` 让歌词上下缘淡出，禁止在 JS 里再做 opacity 逻辑
+- **当前行高亮**：用 `margin: 6px 0` 撑开行间距代替 `transform: scale(1.02)`（后者会被 `overflow: hidden` 裁切）
+- **播放模式按钮**：`mpModeBtn`，3 种模式循环切换；单曲循环用 `<i class="fa fa-repeat">` + "1" 角标叠加（FontAwesome 4 无 `fa-repeat-1`）
+- **删除原浮动按钮**：旧版 `.music-toggle` / `.music-panel` 浮动按钮样式已从 styles.css 和 styles_mobile.css 中移除（musicToggle/musicPanel 元素已不存在）
+
+## 十六、下拉刷新（橡皮条）
 
 - **文件**：`js/pull_refresh.js`（load_order=25）
 - **HTML**：`index.html` 中的 `#pullRefreshIndicator` 元素
@@ -480,7 +513,7 @@ Body:
 - **排除元素**：拖拽人物/宠物（`.boy-pet, .girl-pet, .husky-pet, .cat-pet`）时不触发
 - **流程**：下拉显示指示器 → 超过阈值显示"松开刷新" → 松手刷新页面
 
-## 十六、分页功能
+## 十七、分页功能
 
 相册、留言、日志均使用上一页/下一页分页（非"加载更多"）：
 
@@ -494,7 +527,7 @@ Body:
 - 删除当前页最后一项时自动修正页码
 - 分页函数通过 `window.xxxPrevPage` / `window.xxxNextPage` 暴露给 onclick
 
-## 十七、upload.html AI 代码助手
+## 十八、upload.html AI 代码助手
 
 ### 功能
 
@@ -514,7 +547,7 @@ Body:
 
 > 发送对话后，所有引用（自动 + 手动）全部清空。下次切 Tab 时重新预加载 md 文件。
 
-## 十八、upload.html 资源版本备份
+## 十九、upload.html 资源版本备份
 
 ### 自动备份
 
@@ -528,7 +561,7 @@ Body:
 - ZIP 结构：`styles.css`、`styles_layout.css`、`styles_mobile.css`、`ARCHITECTURE.md`、`app_containers.json`、`partials/`、`js/`
 - JSZip 动态加载（多 CDN 备用），加载前禁用 AMD 避免与 Monaco 冲突
 
-## 十九、开发规范
+## 二十、开发规范
 
 1. **JS 模块必须用 IIFE 包裹**，避免全局变量冲突
 2. **不要用 `const sb` / `const CONFIG` 顶层声明**，用 `window.sb` / `window.CONFIG`

@@ -1,30 +1,54 @@
-// ==================== 动态资源加载器（带本地缓存） ====================
-// 策略：stale-while-revalidate
-//   1. 有缓存 → 立即用缓存渲染页面（秒开）
-//   2. 后台静默查询接口，更新缓存
-//   3. 发现内容变更 → 顶部提示"资源已更新，刷新生效"
-//   4. 接口失败但有缓存 → 不影响当前使用
+/**
+ * 动态资源加载器
+ * - 本地环境（localhost / 127.0.0.1 / file:）：直接从本地文件加载
+ * - 线上环境：从 Supabase 加载，支持版本号对比 + localStorage 缓存
+ */
 
 (function bootstrap() {
-    if (!window.sb) {
-        console.error('loader: window.sb 未初始化，请确保 config.js 已加载');
-        return;
-    }
+    // ---- 判断是否本地环境 ----
+    const isLocal = location.protocol === 'file:' ||
+        location.hostname === 'localhost' ||
+        location.hostname === '127.0.0.1' ||
+        location.hostname === '';
 
-    const CACHE_KEY_CONTAINERS = 'loader_cache_containers_v1';
-    const CACHE_KEY_ASSETS = 'loader_cache_assets_v1';
-    const CACHE_KEY_VERSION = 'loader_cache_version_v1';
+    // ---- 本地文件清单 ----
+    const LOCAL_FILES = [
+        { path: 'styles.css',           type: 'css',  container: null, order: 0 },
+        { path: 'styles_layout.css',    type: 'css',  container: null, order: 0 },
+        { path: 'styles_mobile.css',    type: 'css',  container: null, order: 0 },
+        { path: 'partials/login.html',   type: 'html', container: 'loginPanelContainer',   order: 1 },
+        { path: 'partials/preview.html', type: 'html', container: 'previewModalContainer', order: 2 },
+        { path: 'partials/home.html',    type: 'html', container: 'pageHomeContainer',     order: 3 },
+        { path: 'partials/journal.html', type: 'html', container: 'pageJournalContainer',  order: 4 },
+        { path: 'partials/game.html',    type: 'html', container: 'pageGameContainer',     order: 5 },
+        { path: 'partials/config.html',  type: 'html', container: 'pageConfigContainer',   order: 6 },
+        { path: 'js/config_page.js',     type: 'js', container: null, order: 10 },
+        { path: 'js/notifications.js',   type: 'js', container: null, order: 11 },
+        { path: 'js/weather.js',         type: 'js', container: null, order: 12 },
+        { path: 'js/audio.js',           type: 'js', container: null, order: 13 },
+        { path: 'js/music.js',           type: 'js', container: null, order: 14 },
+        { path: 'js/pets.js',            type: 'js', container: null, order: 15 },
+        { path: 'js/characters.js',      type: 'js', container: null, order: 16 },
+        { path: 'js/characters_girl.js', type: 'js', container: null, order: 17 },
+        { path: 'js/home.js',            type: 'js', container: null, order: 18 },
+        { path: 'js/journal.js',         type: 'js', container: null, order: 19 },
+        { path: 'js/calendar.js',        type: 'js', container: null, order: 20 },
+        { path: 'js/game.js',            type: 'js', container: null, order: 21 },
+        { path: 'js/game_liar.js',       type: 'js', container: null, order: 22 },
+        { path: 'js/background.js',      type: 'js', container: null, order: 23 },
+        { path: 'js/pull_refresh.js',    type: 'js', container: null, order: 25 },
+        { path: 'js/auth.js',            type: 'js', container: null, order: 26 },
+    ];
 
-    function loadCache(key) {
-        try {
-            const s = localStorage.getItem(key);
-            return s ? JSON.parse(s) : null;
-        } catch (e) { return null; }
-    }
-    function saveCache(key, data) {
-        try { localStorage.setItem(key, JSON.stringify(data)); }
-        catch (e) { console.warn('loader: 缓存写入失败', e); }
-    }
+    // ---- 本地容器配置 ----
+    const LOCAL_CONTAINERS = [
+        { container_id: 'loginPanelContainer', page_name: '', nav_label: '', nav_icon: '', sort_order: 1, placement: 'global', is_active: true },
+        { container_id: 'previewModalContainer', page_name: '', nav_label: '', nav_icon: '', sort_order: 2, placement: 'global', is_active: true },
+        { container_id: 'pageHomeContainer', page_name: 'home', nav_label: '首页', nav_icon: '🏠', sort_order: 3, placement: 'page', is_active: true },
+        { container_id: 'pageJournalContainer', page_name: 'journal', nav_label: '日历', nav_icon: '📅', sort_order: 4, placement: 'page', is_active: true },
+        { container_id: 'pageGameContainer', page_name: 'game', nav_label: '游戏', nav_icon: '🎮', sort_order: 5, placement: 'page', is_active: true },
+        { container_id: 'pageConfigContainer', page_name: 'config', nav_label: '设置', nav_icon: '⚙️', sort_order: 6, placement: 'page', is_active: true },
+    ];
 
     // ---- 渲染容器配置 ----
     function renderContainers(containers) {
@@ -101,69 +125,130 @@
         if (loading) loading.style.display = 'none';
     }
 
-    async function init() {
-        // 1. 读取本地缓存（版本 + 数据）
-        const cachedVersion = loadCache(CACHE_KEY_VERSION);
-        const cachedContainers = loadCache(CACHE_KEY_CONTAINERS);
-        const cachedAssets = loadCache(CACHE_KEY_ASSETS);
-        const hasCache = cachedContainers && cachedAssets && cachedContainers.length && cachedAssets.length;
-
-        // 2. 先查版本号（轻量，只查 1 条 config）
+    // ---- 本地加载模式 ----
+    async function initLocal() {
         try {
-            const { data: vRow } = await window.sb.from('app_config')
-                .select('config_value')
-                .eq('config_key', 'assets_version');
-            const latestVersion = (vRow && vRow[0] && vRow[0].config_value) || '';
+            // 1. 渲染容器
+            renderContainers(LOCAL_CONTAINERS);
 
-            // 3. 版本一致 + 有缓存 → 直接用缓存渲染，不查资源表
-            if (hasCache && latestVersion && latestVersion === cachedVersion) {
-                renderContainers(cachedContainers);
-                renderAssets(cachedAssets);
-                hideLoading();
-                return;
+            // 2. 按顺序 fetch 本地文件
+            const sorted = [...LOCAL_FILES].sort((a, b) => a.order - b.order);
+            const assets = [];
+            for (const f of sorted) {
+                try {
+                    const res = await fetch(f.path);
+                    if (!res.ok) {
+                        console.warn(`loader: 本地文件 ${f.path} 加载失败 (${res.status})`);
+                        continue;
+                    }
+                    const content = await res.text();
+                    assets.push({
+                        file_path: f.path,
+                        type: f.type,
+                        container_id: f.container,
+                        content: content,
+                        load_order: f.order
+                    });
+                } catch (e) {
+                    console.warn(`loader: 本地文件 ${f.path} fetch 失败`, e);
+                }
             }
 
-            // 4. 版本不一致或无缓存 → 查全量资源
-            const [cRes, aRes] = await Promise.all([
-                window.sb.from('app_containers')
-                    .select('*')
-                    .eq('is_active', true)
-                    .order('sort_order', { ascending: true }),
-                window.sb.from('app_assets')
-                    .select('file_path, type, container_id, content, load_order')
-                    .eq('is_active', true)
-                    .order('load_order', { ascending: true })
-                    .order('type', { ascending: true })
-                    .order('file_path', { ascending: true })
-            ]);
-
-            if (cRes.error) throw new Error('容器配置: ' + cRes.error.message);
-            if (aRes.error) throw new Error('资源: ' + aRes.error.message);
-
-            const containers = cRes.data || [];
-            const assets = aRes.data || [];
-
-            // 5. 更新缓存（数据 + 版本号）
-            saveCache(CACHE_KEY_CONTAINERS, containers);
-            saveCache(CACHE_KEY_ASSETS, assets);
-            saveCache(CACHE_KEY_VERSION, latestVersion);
-
-            // 6. 用最新数据渲染
-            renderContainers(containers);
+            // 3. 渲染资源
             renderAssets(assets);
             hideLoading();
         } catch (err) {
-            console.error('[loader] 加载异常', err);
-            // 接口失败但有缓存 → 用缓存兜底
-            if (hasCache) {
-                renderContainers(cachedContainers);
-                renderAssets(cachedAssets);
-                hideLoading();
-            } else {
-                alert('页面初始化失败：' + err.message + '\n\n请检查网络或运行 upload.html 上传资源。');
-            }
+            console.error('[loader] 本地加载异常', err);
+            hideLoading();
         }
     }
 
-    init();
+    // ---- 线上加载模式（数据库 + 缓存）----
+    function initOnline() {
+        if (!window.sb) {
+            console.error('loader: window.sb 未初始化，请确保 config.js 已加载');
+            return;
+        }
+
+        const CACHE_KEY_CONTAINERS = 'loader_cache_containers_v1';
+        const CACHE_KEY_ASSETS = 'loader_cache_assets_v1';
+        const CACHE_KEY_VERSION = 'loader_cache_version_v1';
+
+        function loadCache(key) {
+            try {
+                const s = localStorage.getItem(key);
+                return s ? JSON.parse(s) : null;
+            } catch (e) { return null; }
+        }
+        function saveCache(key, data) {
+            try { localStorage.setItem(key, JSON.stringify(data)); }
+            catch (e) { console.warn('loader: 缓存写入失败', e); }
+        }
+
+        async function init() {
+            const cachedVersion = loadCache(CACHE_KEY_VERSION);
+            const cachedContainers = loadCache(CACHE_KEY_CONTAINERS);
+            const cachedAssets = loadCache(CACHE_KEY_ASSETS);
+            const hasCache = cachedContainers && cachedAssets && cachedContainers.length && cachedAssets.length;
+
+            try {
+                const { data: vRow } = await window.sb.from('app_config')
+                    .select('config_value')
+                    .eq('config_key', 'assets_version');
+                const latestVersion = (vRow && vRow[0] && vRow[0].config_value) || '';
+
+                if (hasCache && latestVersion && latestVersion === cachedVersion) {
+                    renderContainers(cachedContainers);
+                    renderAssets(cachedAssets);
+                    hideLoading();
+                    return;
+                }
+
+                const [cRes, aRes] = await Promise.all([
+                    window.sb.from('app_containers')
+                        .select('*')
+                        .eq('is_active', true)
+                        .order('sort_order', { ascending: true }),
+                    window.sb.from('app_assets')
+                        .select('file_path, type, container_id, content, load_order')
+                        .eq('is_active', true)
+                        .order('load_order', { ascending: true })
+                        .order('type', { ascending: true })
+                        .order('file_path', { ascending: true })
+                ]);
+
+                if (cRes.error) throw new Error('容器配置: ' + cRes.error.message);
+                if (aRes.error) throw new Error('资源: ' + aRes.error.message);
+
+                const containers = cRes.data || [];
+                const assets = aRes.data || [];
+
+                saveCache(CACHE_KEY_CONTAINERS, containers);
+                saveCache(CACHE_KEY_ASSETS, assets);
+                saveCache(CACHE_KEY_VERSION, latestVersion);
+
+                renderContainers(containers);
+                renderAssets(assets);
+                hideLoading();
+            } catch (err) {
+                console.error('[loader] 加载异常', err);
+                if (hasCache) {
+                    renderContainers(cachedContainers);
+                    renderAssets(cachedAssets);
+                    hideLoading();
+                } else {
+                    alert('页面初始化失败：' + err.message + '\n\n请检查网络或运行 upload.html 上传资源。');
+                }
+            }
+        }
+
+        init();
+    }
+
+    // ---- 根据环境选择加载模式 ----
+    if (isLocal) {
+        initLocal();
+    } else {
+        initOnline();
+    }
 })();

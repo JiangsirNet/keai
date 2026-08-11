@@ -1,3 +1,8 @@
+/**
+ * 猜拳对战
+ * 石头剪刀布实时对战（Supabase Realtime）、分数记录
+ */
+
 (function() {
 const sb = window.sb;
 const CONFIG = window.CONFIG;

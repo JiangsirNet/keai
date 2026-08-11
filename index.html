@@ -101,10 +101,9 @@
         </svg>
     </div>
 
-    <!-- 下拉刷新指示器 -->
+    <!-- 下拉刷新指示器（微信风格圆形） -->
     <div id="pullRefreshIndicator" class="pull-refresh-indicator">
-        <i class="fa fa-arrow-down" id="pullRefreshIcon"></i>
-        <span id="pullRefreshText">下拉刷新</span>
+        <i class="fa fa-refresh" id="pullRefreshIcon"></i>
     </div>
 
     <!-- 天气组件（左上角）-->
@@ -114,12 +113,7 @@
         <span class="w-city" id="wCity">定位中</span>
     </div>
 
-    <!-- 音乐播放器 -->
-    <button id="musicToggle" class="music-toggle hidden" onclick="toggleMusicPanel()">
-        <i class="fa fa-music"></i>
-    </button>
-
-    <!-- 通知铃铛 -->
+    <!-- 通知铃铛（最右边） -->
     <button id="bellToggle" class="bell-toggle hidden" onclick="toggleBellPanel()">
         <i class="fa fa-bell"></i>
         <span class="bell-badge hidden" id="bellBadge">0</span>
@@ -133,38 +127,7 @@
             <div class="text-center text-gray-400 py-4 text-xs">暂无通知</div>
         </div>
     </div>
-    <div id="musicPanel" class="music-panel hidden-panel">
-        <div class="music-cover" id="musicCover"><i class="fa fa-music"></i></div>
-        <div class="music-title" id="musicTitle">暂无歌曲</div>
-        <div class="music-progress" id="musicProgress" onclick="seekMusic(event)">
-            <div class="music-progress-bar" id="musicProgressBar"></div>
-        </div>
-        <div class="music-time">
-            <span id="musicCurrent">0:00</span>
-            <span id="musicDuration">0:00</span>
-        </div>
-        <div class="music-controls">
-            <button class="music-btn" onclick="prevMusic()"><i class="fa fa-step-backward"></i></button>
-            <button class="music-btn play" id="musicPlayBtn" onclick="togglePlay()">
-                <i class="fa fa-play"></i>
-            </button>
-            <button class="music-btn" onclick="nextMusic()"><i class="fa fa-step-forward"></i></button>
-        </div>
-        <div class="music-list" id="musicList">
-            <div class="text-center text-gray-400 py-2 text-xs">暂无歌曲</div>
-        </div>
-        <div style="display:flex;gap:4px;justify-content:center;margin-top:6px;">
-            <button class="music-sort-btn" onclick="changeMusicSort('date_desc')" id="sortDateDesc">最新上传</button>
-            <button class="music-sort-btn" onclick="changeMusicSort('date_asc')" id="sortDateAsc">最早上传</button>
-            <button class="music-sort-btn" onclick="changeMusicSort('title_asc')" id="sortTitleAsc">歌名A-Z</button>
-            <button class="music-sort-btn" onclick="changeMusicSort('title_desc')" id="sortTitleDesc">歌名Z-A</button>
-        </div>
-        <label class="music-upload">
-            <i class="fa fa-upload"></i> 上传歌曲
-            <input type="file" id="musicUpload" accept="audio/*" class="hidden" onchange="uploadMusic(event)">
-        </label>
-        <audio id="musicAudio" ontimeupdate="updateProgress()" onended="onMusicEnded()"></audio>
-    </div>
+    <audio id="musicAudio" ontimeupdate="updateProgress()" onended="onMusicEnded()"></audio>
 
     <!-- ===== 以下容器和导航由 loader.js 从数据库动态生成 ===== -->
 

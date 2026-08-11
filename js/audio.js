@@ -1,3 +1,8 @@
+/**
+ * BGM 与音效
+ * 管理 Web Audio 背景音乐播放与交互音效（sfxPlay/sfxWaterHit 等）
+ */
+
 let audioCtx = null;
 let bgmPlaying = false;
 let bgmTimer = null;

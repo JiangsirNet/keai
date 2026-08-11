@@ -1,4 +1,8 @@
-// ==================== 男生 Live2D 风格 ====================
+/**
+ * 男生 Live2D 风格人物形象
+ * Canvas 渲染、表情切换、拖拽、抚摸、拥抱交互
+ */
+
 const boyPhrases = ["嗨！", "你好呀~", "在吗？", "想你了", "一起玩吧", "摸摸头", "今天也是爱你的一天", "你是我的全世界"];
 let boyDragging = false;
 let boyCanvas, boyCtx, boyImg = null, boyImgLoaded = false;
