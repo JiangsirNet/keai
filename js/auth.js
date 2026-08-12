@@ -44,6 +44,8 @@
     // 退出登录
     async function logout() {
         await sb.auth.signOut();
+        window.myRpsEmail = "";
+        window.currentUser = null;
         IMGBB_KEY = ""; window.IMGBB_KEY = "";
         EMAILJS_SERVICE_ID = ""; window.EMAILJS_SERVICE_ID = "";
         EMAILJS_TEMPLATE_ID = ""; window.EMAILJS_TEMPLATE_ID = "";
@@ -91,6 +93,12 @@
         if (map.zhipu_api_key) window._aiApiKey = map.zhipu_api_key;
         if (map.zhipu_model) window._aiModel = map.zhipu_model;
         if (map.zhipu_system_prompt) window._aiSystemPrompt = map.zhipu_system_prompt;
+        // 设置当前用户邮箱（供 calendar/game/journal 等模块使用）
+        const { data: { session } } = await sb.auth.getSession();
+        if (session?.user?.email) {
+            window.myRpsEmail = session.user.email;
+            window.currentUser = { email: session.user.email };
+        }
         // 初始化 EmailJS
         if (EMAILJS_PUBLIC_KEY && window.emailjs) {
             try { emailjs.init(EMAILJS_PUBLIC_KEY); } catch (e) { console.warn("EmailJS初始化失败:", e); }

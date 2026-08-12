@@ -23,6 +23,7 @@
         .asset-item.active { background: #ff6b8b; color: #fff; }
         .asset-item { cursor: pointer; }
         .asset-item:hover { background: #ffe4e9; }
+        #authBar { background: #fff; border: 1px solid #ffe4e9; }
         #editorArea { border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
         #docView h1 { font-size: 1.5rem; font-weight: bold; color: #ff6b8b; margin: 1rem 0 0.5rem; }
         #docView h2 { font-size: 1.2rem; font-weight: bold; color: #e04c6e; margin: 1rem 0 0.5rem; border-bottom: 1px solid #ffe4e9; padding-bottom: 0.25rem; }
@@ -54,6 +55,26 @@
 <body class="min-h-screen p-3 sm:p-4">
     <div class="w-full max-w-full">
         <h1 class="text-xl sm:text-2xl font-bold text-love mb-2"><i class="fa fa-database"></i> 资源管理工具</h1>
+
+        <!-- 登录状态条 -->
+        <div id="authBar" class="mb-3 p-3 rounded-xl shadow-sm flex items-center justify-between">
+            <div id="authStatus" class="text-sm"></div>
+            <div id="authActions"></div>
+        </div>
+
+        <!-- 登录面板 -->
+        <div id="loginPanel" class="hidden mb-3 bg-white rounded-xl p-4 shadow">
+            <h2 class="font-bold text-gray-700 mb-2"><i class="fa fa-lock"></i> 需要登录</h2>
+            <p class="text-sm text-gray-500 mb-3">上传/修改/删除资源需要认证用户权限。请使用情侣空间账号登录。</p>
+            <div class="flex flex-col sm:flex-row gap-2">
+                <input id="loginEmail" type="email" placeholder="邮箱" class="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-love">
+                <input id="loginPwd" type="password" placeholder="密码" class="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-love">
+                <button onclick="doLogin()" class="bg-love text-white px-6 py-2 rounded-lg font-semibold hover:bg-loveDark transition">
+                    <i class="fa fa-sign-in"></i> 登录
+                </button>
+            </div>
+            <p id="loginErr" class="text-sm text-red-500 mt-2 hidden"></p>
+        </div>
 
         <!-- Tab 切换 -->
         <div class="tab-bar grid grid-cols-6 gap-1 sm:flex sm:gap-2 mb-4 pb-1">
@@ -420,6 +441,90 @@
             "sb_publishable_A3W8wYMbB-6pABB0-e0vkA_E-VMsJ4n"
         );
 
+        // ===== 登录认证 =====
+        let uploadAuthed = false;
+
+        async function checkAuth() {
+            try {
+                const { data: { session } } = await sb.auth.getSession();
+                uploadAuthed = !!session;
+                updateAuthUI();
+                if (!uploadAuthed) {
+                    // 未登录时禁用写入相关按钮
+                    disableWriteButtons();
+                }
+            } catch (e) {
+                uploadAuthed = false;
+                updateAuthUI();
+                disableWriteButtons();
+            }
+        }
+
+        function updateAuthUI() {
+            const status = document.getElementById('authStatus');
+            const actions = document.getElementById('authActions');
+            const loginPanel = document.getElementById('loginPanel');
+            if (uploadAuthed) {
+                status.innerHTML = '<span class="text-green-600"><i class="fa fa-check-circle"></i> 已登录</span>';
+                actions.innerHTML = '<button onclick="doLogout()" class="text-sm text-gray-500 hover:text-love"><i class="fa fa-sign-out"></i> 退出</button>';
+                loginPanel.classList.add('hidden');
+                // 恢复写入按钮
+                const uploadBtn = document.getElementById('uploadBtn');
+                if (uploadBtn) { uploadBtn.disabled = false; uploadBtn.classList.remove('opacity-50', 'cursor-not-allowed'); }
+            } else {
+                status.innerHTML = '<span class="text-orange-500"><i class="fa fa-exclamation-circle"></i> 未登录（只读模式）</span>';
+                actions.innerHTML = '';
+                loginPanel.classList.remove('hidden');
+                disableWriteButtons();
+            }
+        }
+
+        function disableWriteButtons() {
+            // 禁用所有写入相关按钮
+            const uploadBtn = document.getElementById('uploadBtn');
+            if (uploadBtn) { uploadBtn.disabled = true; uploadBtn.classList.add('opacity-50', 'cursor-not-allowed'); }
+        }
+
+        async function doLogin() {
+            const email = document.getElementById('loginEmail').value.trim();
+            const pwd = document.getElementById('loginPwd').value;
+            const errEl = document.getElementById('loginErr');
+            errEl.classList.add('hidden');
+            if (!email || !pwd) {
+                errEl.textContent = '请填写邮箱和密码';
+                errEl.classList.remove('hidden');
+                return;
+            }
+            const { error } = await sb.auth.signInWithPassword({ email, password: pwd });
+            if (error) {
+                errEl.textContent = '登录失败：' + error.message;
+                errEl.classList.remove('hidden');
+                return;
+            }
+            uploadAuthed = true;
+            updateAuthUI();
+            // 登录后刷新当前Tab数据
+            const activeTab = document.querySelector('.tab-btn.active');
+            if (activeTab) switchTab(activeTab.id.replace('tab', '').toLowerCase());
+        }
+
+        async function doLogout() {
+            await sb.auth.signOut();
+            uploadAuthed = false;
+            updateAuthUI();
+        }
+
+        function requireAuth() {
+            if (!uploadAuthed) {
+                alert('请先登录！');
+                return false;
+            }
+            return true;
+        }
+
+        // 页面加载时检查登录状态
+        checkAuth();
+
         // ===== 建表 SQL =====
         const CREATE_SQL = `-- 1. 资源表
 CREATE TABLE IF NOT EXISTS app_assets (
@@ -566,6 +671,7 @@ ON CONFLICT (container_id) DO NOTHING;`;
         }
 
         async function saveDoc() {
+            if (!requireAuth()) return;
             const content = document.getElementById('docTextarea').value;
             const status = document.getElementById('docStatus');
             status.textContent = '保存中...';
@@ -719,6 +825,7 @@ ON CONFLICT (container_id) DO NOTHING;`;
         }
 
         async function saveContainerModal() {
+            if (!requireAuth()) return;
             const errEl = document.getElementById('containerModalError');
             errEl.classList.add('hidden');
 
@@ -769,6 +876,7 @@ ON CONFLICT (container_id) DO NOTHING;`;
         }
 
         function deleteContainer(id) {
+            if (!requireAuth()) return;
             const c = containersData.find(x => x.id === id);
             if (!c) return;
             showConfirm(`确认删除容器"${c.container_id}"？\n此操作仅删除配置，已上传的 HTML/JS 文件不受影响。`, async () => {
@@ -832,6 +940,7 @@ ON CONFLICT (container_id) DO NOTHING;`;
 
         // ===== 本地上传 =====
         async function uploadAll() {
+            if (!requireAuth()) return;
             const btn = document.getElementById('uploadBtn');
             btn.disabled = true;
             btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> 上传中...';
@@ -1526,6 +1635,7 @@ ON CONFLICT (container_id) DO NOTHING;`;
         }
 
         async function restoreBackup(idx) {
+            if (!requireAuth()) return;
             const b = historyBackups[idx];
             if (!b) return;
             if (!confirm(`确认还原到 v${b.version}？\n\n将还原历史版本，保存时不创建新备份。`)) return;
@@ -1544,6 +1654,7 @@ ON CONFLICT (container_id) DO NOTHING;`;
         }
 
         async function deleteBackup(id) {
+            if (!requireAuth()) return;
             if (!confirm('确认删除此历史版本？')) return;
             try {
                 const { error } = await sb.from('asset_backups').delete().eq('id', id);
@@ -1647,6 +1758,7 @@ ON CONFLICT (container_id) DO NOTHING;`;
         }
 
         async function saveAsset() {
+            if (!requireAuth()) return;
             if (!currentPath) return;
             const content = getEditorValue();
             const type = document.getElementById('metaType').value;
@@ -1715,6 +1827,7 @@ ON CONFLICT (container_id) DO NOTHING;`;
         }
 
         async function deleteAsset() {
+            if (!requireAuth()) return;
             if (!currentPath) return;
             if (!confirm(`确认删除 ${currentPath}？`)) return;
             const { error } = await sb.from('app_assets').delete().eq('file_path', currentPath);
@@ -1766,6 +1879,7 @@ ON CONFLICT (container_id) DO NOTHING;`;
         }
 
         function showNewForm() {
+            if (!requireAuth()) return;
             const path = prompt('输入资源路径（如 styles.css 或 partials/new.html 或 js/new.js）:');
             if (!path) return;
             let type = 'js';
@@ -1884,6 +1998,7 @@ $$ LANGUAGE plpgsql;`,
         }
 
         async function execSql() {
+            if (!requireAuth()) return;
             const input = document.getElementById('sqlExecInput').value.trim();
             if (!input) return;
             const btn = document.getElementById('execBtn');
