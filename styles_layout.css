@@ -500,3 +500,747 @@
     overflow: hidden !important;
     box-sizing: border-box !important;
 }
+
+/* ============ 情侣 K 歌房 ============ */
+.karaoke-song-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 16px;
+    background: #fff7fa;
+    border: 1px solid #fce7f0;
+    cursor: pointer;
+    font-size: 12px;
+    color: #555;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+.karaoke-song-chip:hover {
+    background: #ffe4ec;
+    border-color: #ff6b8b;
+}
+.karaoke-song-chip.active {
+    background: linear-gradient(135deg, #ff6b8b, #ffb4c4);
+    color: white;
+    border-color: transparent;
+}
+.karaoke-chip-cover {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #ff6b8b;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+    background-size: cover;
+    background-position: center;
+    flex-shrink: 0;
+}
+.karaoke-song-chip.active .karaoke-chip-cover {
+    background: rgba(255,255,255,0.3);
+    background-image: none !important;
+}
+
+.karaoke-info {
+    font-size: 14px;
+}
+.karaoke-song-title {
+    font-weight: 600;
+    color: #333;
+}
+.karaoke-status {
+    font-size: 12px;
+    color: #999;
+}
+
+.karaoke-lyrics-wrap {
+    height: 180px;
+    overflow: hidden;
+    position: relative;
+    background: linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.9) 15%, rgba(255,255,255,0.9) 85%, rgba(255,255,255,0) 100%);
+    border-radius: 12px;
+    padding: 8px 0;
+}
+.karaoke-lyrics {
+    height: 100%;
+    overflow-y: auto;
+    text-align: center;
+    font-size: 15px;
+    line-height: 1.8;
+    color: #666;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+.karaoke-lyrics::-webkit-scrollbar { display: none; }
+.karaoke-lyric-line {
+    padding: 4px 12px;
+    transition: all 0.3s;
+}
+.karaoke-lyric-line.active {
+    color: #ff6b8b;
+    font-weight: 700;
+    font-size: 18px;
+    text-shadow: 0 0 10px rgba(255,107,139,0.3);
+}
+.karaoke-lyrics-empty {
+    color: #ccc;
+    font-size: 13px;
+    padding-top: 60px;
+}
+
+.karaoke-progress {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: #888;
+}
+.karaoke-progress-wrap {
+    flex: 1;
+    height: 4px;
+    background: #f3e8ee;
+    border-radius: 2px;
+    overflow: hidden;
+    cursor: pointer;
+    position: relative;
+}
+.karaoke-progress-wrap:hover {
+    height: 6px;
+    transition: height 0.15s;
+}
+.karaoke-progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #ff6b8b, #ffb4c4);
+    border-radius: 2px;
+    transition: width 0.1s linear;
+}
+
+.karaoke-controls {
+    gap: 16px !important;
+}
+.karaoke-btn {
+    border: none;
+    border-radius: 24px;
+    padding: 10px 24px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.karaoke-btn-play {
+    background: linear-gradient(135deg, #3b82f6, #60a5fa);
+    color: white;
+}
+.karaoke-btn-play:hover {
+    box-shadow: 0 4px 12px rgba(59,130,246,0.4);
+    transform: translateY(-1px);
+}
+.karaoke-btn-record {
+    background: linear-gradient(135deg, #ef4444, #f87171);
+    color: white;
+}
+.karaoke-btn-record:hover {
+    box-shadow: 0 4px 12px rgba(239,68,68,0.4);
+    transform: translateY(-1px);
+}
+.karaoke-btn-record.recording {
+    animation: karaoke-recording 1.2s ease infinite;
+}
+@keyframes karaoke-recording {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); }
+    50% { box-shadow: 0 0 0 10px rgba(239,68,68,0); }
+}
+.karaoke-btn-stop {
+    background: #6b7280;
+    color: white;
+}
+.karaoke-btn-secondary {
+    background: #f3e8ee;
+    color: #ff6b8b;
+    border: 1px solid #fce7f0;
+    padding: 6px 16px;
+    font-size: 12px;
+}
+.karaoke-btn-secondary:hover {
+    background: #ffe4ec;
+}
+
+.karaoke-volume {
+    margin-top: 12px;
+    height: 6px;
+    background: #f3e8ee;
+    border-radius: 3px;
+    overflow: hidden;
+}
+.karaoke-volume-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #3b82f6, #ef4444);
+    border-radius: 3px;
+    transition: width 0.1s;
+}
+
+.karaoke-btn-save {
+    background: linear-gradient(135deg, #4caf50, #66bb6a);
+    color: #fff;
+}
+.karaoke-btn-save:hover {
+    background: linear-gradient(135deg, #388e3c, #4caf50);
+}
+.karaoke-btn-export {
+    background: linear-gradient(135deg, #ff6b8b, #ff9a76);
+    color: #fff;
+}
+.karaoke-btn-export:hover {
+    background: linear-gradient(135deg, #e5557a, #ff8866);
+}
+.karaoke-btn-preview {
+    background: linear-gradient(135deg, #2196f3, #64b5f6);
+    color: #fff;
+}
+.karaoke-btn-preview:hover {
+    background: linear-gradient(135deg, #1976d2, #42a5f5);
+}
+
+/* 混音面板 */
+.karaoke-mix-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #555;
+    margin-bottom: 12px;
+    text-align: center;
+}
+.karaoke-mix-vols {
+    margin-bottom: 12px;
+}
+.karaoke-mix-vol-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 12px;
+    color: #666;
+}
+.karaoke-mix-vol-row span:first-child {
+    width: 56px;
+}
+.karaoke-mix-slider {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 5px;
+    background: #e0e0e0;
+    border-radius: 3px;
+    outline: none;
+}
+.karaoke-mix-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    background: #fff;
+    border: 2px solid #ff6b8b;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+.karaoke-mix-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    background: #fff;
+    border: 2px solid #ff6b8b;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+.karaoke-mix-num {
+    font-size: 12px;
+    font-weight: 600;
+    color: #ff6b8b;
+    width: 40px;
+    text-align: right;
+}
+
+/* 录音作品列表 */
+.karaoke-record-section {
+    border-top: 1px solid #f3e8ee;
+    padding-top: 12px;
+}
+.karaoke-record-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    color: #666;
+    padding: 4px 0;
+}
+.karaoke-record-toggle {
+    transition: transform 0.2s;
+    font-size: 12px;
+}
+.karaoke-record-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: #faf8fa;
+    border-radius: 8px;
+    margin-top: 6px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.karaoke-record-item:hover {
+    background: #f3e8ee;
+}
+.karaoke-record-info {
+    flex: 1;
+    min-width: 0;
+}
+.karaoke-record-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.karaoke-record-meta {
+    display: flex;
+    gap: 8px;
+    font-size: 11px;
+    color: #999;
+    margin-top: 2px;
+    flex-wrap: wrap;
+}
+.karaoke-record-grade {
+    font-weight: 700;
+}
+.karaoke-record-play {
+    font-size: 22px;
+    color: #ff6b8b;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+.karaoke-record-play:hover {
+    transform: scale(1.15);
+}
+.karaoke-record-del {
+    font-size: 18px;
+    color: #ef4444;
+    opacity: 0.55;
+    cursor: pointer;
+    padding: 6px 8px;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+.karaoke-record-del:hover {
+    opacity: 1;
+    background: #fee2e2;
+    transform: scale(1.1);
+}
+
+/* ===== 录音作品列表：单一卡片（播放器即子项） ===== */
+.karaoke-rec-item {
+    margin-top: 8px;
+    padding: 12px 14px;
+    background: #eff6ff;
+    border: 1px solid #dbeafe;
+    border-left: 3px solid #3b82f6;
+    border-radius: 12px;
+    transition: box-shadow 0.2s, transform 0.2s;
+}
+.karaoke-rec-item:hover {
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+    transform: translateY(-1px);
+}
+.karaoke-rec-row1 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.karaoke-rec-play-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(135deg, #3b82f6, #60a5fa);
+    color: #fff;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+.karaoke-rec-play-btn:hover {
+    transform: scale(1.08);
+}
+.karaoke-rec-info {
+    flex: 1;
+    min-width: 0;
+}
+.karaoke-rec-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e40af;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.karaoke-rec-meta {
+    font-size: 11px;
+    color: #6b7280;
+    margin-top: 2px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.karaoke-rec-del {
+    font-size: 16px;
+    color: #ef4444;
+    opacity: 0.5;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 6px;
+    transition: opacity 0.2s, transform 0.2s, background 0.2s;
+    flex-shrink: 0;
+}
+.karaoke-rec-del:hover {
+    opacity: 1;
+    background: #fee2e2;
+    transform: scale(1.1);
+}
+.karaoke-rec-row2 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+}
+.karaoke-rec-time {
+    font-size: 11px;
+    color: #6b7280;
+    min-width: 32px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+.karaoke-rec-progress-wrap {
+    flex: 1;
+    height: 5px;
+    background: #dbeafe;
+    border-radius: 3px;
+    cursor: pointer;
+    position: relative;
+    overflow: visible;
+    transition: height 0.15s;
+}
+.karaoke-rec-progress-wrap:hover {
+    height: 7px;
+}
+.karaoke-rec-progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #3b82f6, #60a5fa);
+    border-radius: 3px;
+    transition: width 0.1s linear;
+}
+.karaoke-rec-progress-thumb {
+    position: absolute;
+    top: 50%;
+    left: 0%;
+    transform: translate(-50%, -50%);
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid #3b82f6;
+    opacity: 0;
+    transition: opacity 0.15s;
+    pointer-events: none;
+}
+.karaoke-rec-progress-wrap:hover .karaoke-rec-progress-thumb {
+    opacity: 1;
+}
+
+/* ===== K歌 回放自定义播放器（区分人声/合成/录音作品） ===== */
+.karaoke-pb-player {
+    background: #faf8fa;
+    border: 1px solid #f3e8ee;
+    border-left: 4px solid #ccc;
+    border-radius: 12px;
+    padding: 12px 14px;
+    transition: border-color 0.2s, background 0.2s;
+}
+.karaoke-pb-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+.karaoke-pb-play-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+.karaoke-pb-play-btn:hover {
+    transform: scale(1.08);
+}
+.karaoke-pb-info {
+    flex: 1;
+    min-width: 0;
+}
+.karaoke-pb-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.karaoke-pb-times {
+    font-size: 11px;
+    color: #999;
+    margin-top: 2px;
+}
+.karaoke-pb-sep {
+    margin: 0 4px;
+    opacity: 0.6;
+}
+.karaoke-pb-progress-wrap {
+    height: 5px;
+    background: #eee;
+    border-radius: 3px;
+    cursor: pointer;
+    position: relative;
+    overflow: visible;
+    transition: height 0.15s;
+}
+.karaoke-pb-progress-wrap:hover {
+    height: 7px;
+}
+.karaoke-pb-progress-bar {
+    height: 100%;
+    width: 0%;
+    border-radius: 3px;
+    transition: width 0.1s linear;
+}
+.karaoke-pb-progress-thumb {
+    position: absolute;
+    top: 50%;
+    left: 0%;
+    transform: translate(-50%, -50%);
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid #ccc;
+    opacity: 0;
+    transition: opacity 0.15s;
+    pointer-events: none;
+}
+.karaoke-pb-progress-wrap:hover .karaoke-pb-progress-thumb {
+    opacity: 1;
+}
+
+/* 模式徽章 */
+.karaoke-pb-badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+    color: #fff;
+}
+.karaoke-pb-badge-vocal { background: #a855f7; }
+.karaoke-pb-badge-mix   { background: #ff6b8b; }
+.karaoke-pb-badge-record { background: #3b82f6; }
+
+/* ====== 模式 1：人声回放（紫色主题） ====== */
+.karaoke-pb-mode-vocal {
+    border-left-color: #a855f7;
+    background: #faf5ff;
+}
+.karaoke-pb-mode-vocal .karaoke-pb-play-btn {
+    background: linear-gradient(135deg, #a855f7, #c084fc);
+    box-shadow: 0 2px 8px rgba(168, 85, 247, 0.35);
+}
+.karaoke-pb-mode-vocal .karaoke-pb-progress-wrap {
+    background: #ede9fe;
+}
+.karaoke-pb-mode-vocal .karaoke-pb-progress-bar {
+    background: linear-gradient(90deg, #a855f7, #c084fc);
+}
+.karaoke-pb-mode-vocal .karaoke-pb-progress-thumb {
+    border-color: #a855f7;
+}
+
+/* ====== 模式 2：合成作品（粉色主题） ====== */
+.karaoke-pb-mode-mix {
+    border-left-color: #ff6b8b;
+    background: #fff5f7;
+}
+.karaoke-pb-mode-mix .karaoke-pb-play-btn {
+    background: linear-gradient(135deg, #ff6b8b, #ffb4c4);
+    box-shadow: 0 2px 8px rgba(255, 107, 139, 0.35);
+}
+.karaoke-pb-mode-mix .karaoke-pb-progress-wrap {
+    background: #ffe4ec;
+}
+.karaoke-pb-mode-mix .karaoke-pb-progress-bar {
+    background: linear-gradient(90deg, #ff6b8b, #ffb4c4);
+}
+.karaoke-pb-mode-mix .karaoke-pb-progress-thumb {
+    border-color: #ff6b8b;
+}
+
+/* ====== 模式 3：录音作品（蓝色主题） ====== */
+.karaoke-pb-mode-record {
+    border-left-color: #3b82f6;
+    background: #eff6ff;
+}
+.karaoke-pb-mode-record .karaoke-pb-play-btn {
+    background: linear-gradient(135deg, #3b82f6, #60a5fa);
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.35);
+}
+.karaoke-pb-mode-record .karaoke-pb-progress-wrap {
+    background: #dbeafe;
+}
+.karaoke-pb-mode-record .karaoke-pb-progress-bar {
+    background: linear-gradient(90deg, #3b82f6, #60a5fa);
+}
+.karaoke-pb-mode-record .karaoke-pb-progress-thumb {
+    border-color: #3b82f6;
+}
+
+/* ===== 视频 Tab ===== */
+.video-card {
+    background: #fff;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(255, 107, 139, 0.08);
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.video-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 18px rgba(255, 107, 139, 0.18);
+}
+.video-thumb-wrap {
+    position: relative;
+    width: 100%;
+    padding-top: 56.25%; /* 16:9 */
+    background: #1a1a1a;
+    overflow: hidden;
+}
+.video-thumb {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.video-thumb-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #888;
+    font-size: 36px;
+}
+.video-play-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 42px;
+    background: rgba(0, 0, 0, 0.15);
+    opacity: 0;
+    transition: opacity 0.2s;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+.video-card:hover .video-play-overlay {
+    opacity: 1;
+}
+.video-duration {
+    position: absolute;
+    right: 6px;
+    bottom: 6px;
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    line-height: 1.4;
+}
+.video-info {
+    padding: 8px 10px;
+}
+.video-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.video-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 4px;
+    font-size: 11px;
+    color: #999;
+}
+.video-del-icon {
+    cursor: pointer;
+    color: #ef4444;
+    opacity: 0.5;
+    transition: opacity 0.2s, transform 0.2s;
+    padding: 2px;
+}
+.video-del-icon:hover {
+    opacity: 1;
+    transform: scale(1.15);
+}
+
+/* 分页按钮 */
+.pager-btn {
+    background: #fff;
+    color: #ff6b8b;
+    border: 1px solid #ffb6c1;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.pager-btn:hover:not(:disabled) {
+    background: #ff6b8b;
+    color: #fff;
+}
+.pager-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}

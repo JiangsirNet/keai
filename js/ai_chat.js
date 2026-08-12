@@ -11,6 +11,7 @@
     let apiKey = "";
     let model = DEFAULT_MODEL;
     let systemPrompt = DEFAULT_SYSTEM_PROMPT;
+    let webSearch = false;
     let isSending = false;
 
     // 聊天记录持久化（localStorage）
@@ -43,19 +44,21 @@
             if (window._aiApiKey) apiKey = window._aiApiKey;
             if (window._aiModel) model = window._aiModel;
             if (window._aiSystemPrompt) systemPrompt = window._aiSystemPrompt;
+            if (window._aiWebSearch !== undefined) webSearch = window._aiWebSearch;
 
             // 若缺失则从数据库读取
-            if (!apiKey || !model || !systemPrompt) {
+            if (!apiKey || !model || !systemPrompt || window._aiWebSearch === undefined) {
                 const { data, error } = await window.sb
                     .from("app_config")
                     .select("config_key, config_value")
-                    .in("config_key", ["zhipu_api_key", "zhipu_model", "zhipu_system_prompt"]);
+                    .in("config_key", ["zhipu_api_key", "zhipu_model", "zhipu_system_prompt", "zhipu_web_search"]);
                 if (error) { console.warn("读取 AI 配置失败:", error.message); return; }
                 const map = {};
                 (data || []).forEach(item => map[item.config_key] = item.config_value);
                 if (!apiKey && map.zhipu_api_key) apiKey = map.zhipu_api_key;
                 if (!model && map.zhipu_model) model = map.zhipu_model;
                 if (!systemPrompt && map.zhipu_system_prompt) systemPrompt = map.zhipu_system_prompt;
+                if (window._aiWebSearch === undefined) webSearch = map.zhipu_web_search === "true";
             }
 
             if (!model) model = DEFAULT_MODEL;
@@ -65,13 +68,16 @@
             const keyInput = document.getElementById("aiApiKey");
             const modelSelect = document.getElementById("aiModel");
             const promptInput = document.getElementById("aiSystemPrompt");
+            const webSearchCheck = document.getElementById("aiWebSearch");
             if (keyInput) keyInput.value = apiKey ? "●●●●●●" + apiKey.slice(-4) : "";
             if (modelSelect) modelSelect.value = model;
             if (promptInput) promptInput.value = systemPrompt;
+            if (webSearchCheck) webSearchCheck.checked = !!webSearch;
 
             window._aiApiKey = apiKey;
             window._aiModel = model;
             window._aiSystemPrompt = systemPrompt;
+            window._aiWebSearch = webSearch;
         } catch (e) { console.warn("加载 AI 配置异常:", e); }
     }
 
@@ -164,18 +170,22 @@
         showAiStatus("AI 正在回复...");
 
         try {
+            const body = {
+                model: model,
+                messages: messages,
+                temperature: 0.8,
+                stream: true
+            };
+            if (webSearch) {
+                body.tools = [{ type: "web_search", web_search: { enable: true } }];
+            }
             const res = await fetch(ZHIPU_API_URL, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     "Authorization": "Bearer " + apiKey
                 },
-                body: JSON.stringify({
-                    model: model,
-                    messages: messages,
-                    temperature: 0.8,
-                    stream: true
-                })
+                body: JSON.stringify(body)
             });
 
             if (!res.ok) {
@@ -283,11 +293,12 @@
         if (saveBtn) saveBtn.addEventListener("click", saveAiAllOptions);
     }
 
-    // 手动保存所有 AI 配置（API Key + 模型 + 系统提示）
+    // 手动保存所有 AI 配置（API Key + 模型 + 系统提示 + 联网搜索）
     async function saveAiAllOptions() {
         const keyInput = document.getElementById("aiApiKey");
         const modelSelect = document.getElementById("aiModel");
         const promptInput = document.getElementById("aiSystemPrompt");
+        const webSearchCheck = document.getElementById("aiWebSearch");
         const saveBtn = document.getElementById("aiSaveBtn");
 
         const rawKey = keyInput.value.trim();
@@ -298,6 +309,7 @@
 
         const newModel = modelSelect.value;
         const newPrompt = promptInput.value.trim() || DEFAULT_SYSTEM_PROMPT;
+        const newWebSearch = webSearchCheck ? webSearchCheck.checked : false;
 
         saveBtn.disabled = true;
         const oldHtml = saveBtn.innerHTML;
@@ -307,7 +319,8 @@
             const { error } = await window.sb.from("app_config").upsert([
                 { config_key: "zhipu_api_key", config_value: rawKey },
                 { config_key: "zhipu_model", config_value: newModel },
-                { config_key: "zhipu_system_prompt", config_value: newPrompt }
+                { config_key: "zhipu_system_prompt", config_value: newPrompt },
+                { config_key: "zhipu_web_search", config_value: String(newWebSearch) }
             ], { onConflict: "config_key" });
 
             if (error) throw error;
@@ -315,9 +328,11 @@
             apiKey = rawKey;
             model = newModel;
             systemPrompt = newPrompt;
+            webSearch = newWebSearch;
             window._aiApiKey = apiKey;
             window._aiModel = model;
             window._aiSystemPrompt = systemPrompt;
+            window._aiWebSearch = webSearch;
 
             keyInput.value = "●●●●●●" + apiKey.slice(-4);
             showAiStatus("✅ 所有设置已保存", "text-green-500");

@@ -93,6 +93,12 @@
         if (map.zhipu_api_key) window._aiApiKey = map.zhipu_api_key;
         if (map.zhipu_model) window._aiModel = map.zhipu_model;
         if (map.zhipu_system_prompt) window._aiSystemPrompt = map.zhipu_system_prompt;
+        if (map.zhipu_web_search) window._aiWebSearch = map.zhipu_web_search === "true";
+        // 腾讯 COS 配置（供 video.js 使用）
+        if (map.cos_secret_id) window._cosSecretId = map.cos_secret_id;
+        if (map.cos_secret_key) window._cosSecretKey = map.cos_secret_key;
+        if (map.cos_bucket) window._cosBucket = map.cos_bucket;
+        if (map.cos_region) window._cosRegion = map.cos_region;
         // 设置当前用户邮箱（供 calendar/game/journal 等模块使用）
         const { data: { session } } = await sb.auth.getSession();
         if (session?.user?.email) {
@@ -155,7 +161,6 @@
         document.getElementById("fileInput").onchange = window.uploadImageToImgBB;
         document.getElementById("weatherWidget").classList.remove("hidden");
         document.getElementById("bellToggle").classList.remove("hidden");
-        applyDisplaySettings();
         // 首页默认子 Tab 初始化
         initHomePage();
     }
@@ -170,6 +175,8 @@
         window.initGirl();
         window.initWeather();
         window.initNotifications();
+        // 应用显示设置（必须在所有 init 函数之后，因为 init 函数会强制显示元素）
+        applyDisplaySettings();
         // 默认子 Tab 是相册，立即加载
         _subTabInited.gallery = true;
         window.loadGallery();
@@ -291,6 +298,15 @@
         if (sub === 'music' && !_subTabInited.music) {
             _subTabInited.music = true;
             if (window.loadMusicList) window.loadMusicList();
+        }
+        if (sub === 'karaoke' && !_subTabInited.karaoke) {
+            _subTabInited.karaoke = true;
+            if (window.initKaraoke) window.initKaraoke();
+        }
+        if (sub === 'video' && !_subTabInited.video) {
+            _subTabInited.video = true;
+            if (window.initVideoPage) window.initVideoPage();
+            else if (window.loadVideoList) window.loadVideoList();
         }
     }
 

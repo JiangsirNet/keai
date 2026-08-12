@@ -36,8 +36,11 @@
         { path: 'js/game.js',            type: 'js', container: null, order: 21 },
         { path: 'js/game_liar.js',       type: 'js', container: null, order: 22 },
         { path: 'js/background.js',      type: 'js', container: null, order: 23 },
-        { path: 'js/pull_refresh.js',    type: 'js', container: null, order: 25 },
-        { path: 'js/auth.js',            type: 'js', container: null, order: 26 },
+        { path: 'js/ai_chat.js',         type: 'js', container: null, order: 24 },
+        { path: 'js/karaoke.js',         type: 'js', container: null, order: 25 },
+        { path: 'js/video.js',           type: 'js', container: null, order: 26 },
+        { path: 'js/pull_refresh.js',    type: 'js', container: null, order: 27 },
+        { path: 'js/auth.js',            type: 'js', container: null, order: 28 },
     ];
 
     // ---- 本地容器配置 ----

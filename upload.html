@@ -570,7 +570,39 @@ INSERT INTO app_containers (container_id, page_name, nav_label, nav_icon, sort_o
 ('pageJournalContainer', 'journal','日历',  '📅', 2, 'page'),
 ('pageGameContainer',    'game',   '游戏',  '🎮', 3, 'page'),
 ('pageConfigContainer',  'config', '设置',  '⚙️', 4, 'page')
-ON CONFLICT (container_id) DO NOTHING;`;
+ON CONFLICT (container_id) DO NOTHING;
+
+-- 4. K歌录音表
+CREATE TABLE IF NOT EXISTS karaoke_recordings (
+    id              BIGSERIAL PRIMARY KEY,
+    title           TEXT NOT NULL,
+    song_title      TEXT,
+    singer_name     TEXT,
+    url             TEXT NOT NULL,
+    lyrics          TEXT,
+    uploader_email  TEXT,
+    created_at      TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE karaoke_recordings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow_read_karaoke" ON karaoke_recordings FOR SELECT USING (true);
+CREATE POLICY "allow_write_karaoke" ON karaoke_recordings FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- 5. 视频表
+CREATE TABLE IF NOT EXISTS videos (
+    id              BIGSERIAL PRIMARY KEY,
+    title           TEXT NOT NULL,
+    url             TEXT NOT NULL,          -- cos://videos/xxx.mp4 （私有桶签名访问）
+    thumbnail_url   TEXT,                   -- 兼容旧：dataURL 或 cos://xxx
+    thumbnail_key   TEXT,                   -- 新：缩略图 COS Key（如 videos_thumbs/xxx.jpg）
+    file_size       BIGINT,
+    duration        REAL,
+    uploader_email  TEXT,
+    created_at      TIMESTAMPTZ DEFAULT now()
+);
+DO $$ BEGIN ALTER TABLE videos ADD COLUMN IF NOT EXISTS thumbnail_key TEXT; EXCEPTION WHEN OTHERS THEN END $$;
+ALTER TABLE videos ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow_read_videos" ON videos FOR SELECT USING (true);
+CREATE POLICY "allow_write_videos" ON videos FOR ALL TO authenticated USING (true) WITH CHECK (true);`;
         document.getElementById('sqlBox').value = CREATE_SQL;
 
         // ===== 本地上传文件清单 =====
@@ -599,8 +631,10 @@ ON CONFLICT (container_id) DO NOTHING;`;
             { path: 'js/game_liar.js',       type: 'js', container: null, order: 22 },
             { path: 'js/background.js',      type: 'js', container: null, order: 23 },
             { path: 'js/ai_chat.js',         type: 'js', container: null, order: 24 },
-            { path: 'js/pull_refresh.js',    type: 'js', container: null, order: 25 },
-            { path: 'js/auth.js',            type: 'js', container: null, order: 26 },
+            { path: 'js/karaoke.js',         type: 'js', container: null, order: 25 },
+            { path: 'js/video.js',           type: 'js', container: null, order: 26 },
+            { path: 'js/pull_refresh.js',    type: 'js', container: null, order: 27 },
+            { path: 'js/auth.js',            type: 'js', container: null, order: 28 },
             { path: 'ARCHITECTURE.md',       type: 'md', container: null, order: 99 },
         ];
 
@@ -1008,7 +1042,7 @@ ON CONFLICT (container_id) DO NOTHING;`;
                 monoEditor.onDidChangeModelContent(() => {
                     const count = monoEditor.getValue().length;
                     const type = document.getElementById('metaType')?.value || 'js';
-                    const max = type === 'md' ? 20000 : 20000;
+                    const max = type === 'md' ? 30000 : 30000;
                     const el = document.getElementById('editorCharCount');
                     if (el) {
                         el.textContent = `${count} / ${max} 字符`;
@@ -1338,7 +1372,7 @@ ON CONFLICT (container_id) DO NOTHING;`;
             if (aiAutoMdFiles.length > 0) {
                 mdContext = '## 项目文档（请参考以下文档回答问题）\n\n';
                 aiAutoMdFiles.forEach(f => {
-                    mdContext += `### ${f.file_path}\n\`\`\`\n${(f.content || '').substring(0, 20000)}\n\`\`\`\n\n`;
+                    mdContext += `### ${f.file_path}\n\`\`\`\n${(f.content || '').substring(0, 30000)}\n\`\`\`\n\n`;
                 });
             }
 
@@ -1742,7 +1776,7 @@ ON CONFLICT (container_id) DO NOTHING;`;
             setEditorValue(asset.content || '');
             // 更新字符数显示
             const _count = (asset.content || '').length;
-            const _max = asset.type === 'md' ? 20000 : 20000;
+            const _max = asset.type === 'md' ? 30000 : 30000;
             const _el = document.getElementById('editorCharCount');
             if (_el) {
                 _el.textContent = `${_count} / ${_max} 字符`;
@@ -1766,8 +1800,8 @@ ON CONFLICT (container_id) DO NOTHING;`;
             const order = parseInt(document.getElementById('metaOrder').value) || 99;
             const active = document.getElementById('metaActive').checked;
 
-            // 字符数限制：代码文件 20000，md 文件 20000
-            const maxChars = type === 'md' ? 20000 : 20000;
+            // 字符数限制：代码文件 20000，md 文件 30000
+            const maxChars = type === 'md' ? 30000 : 30000;
             if (content.length > maxChars) {
                 document.getElementById('saveStatus').textContent = `❌ 内容超限：${content.length} 字符，最大允许 ${maxChars} 字符`;
                 document.getElementById('saveStatus').className = 'text-sm text-red-500 self-center';

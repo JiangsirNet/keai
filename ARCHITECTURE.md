@@ -4,7 +4,7 @@
 
 ## 一、项目概述
 
-情侣空间是一个双人互动 Web 应用，功能包括：相册、留言、日志、日历打卡、猜拳游戏、骗子酒馆、Live2D 风格人物形象、宠物动画、现代音乐播放器（封面/歌词/播放模式）、天气组件、背景图自定义、AI 标签页（嵌入豆包网页版）、下拉刷新、资源本地缓存等。
+情侣空间是一个双人互动 Web 应用，功能包括：相册、视频（腾讯 COS 私有桶）、留言、日志、日历打卡、猜拳游戏、骗子酒馆、Live2D 风格人物形象、宠物动画、现代音乐播放器（封面/歌词/播放模式）、K 歌房（录音+混音+作品库）、天气组件、背景图自定义、AI 标签页（嵌入豆包网页版）、下拉刷新、资源本地缓存等。
 
 ## 二、文件结构
 
@@ -21,15 +21,15 @@ upload.html             — 资源管理工具（本地开发用，6个Tab）
 
 ```
 styles.css              — 基础样式 + 相册 + 留言 + 音乐 + 天气 + 下拉刷新（type=css, order=0）
-styles_layout.css       — 日历 + BGM + 显示设置 + 骗子酒馆 + 语音 + 宠物 + 删除按钮（type=css, order=0）
+styles_layout.css       — 日历 + BGM + 显示设置 + 骗子酒馆 + 语音 + 宠物 + 视频卡片 + K歌播放器 + 删除按钮（type=css, order=0）
 styles_mobile.css       — 导航栏 + Live2D 人物 + 手机端适配（type=css, order=0）
 partials/               — HTML 片段
 ├── login.html          — 登录面板
-├── preview.html        — 大图预览弹窗
-├── home.html           — 首页（相册/留言）
+├── preview.html        — 大图预览弹窗 + 视频预览弹窗
+├── home.html           — 首页（相册/视频/留言/日志/AI/音乐/K歌）
 ├── journal.html        — 日志 + 日历打卡 + 纪念日
 ├── game.html           — 游戏页
-└── config.html         — 设置页
+└── config.html         — 设置页（含腾讯 COS 配置）
 js/                     — JS 模块
 ├── config_page.js      — 人物话语管理
 ├── notifications.js    — 通知系统（sendNotification）
@@ -39,7 +39,9 @@ js/                     — JS 模块
 ├── pets.js             — 宠物动画
 ├── characters.js       — 男生 Live2D 人物形象
 ├── characters_girl.js  — 女生 Live2D 人物形象
-├── home.js             — 首页逻辑
+├── home.js             — 首页逻辑（相册/留言）
+├── video.js            — 视频 Tab（腾讯 COS 私有桶上传/签名播放/缩略图/删除）
+├── karaoke.js          — K 歌房（选歌/歌词/录音/混音/作品库独立播放器）
 ├── journal.js          — 日志逻辑
 ├── calendar.js         — 日历/打卡/纪念日
 ├── game.js             — 猜拳对战
@@ -107,11 +109,12 @@ CSS (0) → HTML (1-6) → JS (10-26)
 config_page.js (10) → notifications.js (11) → weather.js (12) → audio.js (13)
 → music.js (14) → pets.js (15) → characters.js (16) → characters_girl.js (17)
 → home.js (18) → journal.js (19) → calendar.js (20) → game.js (21) → game_liar.js (22)
-→ background.js (23) → pull_refresh.js (25) → auth.js (26)
+→ background.js (23) → video.js (24) → karaoke.js (25) → pull_refresh.js (?) → auth.js (26)
 ```
 
 > **关键**：`auth.js` 必须最后加载，因为它的 `initPage()` 会调用所有模块的初始化函数。
-> **注**：`ai_chat.js` (24) 已废弃，loader.js 不再加载（AI 标签页改为 iframe 嵌入豆包网页版）。
+> **注**：`ai_chat.js` 已废弃，loader.js 不再加载（AI 标签页改为 iframe 嵌入豆包网页版）。
+> **注**：`video.js` 和 `karaoke.js` 共享 home.html 页面，懒加载初始化（首次切到对应子 Tab 才 init）。
 
 ## 四、数据库表结构
 
@@ -170,14 +173,16 @@ config_page.js (10) → notifications.js (11) → weather.js (12) → audio.js (
 
 | 表名 | 用途 | 关键字段 |
 |---|---|---|
-| `app_config` | 全局配置（人物名、API Key、背景图、AI配置等） | `config_key`, `config_value` |
+| `app_config` | 全局配置（人物名、API Key、背景图、AI配置、COS配置等） | `config_key`, `config_value` |
 | `profiles` | 用户信息 | `email`, `boy_name`, `girl_name` 等 |
 | `messages` | 留言 | `content`, `author_email`, `likes` |
 | `gallery` | 相册 | `image_url`, `uploader_email` |
+| `videos` | 视频（腾讯 COS 私有桶） | `title`, `url`(存 `cos://key`), `thumbnail_key`, `thumbnail_url`(兼容), `duration`, `uploader_email` |
 | `journals` | 日志 | `title`, `content`, `author_email` |
 | `calendar_checkins` | 日历打卡 | `check_date`, `user_email` |
 | `anniversaries` | 纪念日 | `date`, `title` |
 | `music` | 音乐 | `title`, `url`, `uploader_email`, `cover_url`(可选), `lyrics`(可选) |
+| `karaoke_recordings` | K 歌录音作品 | `title`, `url`, `singer_name`, `song_title`, `uploader_email` |
 | `rps_games` | 猜拳游戏记录 | `player_email`, `choice` |
 
 ### RLS 策略规则
@@ -386,6 +391,10 @@ GRANT EXECUTE ON FUNCTION exec_ddl(TEXT) TO authenticated;
 | `window._aiModel` | string | 智谱 AI 模型名 |
 | `window._aiSystemPrompt` | string | 智谱 AI 系统提示词 |
 | `window._assetsVersion` | string | 资源版本号（用于缓存对比） |
+| `window._cosSecretId` | string | 腾讯 COS SecretId（视频上传用） |
+| `window._cosSecretKey` | string | 腾讯 COS SecretKey（视频上传用） |
+| `window._cosBucket` | string | 腾讯 COS 存储桶名（如 `xxx-1300000000`） |
+| `window._cosRegion` | string | 腾讯 COS 地域（如 `ap-guangzhou`） |
 
 ### 全局函数参考
 
@@ -399,6 +408,22 @@ GRANT EXECUTE ON FUNCTION exec_ddl(TEXT) TO authenticated;
 | `window.togglePlayMode()` | music.js | 切换播放模式（列表循环/单曲循环/随机） |
 | `window.togglePlaylist()` | music.js | 折叠/展开播放列表 |
 | `window.toggleLyricsView()` | music.js | 显示/隐藏歌词区 |
+| `window.uploadVideo(input)` | video.js | 上传视频到腾讯 COS 私有桶（自动生成缩略图） |
+| `window.playVideoByKey(info)` | video.js | 通过 Key 生成签名 URL 后播放视频 |
+| `window.deleteVideo(id, url, thumbKey)` | video.js | 删除视频（同时删 COS 视频文件 + 缩略图） |
+| `window.loadVideoList(page)` | video.js | 加载视频列表（分页，每页6个，自动签名） |
+| `window.saveCosConfig()` | video.js | 保存腾讯 COS 配置到 app_config 表 |
+| `window.initVideoPage()` | video.js | 视频子 Tab 首次进入时初始化（加载 COS 配置 + 视频列表） |
+| `window.karaokeTogglePlay()` | karaoke.js | 伴奏播放/暂停 |
+| `window.karaokeToggleRecord()` | karaoke.js | 开始/停止录音 |
+| `window.mixAndExport()` | karaoke.js | 合成伴奏+人声导出 MP3 |
+| `window.previewMix()` | karaoke.js | 试听混音效果（Web Audio API 实时播放） |
+| `window.saveToMusicLibrary()` | karaoke.js | 保存录音作品到 Supabase Storage + karaoke_recordings 表 |
+| `window.toggleRecPlay(id)` | karaoke.js | 播放/暂停某条录音作品（独立 Audio 实例） |
+| `window.seekRecProgress(e, id)` | karaoke.js | 点击录音作品进度条 seek |
+| `window.deleteKaraokeRecording(id, url)` | karaoke.js | 删除录音作品 |
+| `window.karaokePbTogglePlay()` | karaoke.js | 顶部回放播放器（人声/合成）播放/暂停 |
+| `window.karaokePbSeek(e)` | karaoke.js | 顶部回放播放器进度条 seek |
 
 > ⚠️ 表中 `window.toggleAiSettings` / `sendAiMessage` / `clearAiChat` / `saveAiAllOptions` 已废弃（ai_chat.js 不再加载）。
 
@@ -504,6 +529,121 @@ GRANT EXECUTE ON FUNCTION exec_ddl(TEXT) TO authenticated;
 - **播放模式按钮**：`mpModeBtn`，3 种模式循环切换；单曲循环用 `<i class="fa fa-repeat">` + "1" 角标叠加（FontAwesome 4 无 `fa-repeat-1`）
 - **删除原浮动按钮**：旧版 `.music-toggle` / `.music-panel` 浮动按钮样式已从 styles.css 和 styles_mobile.css 中移除（musicToggle/musicPanel 元素已不存在）
 
+## 十五点五、视频 Tab（腾讯 COS 私有桶）
+
+### 功能特性
+
+- **上传视频**：选择视频文件 → 上传到腾讯 COS 私有桶 → 自动截取第一帧生成缩略图上传到 `videos_thumbs/` → 写入 `videos` 表
+- **签名访问**：私有桶模式下，所有视频和缩略图访问都通过 COS SDK `getObjectUrl` 生成 30 分钟有效的临时签名 URL
+- **分页浏览**：每页 6 个，支持上一页/下一页
+- **播放预览**：点击视频卡片 → 弹窗播放（带签名 URL）
+- **删除同步**：删除数据库记录 + 同时删除 COS 视频文件和缩略图文件
+- **懒加载**：首次切到视频子 Tab 才初始化（`initVideoPage()`）
+
+### 文件结构
+
+| 文件 | 作用 |
+|---|---|
+| `partials/home.html` `#subTab-video` | 视频 Tab UI（上传按钮 + 进度条 + 视频网格 + 分页器） |
+| `partials/config.html` | 腾讯 COS 配置表单（SecretId/SecretKey/Bucket/Region） |
+| `partials/preview.html` `#videoPreviewModal` | 视频播放弹窗 |
+| `styles_layout.css` `.video-card` / `.video-thumb` 等 | 视频卡片样式（蓝色播放遮罩、时长标签、删除图标） |
+| `js/video.js` | 上传/签名/播放/删除/配置保存逻辑 |
+
+### 数据库字段（videos 表）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `id` | bigserial | ✅ | 主键 |
+| `title` | text | ✅ | 视频标题（取文件名去扩展名） |
+| `url` | text | ✅ | 存储 `cos://videos/xxx.mp4`（仅 Key，不存完整 URL） |
+| `thumbnail_url` | text | ❌ | 兼容字段：老数据存 base64 或 `cos://...` |
+| `thumbnail_key` | text | ❌ | 新字段：缩略图 COS Key（如 `videos_thumbs/xxx.jpg`） |
+| `file_size` | bigint | ❌ | 文件大小（字节） |
+| `duration` | real | ❌ | 视频时长（秒） |
+| `uploader_email` | text | ❌ | 上传者邮箱（用于判断删除权限） |
+| `created_at` | timestamptz | ✅ | 创建时间 |
+
+> **增量升级 SQL**（已有数据库执行）：
+> ```sql
+> DO $$ BEGIN ALTER TABLE videos ADD COLUMN IF NOT EXISTS thumbnail_key TEXT; EXCEPTION WHEN OTHERS THEN END $$;
+> ```
+
+### COS 私有桶配置
+
+在设置页（`partials/config.html`）填写腾讯 COS 配置并保存到 `app_config` 表：
+
+| config_key | 说明 |
+|---|---|
+| `cos_secret_id` | 腾讯云 API SecretId |
+| `cos_secret_key` | 腾讯云 API SecretKey |
+| `cos_bucket` | 存储桶名（如 `xxx-1300000000`） |
+| `cos_region` | 地域（如 `ap-guangzhou`） |
+
+`auth.js` 登录后读取这些配置到 `window._cosSecretId` 等全局变量。
+
+### 关键实现细节
+
+- **动态加载 COS SDK**：`loadCosSdk()` 通过 script 标签注入 `cos-js-sdk-v5.min.js`，避免增加初始包体积
+- **签名 URL 生成**：`getSignedUrl(key)` 调用 `cos.getObjectUrl({Sign: true, Expires: 1800})`，30 分钟有效期
+- **URL 格式约定**：数据库 `url` 字段存 `cos://videos/xxx.mp4`，`extractCosKey()` 解析为 `videos/xxx.mp4`；兼容老的完整 URL 格式
+- **缩略图生成**：用 `<video>` 元素加载文件 → `onseeked` 时用 canvas 截图 → `toBlob` 转 JPEG → 上传到 COS
+- **上传进度**：`cos.putObject` 的 `onProgress` 回调更新进度条
+- **CORS 要求**：腾讯 COS 控制台需配置跨域规则（Methods: GET/PUT/POST/DELETE/HEAD/OPTIONS）
+
+## 十五点六、K 歌房
+
+### 功能特性
+
+- **选歌**：从 `music` 表读取歌曲列表，点击选歌后加载歌词
+- **歌词同步**：支持 LRC 时间戳格式，自动高亮当前行 + 滚动
+- **录音**：Web Audio API + ScriptProcessorNode 采集麦克风 PCM 数据
+- **实时音量条**：录音时显示音量电平（AnalyserNode）
+- **人声回放**：录音停止后编码 MP3（LameJS）或 WAV，显示在顶部回放面板（🟣 紫色主题）
+- **混音合成**：伴奏 + 人声离线合成（Web Audio API 渲染），导出 MP3（🟣 粉色主题）
+- **试听混音**：实时播放伴奏+人声，可调整伴奏/人声音量和偏移
+- **录音作品库**：保存到 Supabase Storage + `karaoke_recordings` 表，每条作品独立播放器（🔵 蓝色主题）
+
+### 文件结构
+
+| 文件 | 作用 |
+|---|---|
+| `partials/home.html` `#subTab-karaoke` | K 歌房 UI（选歌/歌词/伴奏控制/录音/混音面板/作品列表） |
+| `styles_layout.css` `.karaoke-*` | K 歌房所有样式（按钮/进度条/歌词/混音滑块/录音作品卡片） |
+| `js/karaoke.js` | 完整 K 歌逻辑（选歌/录音/混音/作品库播放） |
+
+### 数据库字段（karaoke_recordings 表）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `id` | bigserial | ✅ | 主键 |
+| `title` | text | ✅ | 作品标题 |
+| `url` | text | ✅ | 音频 URL（Supabase Storage music 桶） |
+| `singer_name` | text | ❌ | 演唱者昵称（从 profiles 表读取） |
+| `song_title` | text | ❌ | 原歌曲名 |
+| `uploader_email` | text | ❌ | 上传者邮箱 |
+| `created_at` | timestamptz | ✅ | 创建时间 |
+
+### 播放器架构（三种模式区分）
+
+| 播放来源 | 播放器位置 | 主题色 | Audio 实例 |
+|---|---|---|---|
+| 纯人声（刚录完） | 顶部回放面板 `karaokePlayback` | 🟣 紫色 | 共用 `karaokePlaybackAudio` |
+| 合成作品（伴奏+人声） | 顶部回放面板 `karaokePlayback` | 🟣 粉色 | 共用 `karaokePlaybackAudio` |
+| 录音作品列表 | **每条作品独立卡片** | 🔵 蓝色 | **独立 Audio**（`recordAudioMap` 缓存） |
+
+- 顶部回放面板：`setPlaybackMode(mode, title)` 切换 `vocal`/`mix` 主题类，自定义进度条 + 播放按钮
+- 录音作品列表：每条渲染为单一卡片（播放按钮 + 标题/歌手/日期 + 删除 + 进度条 + 时间），互斥播放（播一条自动停其它）
+
+### 关键实现细节
+
+- **录音数据**：`recordedSamples` 存 Float32Array 数组，录音完成复制到 `vocalSamples` 供混音用
+- **MP3 编码**：`loadLameJS()` 动态加载 lamejs 库，`encodePcmToMp3` 编码 128kbps mono；失败回退 WAV
+- **混音**：`mixAndExport()` 用 OfflineAudioContext 离线渲染伴奏+人声，支持手动偏移（`karaokeMixOffset` 滑块，-500ms~+500ms）
+- **试听**：`previewMix()` 用实时 AudioContext 播放，伴奏截取前后各 3 秒
+- **互斥播放**：录音作品 `play` 事件触发时遍历 `recordAudioMap` 暂停其它所有 Audio
+- **删除清理**：`deleteKaraokeRecording` 先停对应 Audio 并从 Map 移除，再删数据库 + Storage
+
 ## 十六、下拉刷新（橡皮条）
 
 - **文件**：`js/pull_refresh.js`（load_order=25）
@@ -520,6 +660,7 @@ GRANT EXECUTE ON FUNCTION exec_ddl(TEXT) TO authenticated;
 | 模块 | 文件 | 每页数量 | 分页器 ID |
 |---|---|---|---|
 | 相册 | `js/home.js` | 6 张 | `galleryPager` |
+| 视频 | `js/video.js` | 6 个 | `videoPager` |
 | 留言 | `js/home.js` | 5 条 | `messagePager` |
 | 日志 | `js/journal.js` | 5 条 | `journalPager` |
 
