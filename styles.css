@@ -224,6 +224,7 @@ body {
 
 /* 音乐播放器（现代风格） */
 .modern-player {
+    position: relative;
     background: linear-gradient(135deg, rgba(255, 107, 139, 0.06), rgba(118, 75, 162, 0.06));
     border-radius: 20px;
     padding: 20px;
@@ -231,6 +232,35 @@ body {
     flex-direction: column;
     align-items: center;
     gap: 14px;
+}
+
+/* 右上角上传按钮 */
+.mp-upload-toggle {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 107, 139, 0.12);
+    color: #ff6b8b;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    z-index: 5;
+    transition: all 0.2s;
+}
+.mp-upload-toggle:hover {
+    background: #ff6b8b;
+    color: #fff;
+    transform: scale(1.08);
+}
+.mp-upload-toggle.active {
+    background: #ff6b8b;
+    color: #fff;
 }
 
 .mp-cover-wrap {
@@ -543,6 +573,316 @@ body {
     background: rgba(255, 107, 139, 0.06);
     border-color: #ff6b8b;
 }
+
+/* 上传区 + 歌词输入 */
+.mp-upload-area {
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.mp-lyrics-input-wrap {
+    background: #faf8fa;
+    border: 1px solid #f3e8ee;
+    border-radius: 12px;
+    padding: 10px 12px;
+}
+.mp-lyrics-label {
+    display: block;
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 6px;
+}
+.mp-lyrics-input {
+    width: 100%;
+    border: 1px solid #ffd6e0;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12px;
+    font-family: monospace;
+    color: #444;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+}
+.mp-lyrics-input:focus {
+    border-color: #ff6b8b;
+}
+
+/* 列表项：歌词按钮 */
+.mp-item-lyrics {
+    color: #ff6b8b;
+    opacity: 0.7;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 6px;
+    transition: all 0.2s;
+    font-size: 13px;
+}
+.mp-item-lyrics:hover {
+    opacity: 1;
+    background: rgba(255, 107, 139, 0.1);
+}
+.mp-item-lyrics-empty {
+    color: #d1d5db;
+}
+
+/* 歌词编辑弹窗 */
+.mp-lyrics-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+.mp-lyrics-modal-box {
+    background: #fff;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 560px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+.mp-lyrics-modal-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid #f3e8ee;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.mp-lyrics-modal-header h3 {
+    margin: 0;
+    font-size: 15px;
+    color: #ff6b8b;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+.mp-lyrics-modal-title {
+    flex: 1;
+    font-size: 13px;
+    color: #6b7280;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.mp-lyrics-modal-close {
+    font-size: 22px;
+    color: #9ca3af;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0 4px;
+    transition: color 0.2s;
+}
+.mp-lyrics-modal-close:hover {
+    color: #ff6b8b;
+}
+.mp-lyrics-textarea {
+    flex: 1;
+    width: 100%;
+    border: none;
+    outline: none;
+    padding: 14px 18px;
+    font-size: 13px;
+    font-family: monospace;
+    line-height: 1.6;
+    color: #333;
+    resize: none;
+    min-height: 240px;
+    box-sizing: border-box;
+}
+.mp-lyrics-modal-tips {
+    padding: 8px 18px;
+    font-size: 11px;
+    color: #9ca3af;
+    background: #faf8fa;
+    border-top: 1px solid #f3e8ee;
+}
+.mp-lyrics-tip-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+    line-height: 1.5;
+}
+.mp-lyrics-tip-row i {
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+.mp-lyrics-download-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 6px;
+    color: #ff6b8b;
+    text-decoration: none;
+    font-size: 11px;
+    padding: 3px 8px;
+    border: 1px solid rgba(255, 107, 139, 0.3);
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+.mp-lyrics-download-link:hover {
+    background: rgba(255, 107, 139, 0.08);
+    border-color: #ff6b8b;
+}
+.mp-lyrics-modal-actions {
+    padding: 12px 18px;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    border-top: 1px solid #f3e8ee;
+}
+.mp-lyrics-btn-cancel {
+    padding: 8px 18px;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    color: #6b7280;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+}
+.mp-lyrics-btn-cancel:hover {
+    background: #f9fafb;
+    color: #333;
+}
+.mp-lyrics-btn-save {
+    padding: 8px 18px;
+    border-radius: 8px;
+    border: none;
+    background: linear-gradient(135deg, #ff6b8b, #ffb4c4);
+    color: #fff;
+    cursor: pointer;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s;
+}
+.mp-lyrics-btn-save:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(255, 107, 139, 0.3);
+}
+
+/* 歌词提示（上传区） */
+.mp-lyrics-tip {
+    font-size: 12px;
+    color: #9ca3af;
+    text-align: center;
+    padding: 6px 10px;
+    background: #faf8fa;
+    border-radius: 8px;
+}
+.mp-lyrics-tip i {
+    color: #ff6b8b;
+    margin-right: 4px;
+}
+
+/* 上传选择弹窗内容 */
+.mp-upload-choice-content {
+    padding: 20px 24px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+.mp-upload-choice-desc {
+    font-size: 13px;
+    color: #6b7280;
+    line-height: 1.6;
+    background: linear-gradient(135deg, #fff5f7, #fff);
+    border: 1px solid #ffe0e8;
+    border-radius: 10px;
+    padding: 12px 14px;
+}
+.mp-upload-choice-btn {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    padding: 14px 16px;
+    border-radius: 12px;
+    cursor: pointer;
+    border: none;
+    text-align: left;
+    transition: all 0.2s;
+    text-decoration: none;
+    box-sizing: border-box;
+}
+.mp-upload-choice-btn i {
+    font-size: 28px;
+    flex-shrink: 0;
+}
+.mp-choice-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+.mp-choice-sub {
+    font-size: 11px;
+    opacity: 0.8;
+}
+/* 下载按钮 - 蓝色主题 */
+.mp-upload-choice-btn-download {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.25);
+}
+.mp-upload-choice-btn-download:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.35);
+}
+.mp-upload-choice-btn-download i { color: rgba(255,255,255,0.95); }
+.mp-upload-choice-btn-download .mp-choice-sub { color: rgba(255,255,255,0.85); }
+
+/* 下载按钮 - 第二个网站（青绿主题，区分） */
+.mp-upload-choice-btn-download-alt {
+    background: linear-gradient(135deg, #11998e, #38ef7d);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(17, 153, 142, 0.25);
+}
+.mp-upload-choice-btn-download-alt:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(17, 153, 142, 0.35);
+}
+.mp-upload-choice-btn-download-alt i { color: rgba(255,255,255,0.95); }
+.mp-upload-choice-btn-download-alt .mp-choice-sub { color: rgba(255,255,255,0.85); }
+
+/* 歌曲名搜索输入框 */
+.mp-download-song-input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid #ffd6e0;
+    border-radius: 10px;
+    font-size: 13px;
+    color: #333;
+    outline: none;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+}
+.mp-download-song-input:focus {
+    border-color: #ff6b8b;
+}
+.mp-download-song-input::placeholder {
+    color: #c0c0c0;
+}
+/* 立即上传按钮 - 粉色主题 */
+.mp-upload-choice-btn-upload {
+    background: linear-gradient(135deg, #ff6b8b, #ffb4c4);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(255, 107, 139, 0.25);
+}
+.mp-upload-choice-btn-upload:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(255, 107, 139, 0.35);
+}
+.mp-upload-choice-btn-upload i { color: rgba(255,255,255,0.95); }
+.mp-upload-choice-btn-upload .mp-choice-sub { color: rgba(255,255,255,0.85); }
 
 .bell-toggle {
     position: fixed;

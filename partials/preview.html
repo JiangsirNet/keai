@@ -9,6 +9,6 @@
 
 <!--视频预览弹窗-->
 <div id="videoPreviewModal" class="img-preview-modal hidden" onclick="closeVideoPreview(event)">
-    <video id="videoPreviewPlayer" controls autoplay class="max-w-[90vw] max-h-[80vh] rounded-2xl"></video>
+    <video id="videoPreviewPlayer" controls autoplay preload="metadata" class="max-w-[90vw] max-h-[80vh] rounded-2xl"></video>
     <span class="absolute top-5 right-5 text-white text-3xl cursor-pointer z-10" onclick="closeVideoPreview()">&times;</span>
 </div>

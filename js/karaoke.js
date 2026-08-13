@@ -31,6 +31,12 @@
     let previewVocalSrc = null;
     let previewAccBuffer = null;  // 缓存伴奏 AudioBuffer
     let isPreviewing = false;
+    // 试听进度跟踪
+    let previewParams = null;     // 存储试听参数供 seek 使用
+    let previewStartCtxTime = 0;  // 试听开始时的 ctx.currentTime
+    let previewSeekOffset = 0;    // 当前试听从第几秒开始
+    let previewTotalDuration = 0; // 试听总时长
+    let previewRafId = null;      // requestAnimationFrame ID
 
     // 回放播放器模式（vocal | mix | record）
     let playbackMode = 'vocal';
@@ -47,6 +53,27 @@
         loadRecordings();
         setupAudioEvents();
         setupMixSliders();
+    }
+
+    // 暂停 K 歌所有音频（供音乐模块调用）
+    // 录音中不暂停伴奏 audio，其他全部暂停
+    function pauseKaraokeAudios() {
+        // 1. 回放播放器
+        try { if (playbackAudioEl && !playbackAudioEl.paused) playbackAudioEl.pause(); } catch(e) {}
+        // 2. 试听
+        if (isPreviewing) {
+            try { stopPreview(); } catch(e) {}
+        }
+        // 3. 录音作品列表
+        for (const [, a] of recordAudioMap.entries()) {
+            try { if (!a.paused) a.pause(); } catch(e) {}
+        }
+        // 4. 伴奏（仅非录音中）
+        if (!isRecording && audio && !audio.paused) {
+            try { audio.pause(); } catch(e) {}
+            const playBtn = document.getElementById('karaokePlayBtn');
+            if (playBtn) playBtn.innerHTML = '<i class="fa fa-play"></i>';
+        }
     }
 
     // ===== 回放播放器：模式切换 + 自定义进度条 =====
@@ -67,6 +94,7 @@
         const badge = document.getElementById('karaokePlaybackBadge');
         const label = document.getElementById('karaokePlaybackLabel');
         const titleEl = document.getElementById('karaokePbTitle');
+        const saveBtn = document.getElementById('karaokeSaveBtn');
 
         // 清除所有模式类，添加当前模式类
         if (player) {
@@ -86,6 +114,11 @@
         }
         if (label) label.innerText = meta.label;
         if (titleEl && title) titleEl.innerText = title;
+
+        // 保存按钮仅在合成模式下显示
+        if (saveBtn) {
+            saveBtn.classList.toggle('hidden', mode !== 'mix');
+        }
     }
 
     function updatePbProgress() {
@@ -114,8 +147,12 @@
 
     function karaokePbTogglePlay() {
         if (!playbackAudioEl || !playbackAudioEl.src) return;
-        if (playbackAudioEl.paused) playbackAudioEl.play();
-        else playbackAudioEl.pause();
+        if (playbackAudioEl.paused) {
+            if (window.pauseMusicAudio) window.pauseMusicAudio();
+            playbackAudioEl.play();
+        } else {
+            playbackAudioEl.pause();
+        }
     }
 
     function karaokePbSeek(e) {
@@ -132,15 +169,55 @@
         const accSlider = document.getElementById("karaokeMixAccVol");
         const vocalSlider = document.getElementById("karaokeMixVocalVol");
         const offsetSlider = document.getElementById("karaokeMixOffset");
+
+        // 从 localStorage 恢复上次参数
+        try {
+            const saved = JSON.parse(localStorage.getItem('karaokeMixParams') || '{}');
+            if (saved.accVol != null && accSlider) {
+                accSlider.value = saved.accVol;
+                document.getElementById("karaokeMixAccNum").innerText = saved.accVol + "%";
+            }
+            if (saved.vocalVol != null && vocalSlider) {
+                vocalSlider.value = saved.vocalVol;
+                document.getElementById("karaokeMixVocalNum").innerText = saved.vocalVol + "%";
+            }
+            if (saved.offset != null && offsetSlider) {
+                offsetSlider.value = saved.offset;
+                const v = saved.offset;
+                document.getElementById("karaokeMixOffsetNum").innerText = (v >= 0 ? "+" : "") + v + "ms";
+            }
+        } catch (e) {}
+
+        // 防抖保存
+        let saveTimer = null;
+        const saveParams = () => {
+            if (saveTimer) clearTimeout(saveTimer);
+            saveTimer = setTimeout(() => {
+                try {
+                    localStorage.setItem('karaokeMixParams', JSON.stringify({
+                        accVol: parseInt(accSlider.value),
+                        vocalVol: parseInt(vocalSlider.value),
+                        offset: parseInt(offsetSlider.value)
+                    }));
+                } catch (e) {}
+            }, 500);
+        };
+
         if (accSlider) accSlider.oninput = function() {
             document.getElementById("karaokeMixAccNum").innerText = this.value + "%";
+            if (isPreviewing) stopPreview();
+            saveParams();
         };
         if (vocalSlider) vocalSlider.oninput = function() {
             document.getElementById("karaokeMixVocalNum").innerText = this.value + "%";
+            if (isPreviewing) stopPreview();
+            saveParams();
         };
         if (offsetSlider) offsetSlider.oninput = function() {
             const v = parseInt(this.value);
             document.getElementById("karaokeMixOffsetNum").innerText = (v >= 0 ? "+" : "") + v + "ms";
+            if (isPreviewing) stopPreview();
+            saveParams();
         };
     }
 
@@ -199,6 +276,8 @@
             return;
         }
         if (isPreviewing) stopPreview();
+        // 切歌时自动清理上一轮本地录音
+        autoCleanupLocalRecording();
         previewAccBuffer = null;  // 清除缓存的伴奏
         selectedSong = karaokeSongs[idx];
         audio.src = selectedSong.url;
@@ -304,6 +383,7 @@
             return;
         }
         if (audio.paused) {
+            if (window.pauseMusicAudio) window.pauseMusicAudio();
             audio.play();
         } else {
             audio.pause();
@@ -355,19 +435,55 @@
 
     async function startRecording() {
         try {
-            // 关闭浏览器音频处理（降噪/自动增益/回声消除），保留人声原始细节
-            mediaStream = await navigator.mediaDevices.getUserMedia({
-                audio: {
-                    echoCancellation: false,
-                    noiseSuppression: false,
-                    autoGainControl: false,
-                    channelCount: 1
-                }
-            });
+            // 录音前暂停音乐播放器，避免同时播放
+            if (window.pauseMusicAudio) window.pauseMusicAudio();
+            // 自动清理上一轮本地录音（不使用了就自动删除）
+            autoCleanupLocalRecording();
 
+            // ===== iOS 兼容关键点 =====
+            // 1. AudioContext 必须在用户手势内同步创建/恢复，不能在 await 之后
             if (!mixAudioCtx) {
                 mixAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
             }
+            if (mixAudioCtx.state === 'suspended') {
+                // 注意：这里不 await，避免手势上下文丢失；后面会再检查
+                mixAudioCtx.resume();
+            }
+
+            // 2. 伴奏 audio 元素也必须 在手势内 play()，await 之后 iOS 会拒绝
+            //    这里先 play 然后 pause 做"解锁"，真正的 play 在拿到麦克风后再触发
+            if (audio.paused) {
+                audio.muted = true;
+                audio.play().then(() => {
+                    audio.pause();
+                    audio.currentTime = 0;
+                    audio.muted = false;
+                }).catch(e => { audio.muted = false; });
+            }
+
+            // 3. iOS Safari 在 echoCancellation/noiseSuppression/autoGainControl = false 时
+            //    有已知 bug 会录到空音频。这里改为 true（默认处理）保证能录到声音
+            //    音质略有损失，但至少能录到人声
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                          (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+            const audioConstraints = isIOS ? {
+                // iOS：保留默认音频处理，避免录到空音频
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true
+            } : {
+                // 非 iOS：关闭处理，保留人声原始细节
+                echoCancellation: false,
+                noiseSuppression: false,
+                autoGainControl: false,
+                channelCount: 1
+            };
+
+            mediaStream = await navigator.mediaDevices.getUserMedia({
+                audio: audioConstraints
+            });
+
+            // 4. await 之后再确认 AudioContext 已恢复（iOS 可能需要）
             if (mixAudioCtx.state === 'suspended') {
                 await mixAudioCtx.resume();
             }
@@ -383,6 +499,7 @@
 
             processor.onaudioprocess = (e) => {
                 const input = e.inputBuffer.getChannelData(0);
+                // iOS 兼容：检测是否真的录到数据（非空检测）
                 recordedSamples.push(new Float32Array(input));
             };
 
@@ -402,8 +519,9 @@
 
             document.getElementById("karaokeMixPanel").classList.add("hidden");
 
+            // 5. 真正播放伴奏（此时 audio 已在手势内被解锁过）
             if (audio.paused) {
-                audio.play();
+                try { await audio.play(); } catch(e) { console.warn("伴奏播放失败:", e); }
             }
 
             document.getElementById("karaokeStopBtn").classList.remove("hidden");
@@ -411,7 +529,24 @@
             showVolumeMeter();
             updateRecordBtn();
 
-            window.sendNotification("karaoke", "🎤 开始 K 歌啦！");
+            // 6. iOS 兜底：500ms 后检查是否真的录到数据
+            if (isIOS) {
+                setTimeout(() => {
+                    if (!isRecording) return;
+                    let hasData = false;
+                    for (const chunk of recordedSamples) {
+                        for (let i = 0; i < chunk.length; i += 100) {
+                            if (Math.abs(chunk[i]) > 0.001) { hasData = true; break; }
+                        }
+                        if (hasData) break;
+                    }
+                    if (!hasData && recordedSamples.length > 0) {
+                        console.warn("iOS 检测到录音为空，尝试重新初始化");
+                        // 不强制重启，只提示
+                        updateStatus("⚠️ 未检测到人声，请检查麦克风权限或重启录音");
+                    }
+                }, 500);
+            }
         } catch (err) {
             console.error("麦克风访问失败:", err);
             alert("无法访问麦克风：" + err.message + "\n\n请确保使用 HTTPS 或 localhost 访问，并允许浏览器麦克风权限。");
@@ -528,12 +663,15 @@
         vocalSampleRate = mixAudioCtx.sampleRate;
 
         updateStatus("🔄 正在编码 MP3...");
+        showBtnLoading('karaokeStopBtn', '编码中...');
 
         try {
             await loadLameJS();
             // 编码人声 MP3（128kbps mono）
             const blob = encodePcmToMp3(vocalSamples, vocalSampleRate, 128);
             const url = URL.createObjectURL(blob);
+
+            hideBtnLoading('karaokeStopBtn');
 
             const audioEl = document.getElementById("karaokePlaybackAudio");
             audioEl.src = url;
@@ -548,8 +686,11 @@
         } catch (err) {
             // MP3 编码失败，回退 WAV
             console.warn("MP3 编码失败，回退 WAV:", err);
+            showBtnLoading('karaokeStopBtn', '编码中...');
             const blob = encodeWav(vocalSamples, vocalSampleRate);
             const url = URL.createObjectURL(blob);
+
+            hideBtnLoading('karaokeStopBtn');
 
             const audioEl = document.getElementById("karaokePlaybackAudio");
             audioEl.src = url;
@@ -593,32 +734,43 @@
 
     // 试听混音效果（实时播放，可反复调整偏移后重新试听）
     async function previewMix() {
+        const btn = document.getElementById("karaokePreviewBtn");
+
+        // 正在试听 → 停止（核心：isPreviewing 唯一入口）
         if (isPreviewing) {
             stopPreview();
             return;
         }
+
+        // 非试听状态 → 开始试听
         if (vocalSamples.length === 0 || !selectedSong) {
             alert("请先录音");
             return;
         }
 
-        const btn = document.getElementById("karaokePreviewBtn");
-        btn.innerHTML = '<i class="fa fa-stop"></i> 停止';
+        // 暂停音乐播放器，避免同时播放
+        if (window.pauseMusicAudio) window.pauseMusicAudio();
+
+        // 先清理上一轮残留（可能 onended 没跑完）
+        stopPreview(false);
+
+        // 标记 + 按钮切换（此顺序避免 onended 里立即被覆写）
         isPreviewing = true;
-        updateStatus("🎧 试听中...可调整偏移后再次试听");
+        if (btn) btn.innerHTML = '<i class="fa fa-stop"></i> 停止';
+        setBtnStatus('mix', '🎧 试听中...');
 
         try {
             // 缓存伴奏 AudioBuffer（首次试听时下载）
             if (!previewAccBuffer) {
-                updateStatus("🔄 加载伴奏中...");
+                setBtnStatus('mix', '🔄 加载伴奏中...');
+                showBtnLoading('karaokePreviewBtn', '加载伴奏...');
                 const resp = await fetch(selectedSong.url);
                 const arrayBuffer = await resp.arrayBuffer();
                 const tmpCtx = new (window.AudioContext || window.webkitAudioContext)();
                 previewAccBuffer = await tmpCtx.decodeAudioData(arrayBuffer);
                 tmpCtx.close();
+                hideBtnLoading('karaokePreviewBtn');
             }
-
-            stopPreview(false);
 
             previewCtx = new (window.AudioContext || window.webkitAudioContext)();
             if (previewCtx.state === 'suspended') await previewCtx.resume();
@@ -636,38 +788,24 @@
             const padSec = 3;
             const accOffset = Math.max(0, recordStartTime - padSec + manualOffset);
             const accEnd = Math.min(previewAccBuffer.duration, recordStartTime + vocalDuration + padSec + manualOffset);
-            const accSliceDuration = accEnd - accOffset;
+            const accSliceDuration = Math.max(0.1, accEnd - accOffset);
             const vocalStartInOutput = (recordStartTime - accOffset) + manualOffset;
 
-            // 伴奏
-            previewAccSrc = previewCtx.createBufferSource();
-            previewAccSrc.buffer = previewAccBuffer;
-            const accGain = previewCtx.createGain();
-            accGain.gain.value = accVol;
-            previewAccSrc.connect(accGain);
-            accGain.connect(previewCtx.destination);
-            previewAccSrc.start(0, accOffset, accSliceDuration);
-
-            // 人声
-            const vocalBuf = previewCtx.createBuffer(1, totalVocalLength, vocalSampleRate);
-            const vocalChannel = vocalBuf.getChannelData(0);
-            let off = 0;
-            for (const chunk of vocalSamples) {
-                vocalChannel.set(chunk, off);
-                off += chunk.length;
-            }
-            previewVocalSrc = previewCtx.createBufferSource();
-            previewVocalSrc.buffer = vocalBuf;
-            const vGain = previewCtx.createGain();
-            vGain.gain.value = vocalVol;
-            previewVocalSrc.connect(vGain);
-            vGain.connect(previewCtx.destination);
-            const startAt = Math.max(0, vocalStartInOutput);
-            previewVocalSrc.start(startAt);
-
-            previewAccSrc.onended = () => {
-                if (isPreviewing) stopPreview();
+            // 存储试听参数供 seek 使用
+            previewParams = {
+                accVol, vocalVol, accOffset, accSliceDuration,
+                vocalStartInOutput, totalVocalLength, vocalDuration
             };
+            previewTotalDuration = accSliceDuration;
+            previewSeekOffset = 0;
+
+            // 显示进度条
+            const progWrap = document.getElementById("karaokePreviewProgress");
+            const durEl = document.getElementById("karaokePreviewDur");
+            if (progWrap) progWrap.classList.remove("hidden");
+            if (durEl) durEl.innerText = formatTime(previewTotalDuration);
+
+            startPreviewSources(0);
         } catch (err) {
             console.error("试听失败:", err);
             alert("试听失败：" + err.message);
@@ -675,22 +813,148 @@
         }
     }
 
+    // 从指定位置（秒）开始播放试听源
+    function startPreviewSources(seekSec) {
+        if (!previewCtx || !previewParams) return;
+
+        // 停止当前源（不关 context）
+        if (previewAccSrc) {
+            try { previewAccSrc.onended = null; } catch(e) {}
+            try { previewAccSrc.stop(); } catch(e) {}
+            try { previewAccSrc.disconnect(); } catch(e) {}
+            previewAccSrc = null;
+        }
+        if (previewVocalSrc) {
+            try { previewVocalSrc.onended = null; } catch(e) {}
+            try { previewVocalSrc.stop(); } catch(e) {}
+            try { previewVocalSrc.disconnect(); } catch(e) {}
+            previewVocalSrc = null;
+        }
+
+        const p = previewParams;
+        previewSeekOffset = seekSec;
+        previewStartCtxTime = previewCtx.currentTime;
+
+        // 伴奏：从 accOffset + seekSec 处开始，播放剩余时长
+        const accRemaining = Math.max(0.1, p.accSliceDuration - seekSec);
+        previewAccSrc = previewCtx.createBufferSource();
+        previewAccSrc.buffer = previewAccBuffer;
+        const accGain = previewCtx.createGain();
+        accGain.gain.value = p.accVol;
+        previewAccSrc.connect(accGain);
+        accGain.connect(previewCtx.destination);
+        try {
+            previewAccSrc.start(0, p.accOffset + seekSec, accRemaining);
+        } catch (startErr) {
+            console.warn("伴奏 start 失败:", startErr);
+            previewAccSrc.start(0);
+        }
+
+        // 人声：根据 seek 位置决定何时/从哪开始
+        const vocalBuf = previewCtx.createBuffer(1, p.totalVocalLength, vocalSampleRate);
+        const vocalChannel = vocalBuf.getChannelData(0);
+        let off = 0;
+        for (const chunk of vocalSamples) {
+            vocalChannel.set(chunk, off);
+            off += chunk.length;
+        }
+        previewVocalSrc = previewCtx.createBufferSource();
+        previewVocalSrc.buffer = vocalBuf;
+        const vGain = previewCtx.createGain();
+        vGain.gain.value = p.vocalVol;
+        previewVocalSrc.connect(vGain);
+        vGain.connect(previewCtx.destination);
+
+        if (seekSec < p.vocalStartInOutput) {
+            // 人声还没开始，延迟启动
+            const delay = p.vocalStartInOutput - seekSec;
+            previewVocalSrc.start(previewCtx.currentTime + delay);
+        } else {
+            // 人声已经开始了，从中间位置切入
+            const vocalOffset = seekSec - p.vocalStartInOutput;
+            if (vocalOffset < p.vocalDuration) {
+                previewVocalSrc.start(0, vocalOffset);
+            }
+        }
+
+        // 任意一条结束 → 整体停止
+        let endedTimer = null;
+        const handleEnded = () => {
+            if (endedTimer) return;
+            endedTimer = setTimeout(() => {
+                if (isPreviewing) stopPreview();
+            }, 50);
+        };
+        previewAccSrc.onended = handleEnded;
+        previewVocalSrc.onended = handleEnded;
+
+        // 启动进度更新
+        updatePreviewProgress();
+    }
+
+    // rAF 更新试听进度条
+    function updatePreviewProgress() {
+        if (!isPreviewing || !previewCtx) return;
+        const elapsed = previewSeekOffset + (previewCtx.currentTime - previewStartCtxTime);
+        const percent = Math.min(100, (elapsed / previewTotalDuration) * 100);
+
+        const bar = document.getElementById("karaokePreviewProgressBar");
+        const thumb = document.getElementById("karaokePreviewProgressThumb");
+        const curEl = document.getElementById("karaokePreviewCur");
+        if (bar) bar.style.width = percent + '%';
+        if (thumb) thumb.style.left = percent + '%';
+        if (curEl) curEl.innerText = formatTime(Math.min(elapsed, previewTotalDuration));
+
+        if (elapsed >= previewTotalDuration) {
+            if (isPreviewing) stopPreview();
+            return;
+        }
+        previewRafId = requestAnimationFrame(updatePreviewProgress);
+    }
+
+    // 拖拽/点击进度条跳转
+    function seekPreview(event) {
+        if (!isPreviewing || !previewCtx) return;
+        const wrap = document.getElementById("karaokePreviewProgressWrap");
+        if (!wrap) return;
+        const rect = wrap.getBoundingClientRect();
+        const percent = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+        const seekSec = percent * previewTotalDuration;
+        startPreviewSources(seekSec);
+    }
+
     function stopPreview(resetBtn) {
-        try { if (previewAccSrc) previewAccSrc.stop(); } catch(e) {}
-        try { if (previewVocalSrc) previewVocalSrc.stop(); } catch(e) {}
-        try { if (previewAccSrc) previewAccSrc.disconnect(); } catch(e) {}
-        try { if (previewVocalSrc) previewVocalSrc.disconnect(); } catch(e) {}
-        previewAccSrc = null;
-        previewVocalSrc = null;
+        // 停止进度更新
+        if (previewRafId) {
+            cancelAnimationFrame(previewRafId);
+            previewRafId = null;
+        }
+        // 先关 source，防止 onended 在 stop 过程中再次被触发
+        if (previewAccSrc) {
+            try { previewAccSrc.onended = null; } catch(e) {}
+            try { previewAccSrc.stop(); } catch(e) {}
+            try { previewAccSrc.disconnect(); } catch(e) {}
+            previewAccSrc = null;
+        }
+        if (previewVocalSrc) {
+            try { previewVocalSrc.onended = null; } catch(e) {}
+            try { previewVocalSrc.stop(); } catch(e) {}
+            try { previewVocalSrc.disconnect(); } catch(e) {}
+            previewVocalSrc = null;
+        }
         if (previewCtx) {
-            previewCtx.close();
+            try { previewCtx.close(); } catch(e) {}
             previewCtx = null;
         }
         isPreviewing = false;
+        previewParams = null;
+        // 隐藏进度条
+        const progWrap = document.getElementById("karaokePreviewProgress");
+        if (progWrap) progWrap.classList.add("hidden");
         if (resetBtn !== false) {
             const btn = document.getElementById("karaokePreviewBtn");
             if (btn) btn.innerHTML = '<i class="fa fa-play-circle"></i> 试听';
-            updateStatus("试听结束");
+            setBtnStatus('mix', '');
         }
     }
 
@@ -708,12 +972,14 @@
         // 停止试听
         if (isPreviewing) stopPreview();
 
-        updateStatus("🔄 正在合成伴奏+人声...");
+        setBtnStatus('mix', '🔄 正在合成...');
+        showBtnLoading('karaokeExportBtn', '合成中...');
 
         try {
             // 1. 下载伴奏并解码为 AudioBuffer（复用缓存）
             let accBuffer = previewAccBuffer;
             if (!accBuffer) {
+                showBtnLoading('karaokeExportBtn', '加载伴奏...');
                 const resp = await fetch(selectedSong.url);
                 const arrayBuffer = await resp.arrayBuffer();
                 const tmpCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -721,6 +987,8 @@
                 tmpCtx.close();
                 previewAccBuffer = accBuffer;
             }
+
+            showBtnLoading('karaokeExportBtn', '渲染中...');
 
             // 2. 合并人声片段为一个 AudioBuffer
             let totalVocalLength = 0;
@@ -775,6 +1043,7 @@
             const rendered = await offCtx.startRendering();
 
             // 5. 编码 MP3（192kbps 立体声）
+            showBtnLoading('karaokeExportBtn', '编码 MP3...');
             await loadLameJS();
             let blob;
             try {
@@ -790,19 +1059,23 @@
             }
             const url = URL.createObjectURL(blob);
 
+            hideBtnLoading('karaokeExportBtn');
+
             // 6. 替换回放为混音版本
             const audioEl = document.getElementById("karaokePlaybackAudio");
             const songTitle = selectedSong ? selectedSong.title : '合成作品';
             audioEl.src = url;
             setPlaybackMode('mix', songTitle + '（合成）');
+            if (window.pauseMusicAudio) window.pauseMusicAudio();
             audioEl.play();
 
-            updateStatus("✅ 混音完成！伴奏+人声已合成（MP3）");
-            window.sendNotification("karaoke", "🎵 混音合成完成！");
+            setBtnStatus('mix', '✅ 合成完成');
+            setTimeout(() => setBtnStatus('mix', ''), 3000);
         } catch (err) {
             console.error("混音失败:", err);
+            hideBtnLoading('karaokeExportBtn');
             alert("混音失败：" + err.message);
-            updateStatus("❌ 混音失败");
+            setBtnStatus('mix', '❌ 合成失败');
         }
     }
 
@@ -952,34 +1225,45 @@
             const safeName = songTitle.replace(/[^\x00-\x7F]/g, "").replace(/\s+/g, "_") || "karaoke";
             const fileName = `${ts}_karaoke_${safeName}.mp3`;
 
-            updateStatus("🔄 正在保存到录音库...");
+            setBtnStatus('save', '🔄 正在保存...');
+            showBtnLoading('karaokeSaveBtn', '上传中...');
 
             const { data, error } = await window.sb.storage.from("music").upload(fileName, blob);
             if (error) {
+                hideBtnLoading('karaokeSaveBtn');
                 alert("上传失败：" + error.message);
-                updateStatus("❌ 上传失败");
+                setBtnStatus('save', '❌ 上传失败');
                 return;
             }
 
             const url = window.sb.storage.from("music").getPublicUrl(data.path).data.publicUrl;
 
-            // 获取用户昵称（boy_name / girl_name）
+            // 获取用户昵称：优先用本地 CONFIG 的邮箱→人名映射
             let singerName = window.myRpsEmail || "匿名";
-            try {
-                const { data: profile } = await window.sb.from("profiles")
-                    .select("boy_name, girl_name, email")
-                    .or(`email.eq.${window.myRpsEmail}`)
-                    .maybeSingle();
-                if (profile) {
-                    if (profile.email && profile.email.toLowerCase() === (window.myRpsEmail || "").toLowerCase()) {
-                        const boyName = profile.boy_name ? profile.boy_name.trim() : "";
-                        const girlName = profile.girl_name ? profile.girl_name.trim() : "";
-                        if (boyName || girlName) {
-                            singerName = (boyName || girlName);
+            const cfg = window.CONFIG || {};
+            const myEmail = (window.myRpsEmail || '').toLowerCase();
+            if (myEmail && cfg.boyEmail && myEmail === cfg.boyEmail.toLowerCase()) {
+                singerName = cfg.boyName || singerName;
+            } else if (myEmail && cfg.girlEmail && myEmail === cfg.girlEmail.toLowerCase()) {
+                singerName = cfg.girlName || singerName;
+            } else {
+                // CONFIG 没匹配到，查 profiles 表
+                try {
+                    const { data: profile } = await window.sb.from("profiles")
+                        .select("boy_name, girl_name, email")
+                        .or(`email.eq.${window.myRpsEmail}`)
+                        .maybeSingle();
+                    if (profile) {
+                        if (profile.email && profile.email.toLowerCase() === myEmail) {
+                            const boyName = profile.boy_name ? profile.boy_name.trim() : "";
+                            const girlName = profile.girl_name ? profile.girl_name.trim() : "";
+                            if (boyName || girlName) {
+                                singerName = (boyName || girlName);
+                            }
                         }
                     }
-                }
-            } catch (e) { /* 忽略查询错误，用邮箱代替 */ }
+                } catch (e) { /* 忽略查询错误，用邮箱代替 */ }
+            }
 
             const title = `🎤K歌 - ${songTitle}`;
             const { error: insertErr } = await window.sb.from("karaoke_recordings").insert({
@@ -992,18 +1276,24 @@
             });
 
             if (insertErr) {
+                hideBtnLoading('karaokeSaveBtn');
                 alert("保存记录失败：" + insertErr.message);
-                updateStatus("❌ 保存失败");
+                setBtnStatus('save', '❌ 保存失败');
                 return;
             }
 
-            updateStatus(`✅ 已保存到录音库：${title}（${singerName}）`);
+            hideBtnLoading('karaokeSaveBtn');
+            setBtnStatus('save', '✅ 已保存');
+            setTimeout(() => setBtnStatus('save', ''), 3000);
             window.sendNotification("karaoke", `🎤 ${singerName} 的 K歌作品已保存！`);
             loadRecordings();
+            // 保存成功后自动清理本地录音
+            setTimeout(() => autoCleanupLocalRecording(), 1500);
         } catch (err) {
+            hideBtnLoading('karaokeSaveBtn');
             console.error("保存失败:", err);
             alert("保存失败：" + err.message);
-            updateStatus("❌ 保存失败");
+            setBtnStatus('save', '❌ 保存失败');
         }
     }
 
@@ -1030,6 +1320,21 @@
         listEl.innerHTML = data.map(r => {
             const rTitle = escapeHtml(r.title);
             const rUrl = r.url.replace(/'/g, "\\'");
+            // 歌手名：如果存的是邮箱，转为对应人名
+            let singerDisplay = r.singer_name || '';
+            const cfg = window.CONFIG || {};
+            const email = (r.uploader_email || '').toLowerCase();
+            if (email && cfg.boyEmail && email === cfg.boyEmail.toLowerCase()) {
+                singerDisplay = cfg.boyName || singerDisplay;
+            } else if (email && cfg.girlEmail && email === cfg.girlEmail.toLowerCase()) {
+                singerDisplay = cfg.girlName || singerDisplay;
+            }
+            // 如果 singer_name 本身看起来像邮箱也尝试转
+            if (singerDisplay && singerDisplay.includes('@')) {
+                const sl = singerDisplay.toLowerCase();
+                if (cfg.boyEmail && sl === cfg.boyEmail.toLowerCase()) singerDisplay = cfg.boyName || singerDisplay;
+                else if (cfg.girlEmail && sl === cfg.girlEmail.toLowerCase()) singerDisplay = cfg.girlName || singerDisplay;
+            }
             return `
             <div class="karaoke-rec-item" data-rec-id="${r.id}">
                 <audio class="karaoke-rec-audio" data-rec-audio-id="${r.id}" src="${r.url}" preload="metadata"></audio>
@@ -1040,7 +1345,7 @@
                     <div class="karaoke-rec-info">
                         <div class="karaoke-rec-title">${rTitle}</div>
                         <div class="karaoke-rec-meta">
-                            ${r.singer_name ? `<span>🎤 ${escapeHtml(r.singer_name)}</span>` : ''}
+                            ${singerDisplay ? `<span>🎤 ${escapeHtml(singerDisplay)}</span>` : ''}
                             ${r.song_title ? `<span>🎵 ${escapeHtml(r.song_title)}</span>` : ''}
                             <span>${formatDate(r.created_at)}</span>
                         </div>
@@ -1114,6 +1419,7 @@
         const a = recordAudioMap.get(id);
         if (!a) return;
         if (a.paused) {
+            if (window.pauseMusicAudio) window.pauseMusicAudio();
             a.play().catch(err => console.warn('录音播放失败:', err));
         } else {
             a.pause();
@@ -1149,7 +1455,7 @@
         if (!confirm("确定删除这个录音作品吗？")) return;
 
         try {
-            updateStatus("🔄 正在删除...");
+            setBtnStatus('delete', '🔄 正在删除...');
 
             // 先停止并清理该录音对应的 Audio
             const recAudio = recordAudioMap.get(id);
@@ -1166,7 +1472,7 @@
             const { error: dbErr } = await window.sb.from("karaoke_recordings").delete().eq("id", id);
             if (dbErr) {
                 alert("删除记录失败：" + dbErr.message);
-                updateStatus("❌ 删除失败");
+                setBtnStatus('delete', '❌ 删除失败');
                 return;
             }
 
@@ -1187,13 +1493,14 @@
                 document.getElementById("karaokePlayback").classList.add("hidden");
             }
 
-            window.sendNotification("karaoke", "🗑️ 录音作品已删除");
-            updateStatus("✅ 已删除");
+            setBtnStatus('delete', '✅ 已删除');
             loadRecordings();
+            // 3 秒后自动清除删除状态
+            setTimeout(() => setBtnStatus('delete', ''), 3000);
         } catch (err) {
             console.error("删除失败:", err);
             alert("删除失败：" + err.message);
-            updateStatus("❌ 删除失败");
+            setBtnStatus('delete', '❌ 删除失败');
         }
     }
 
@@ -1204,6 +1511,12 @@
     }
 
     function karaokeDeleteRecording() {
+        autoCleanupLocalRecording();
+        updateStatus("录音已清除");
+    }
+
+    // 自动清理本地录音（revocation URL、清空人声数据、隐藏回放区）
+    function autoCleanupLocalRecording() {
         const audioEl = document.getElementById("karaokePlaybackAudio");
         if (audioEl && audioEl.src) {
             URL.revokeObjectURL(audioEl.src);
@@ -1223,12 +1536,48 @@
         if (titleEl) titleEl.innerText = '未加载';
         updatePbPlayBtn(false);
         document.getElementById("karaokePlayback").classList.add("hidden");
-        updateStatus("录音已删除");
+        document.getElementById("karaokeMixPanel").classList.add("hidden");
+        // 清空人声采样
+        vocalSamples = [];
+        recordedSamples = [];
+        // 清除局部状态
+        setBtnStatus('mix', '');
+        setBtnStatus('save', '');
     }
 
     function updateStatus(msg) {
         const el = document.getElementById("karaokeStatus");
         if (el) el.innerText = msg;
+    }
+
+    // 内联按钮 loading
+    // btnId: 按钮元素 ID；loading: true=开始转圈 false=恢复；text: loading 时显示的文字
+    const _btnOrigHtml = {};
+    function showBtnLoading(btnId, text) {
+        const btn = document.getElementById(btnId);
+        if (!btn) return;
+        if (!_btnOrigHtml[btnId]) _btnOrigHtml[btnId] = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> ' + (text || '处理中...');
+    }
+    function hideBtnLoading(btnId) {
+        const btn = document.getElementById(btnId);
+        if (!btn) return;
+        btn.disabled = false;
+        if (_btnOrigHtml[btnId]) {
+            btn.innerHTML = _btnOrigHtml[btnId];
+            delete _btnOrigHtml[btnId];
+        }
+    }
+
+    // 局部按钮状态提示（试听/导出/保存/删除）
+    // key: 'mix' | 'save' | 'delete'
+    function setBtnStatus(key, msg) {
+        const idMap = { mix: 'karaokeMixStatus', save: 'karaokeSaveStatus', delete: 'karaokeDeleteStatus' };
+        const el = document.getElementById(idMap[key]);
+        if (!el) return;
+        el.innerText = msg || '';
+        el.classList.toggle('show', !!msg);
     }
 
     function formatTime(s) {
@@ -1252,6 +1601,7 @@
     window.karaokeDeleteRecording = karaokeDeleteRecording;
     window.mixAndExport = mixAndExport;
     window.previewMix = previewMix;
+    window.seekPreview = seekPreview;
     window.saveToMusicLibrary = saveToMusicLibrary;
     window.playKaraokeRecord = playKaraokeRecord;
     window.deleteKaraokeRecording = deleteKaraokeRecording;
@@ -1261,5 +1611,37 @@
     window.karaokePbSeek = karaokePbSeek;
     window.toggleRecPlay = toggleRecPlay;
     window.seekRecProgress = seekRecProgress;
+    window.pauseKaraokeAudios = pauseKaraokeAudios;
+
+    // 立即恢复缓存的混音参数（不依赖 Tab 切换）
+    function restoreMixSlidersNow() {
+        try {
+            const saved = JSON.parse(localStorage.getItem('karaokeMixParams') || '{}');
+            const accSlider = document.getElementById("karaokeMixAccVol");
+            const vocalSlider = document.getElementById("karaokeMixVocalVol");
+            const offsetSlider = document.getElementById("karaokeMixOffset");
+            if (saved.accVol != null && accSlider) {
+                accSlider.value = saved.accVol;
+                const el = document.getElementById("karaokeMixAccNum");
+                if (el) el.innerText = saved.accVol + "%";
+            }
+            if (saved.vocalVol != null && vocalSlider) {
+                vocalSlider.value = saved.vocalVol;
+                const el = document.getElementById("karaokeMixVocalNum");
+                if (el) el.innerText = saved.vocalVol + "%";
+            }
+            if (saved.offset != null && offsetSlider) {
+                offsetSlider.value = saved.offset;
+                const el = document.getElementById("karaokeMixOffsetNum");
+                if (el) el.innerText = (saved.offset >= 0 ? "+" : "") + saved.offset + "ms";
+            }
+        } catch (e) {}
+    }
+    // 尝试立即恢复（如果 DOM 已就绪）
+    restoreMixSlidersNow();
+    // DOM 就绪后再恢复一次（兜底）
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', restoreMixSlidersNow);
+    }
 
 })();

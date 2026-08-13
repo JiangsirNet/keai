@@ -59,9 +59,11 @@ async function loadMusicList() {
         const coverHtml = item.cover_url
             ? `<div class="mp-item-cover" style="background-image:url('${item.cover_url}')"></div>`
             : `<div class="mp-item-cover">${escapeHtml((item.title || '?').charAt(0))}</div>`;
+        const lyricsIcon = item.lyrics ? 'fa fa-align-left' : 'fa fa-align-left mp-item-lyrics-empty';
         div.innerHTML = `
             ${coverHtml}
             <span class="mp-item-title">${escapeHtml(item.title || "未知歌曲")}</span>
+            <span class="mp-item-lyrics" onclick="event.stopPropagation(); editLyrics('${item.id}')" title="${item.lyrics ? '编辑歌词' : '添加歌词'}"><i class="${lyricsIcon}"></i></span>
             <span class="mp-item-del" onclick="event.stopPropagation(); deleteMusic('${item.id}')"><i class="fa fa-trash"></i></span>
         `;
         div.onclick = () => playMusic(idx);
@@ -96,10 +98,110 @@ async function uploadMusic(e) {
         return;
     }
     const url = window.sb.storage.from("music").getPublicUrl(data.path).data.publicUrl;
-    await window.sb.from("music").insert({ title, url });
+    await window.sb.from("music").insert({ title, url, uploader_email: window.myRpsEmail || null });
     window.sendNotification("music", "🎵 上传了歌曲：" + title);
     e.target.value = "";
     loadMusicList();
+}
+
+// 右上角上传按钮 → 弹出选择（去网站下载 / 立即上传）
+function toggleUploadArea() {
+    const modal = document.getElementById("mpUploadChoiceModal");
+    if (modal) modal.classList.remove("hidden");
+    // 打开时清空输入框并重置链接
+    const input = document.getElementById("mpDownloadSongInput");
+    if (input) input.value = "";
+    updateDownloadLinks();
+}
+
+// 关闭上传选择弹窗
+function closeUploadChoice() {
+    const modal = document.getElementById("mpUploadChoiceModal");
+    if (modal) modal.classList.add("hidden");
+}
+
+// 根据输入的歌曲名动态更新两个下载网站的链接
+function updateDownloadLinks() {
+    const input = document.getElementById("mpDownloadSongInput");
+    const q = (input && input.value || "").trim();
+    const link1 = document.getElementById("mpDlLink1");
+    const link2 = document.getElementById("mpDlLink2");
+    if (link1) {
+        link1.href = q
+            ? `https://myfreemp3ku.com/search.php?q=${encodeURIComponent(q)}`
+            : "https://myfreemp3ku.com/";
+    }
+    if (link2) {
+        link2.href = q
+            ? `https://www.kkwpss.com/so/?wd=${encodeURIComponent(q)}`
+            : "https://www.kkwpss.com/";
+    }
+}
+
+// 用户选择"立即上传" → 关闭弹窗并直接触发文件选择对话框
+function chooseUploadDirect() {
+    closeUploadChoice();
+    const input = document.getElementById("musicUpload");
+    if (input) input.click();
+}
+
+// 打开歌词编辑弹窗
+let _editingLyricsId = null;
+function editLyrics(id) {
+    const item = musicList.find(m => String(m.id) === String(id));
+    if (!item) return;
+    _editingLyricsId = id;
+    const modal = document.getElementById("mpLyricsModal");
+    const titleEl = document.getElementById("mpLyricsModalTitle");
+    const textarea = document.getElementById("mpLyricsTextarea");
+    const linkEl = document.getElementById("lrclibSearchLink");
+    if (titleEl) titleEl.innerText = item.title || "未知歌曲";
+    if (textarea) textarea.value = item.lyrics || "";
+    // 动态拼接 LRCLIB 搜索链接：https://lrclib.net/search/{歌名URL编码}
+    if (linkEl) {
+        const q = (item.title || "").trim();
+        linkEl.href = q
+            ? `https://lrclib.net/search/${encodeURIComponent(q)}`
+            : "https://lrclib.net/";
+    }
+    if (modal) modal.classList.remove("hidden");
+}
+
+function closeLyricsEditor() {
+    const modal = document.getElementById("mpLyricsModal");
+    if (modal) modal.classList.add("hidden");
+    _editingLyricsId = null;
+}
+
+async function saveLyrics() {
+    if (_editingLyricsId === null) return;
+    const textarea = document.getElementById("mpLyricsTextarea");
+    const lyrics = textarea ? textarea.value.trim() : "";
+    try {
+        const updatePayload = { lyrics: lyrics || null };
+        const { data, error, count } = await window.sb.from("music")
+            .update(updatePayload, { count: 'exact' })
+            .eq("id", _editingLyricsId);
+        console.log('[saveLyrics] 请求 id=', _editingLyricsId, 'payload=', updatePayload);
+        console.log('[saveLyrics] 响应 data=', data, 'error=', error, 'count=', count);
+        if (error) throw error;
+        // RLS 拒绝时通常 data 为空数组且无 error，用 count 判断
+        if (count === 0 || (Array.isArray(data) && data.length === 0)) {
+            throw new Error("更新了 0 行（可能没有权限或记录不存在）");
+        }
+        // 更新内存
+        const item = musicList.find(m => String(m.id) === String(_editingLyricsId));
+        if (item) item.lyrics = lyrics || null;
+        // 如果正在播放这首歌，刷新歌词显示
+        if (currentMusicIndex >= 0 && musicList[currentMusicIndex]
+            && String(musicList[currentMusicIndex].id) === String(_editingLyricsId)) {
+            parseLyrics(item.lyrics);
+        }
+        closeLyricsEditor();
+    } catch (err) {
+        console.error('[saveLyrics] 失败:', err);
+        alert("保存歌词失败：" + err.message);
+    }
 }
 
 async function deleteMusic(id) {
@@ -121,6 +223,8 @@ function playMusic(index) {
     currentMusicIndex = index;
     const item = musicList[index];
     const audio = document.getElementById("musicAudio");
+    // 暂停 K 歌所有音频，确保同时只有一个音频在播放
+    if (window.pauseKaraokeAudios) window.pauseKaraokeAudios();
     audio.src = item.url;
     audio.play();
 
@@ -130,6 +234,17 @@ function playMusic(index) {
     updateCover(item);
     parseLyrics(item.lyrics);
     loadMusicList();
+}
+
+// 暂停音乐播放器（供 K 歌模块调用）
+function pauseMusicAudio() {
+    const audio = document.getElementById("musicAudio");
+    if (!audio || audio.paused) return;
+    audio.pause();
+    const coverEl = document.getElementById("mpCover");
+    const btnEl = document.getElementById("mpPlayBtn");
+    if (coverEl) coverEl.classList.remove("playing");
+    if (btnEl) btnEl.innerHTML = '<i class="fa fa-play"></i>';
 }
 
 function updateCover(item) {
@@ -221,6 +336,8 @@ function togglePlay() {
         return;
     }
     if (audio.paused) {
+        // 暂停 K 歌所有音频，确保同时只有一个音频在播放
+        if (window.pauseKaraokeAudios) window.pauseKaraokeAudios();
         audio.play();
         document.getElementById("mpCover").classList.add("playing");
         document.getElementById("mpPlayBtn").innerHTML = '<i class="fa fa-pause"></i>';
@@ -311,6 +428,8 @@ function onMusicEnded() {
     if (playMode === 'single') {
         const audio = document.getElementById("musicAudio");
         audio.currentTime = 0;
+        // 单曲循环续播时也确保 K 歌未占用
+        if (window.pauseKaraokeAudios) window.pauseKaraokeAudios();
         audio.play();
     } else {
         nextMusic();
@@ -348,5 +467,13 @@ window.seekMusic = seekMusic;
 window.onMusicEnded = onMusicEnded;
 window.formatTime = formatTime;
 window.togglePlayMode = togglePlayMode;
+window.toggleUploadArea = toggleUploadArea;
+window.editLyrics = editLyrics;
+window.closeLyricsEditor = closeLyricsEditor;
+window.saveLyrics = saveLyrics;
 window.togglePlaylist = togglePlaylist;
 window.toggleLyricsView = toggleLyricsView;
+window.pauseMusicAudio = pauseMusicAudio;
+window.closeUploadChoice = closeUploadChoice;
+window.chooseUploadDirect = chooseUploadDirect;
+window.updateDownloadLinks = updateDownloadLinks;

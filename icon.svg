@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="heartGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff6b8b"/>
+      <stop offset="100%" stop-color="#ffb4c4"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#ff6b8b" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  <!-- 背景 -->
+  <rect width="512" height="512" fill="#fef2f4" rx="112"/>
+  <!-- 双心 -->
+  <g filter="url(#shadow)">
+    <!-- 左心（男生）-->
+    <path d="M200 220 C180 195, 140 195, 130 225 C120 260, 150 290, 200 330 C250 290, 280 260, 270 225 C260 195, 220 195, 200 220 Z" fill="url(#heartGrad)" opacity="0.85"/>
+    <!-- 右心（女生，偏移叠加）-->
+    <path d="M312 220 C292 195, 252 195, 242 225 C232 260, 262 290, 312 330 C362 290, 392 260, 382 225 C372 195, 332 195, 312 220 Z" fill="url(#heartGrad)" opacity="0.7"/>
+  </g>
+  <!-- 高光 -->
+  <ellipse cx="175" cy="210" rx="12" ry="18" fill="white" opacity="0.5" transform="rotate(-20 175 210)"/>
+  <ellipse cx="287" cy="210" rx="12" ry="18" fill="white" opacity="0.4" transform="rotate(-20 287 210)"/>
+</svg>

@@ -6,6 +6,153 @@
     let cosInstance = null;
     let cosSdkLoading = null;
 
+    // ============ 视频缓存（IndexedDB）============
+    const DB_NAME = 'couple_video_cache';
+    const DB_VERSION = 1;
+    const STORE_NAME = 'videos';
+    const CACHE_MAX_SIZE = 500 * 1024 * 1024; // 500MB 上限
+    let dbPromise = null;
+
+    function openVideoCacheDb() {
+        if (dbPromise) return dbPromise;
+        dbPromise = new Promise((resolve, reject) => {
+            const req = indexedDB.open(DB_NAME, DB_VERSION);
+            req.onupgradeneeded = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains(STORE_NAME)) {
+                    db.createObjectStore(STORE_NAME, { keyPath: 'key' });
+                }
+            };
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error);
+        });
+        return dbPromise;
+    }
+
+    // 读取缓存
+    async function getCachedVideo(key) {
+        try {
+            const db = await openVideoCacheDb();
+            return await new Promise((resolve) => {
+                const tx = db.transaction(STORE_NAME, 'readonly');
+                const req = tx.objectStore(STORE_NAME).get(key);
+                req.onsuccess = () => resolve(req.result || null);
+                req.onerror = () => resolve(null);
+            });
+        } catch (e) { return null; }
+    }
+
+    // 更新访问时间（LRU touch）
+    async function touchCachedVideo(key) {
+        try {
+            const db = await openVideoCacheDb();
+            const tx = db.transaction(STORE_NAME, 'readwrite');
+            const store = tx.objectStore(STORE_NAME);
+            const req = store.get(key);
+            req.onsuccess = () => {
+                const item = req.result;
+                if (item) { item.ts = Date.now(); store.put(item); }
+            };
+        } catch (e) {}
+    }
+
+    // 淘汰旧缓存直到能容纳 neededSize
+    async function evictCacheIfNeeded(neededSize) {
+        try {
+            const db = await openVideoCacheDb();
+            const all = await new Promise((resolve) => {
+                const tx = db.transaction(STORE_NAME, 'readonly');
+                const req = tx.objectStore(STORE_NAME).getAll();
+                req.onsuccess = () => resolve(req.result || []);
+                req.onerror = () => resolve([]);
+            });
+            let totalSize = all.reduce((s, item) => s + (item.size || 0), 0);
+            if (totalSize + neededSize <= CACHE_MAX_SIZE) return;
+            all.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+            const tx = db.transaction(STORE_NAME, 'readwrite');
+            const store = tx.objectStore(STORE_NAME);
+            for (const item of all) {
+                if (totalSize + neededSize <= CACHE_MAX_SIZE) break;
+                store.delete(item.key);
+                totalSize -= (item.size || 0);
+            }
+            await new Promise((resolve) => {
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => resolve();
+            });
+        } catch (e) {}
+    }
+
+    // 写入缓存
+    async function setCachedVideo(key, blob, title) {
+        try {
+            await evictCacheIfNeeded(blob.size);
+            const db = await openVideoCacheDb();
+            await new Promise((resolve) => {
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                tx.objectStore(STORE_NAME).put({
+                    key: key, blob: blob, size: blob.size,
+                    title: title || '', ts: Date.now()
+                });
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => resolve();
+            });
+        } catch (e) { console.warn('缓存写入失败:', e); }
+    }
+
+    // 后台下载视频并缓存
+    async function fetchAndCacheVideo(key, signedUrl, title) {
+        try {
+            const resp = await fetch(signedUrl);
+            if (!resp.ok) throw new Error('下载失败');
+            const blob = await resp.blob();
+            await setCachedVideo(key, blob, title);
+            return blob;
+        } catch (e) { console.warn('缓存下载失败:', e); return null; }
+    }
+
+    // 删除单个缓存
+    async function removeCachedVideo(key) {
+        try {
+            const db = await openVideoCacheDb();
+            const tx = db.transaction(STORE_NAME, 'readwrite');
+            tx.objectStore(STORE_NAME).delete(key);
+        } catch (e) {}
+    }
+
+    // 清空所有视频缓存
+    async function clearVideoCache() {
+        try {
+            const db = await openVideoCacheDb();
+            const tx = db.transaction(STORE_NAME, 'readwrite');
+            tx.objectStore(STORE_NAME).clear();
+            await new Promise((resolve) => {
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => resolve();
+            });
+            return true;
+        } catch (e) { return false; }
+    }
+
+    // 缓存状态指示器
+    let cacheIndicatorEl = null;
+    function showCacheIndicator(text) {
+        const modal = document.getElementById('videoPreviewModal');
+        if (!modal) return;
+        if (!cacheIndicatorEl) {
+            cacheIndicatorEl = document.createElement('div');
+            cacheIndicatorEl.id = 'videoCacheIndicator';
+            cacheIndicatorEl.style.cssText = 'position:absolute;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.6);color:#fff;padding:6px 14px;border-radius:20px;font-size:13px;z-index:10;pointer-events:none;';
+        }
+        cacheIndicatorEl.textContent = text;
+        if (!cacheIndicatorEl.parentNode) modal.appendChild(cacheIndicatorEl);
+    }
+    function hideCacheIndicator() {
+        if (cacheIndicatorEl && cacheIndicatorEl.parentNode) {
+            cacheIndicatorEl.parentNode.removeChild(cacheIndicatorEl);
+        }
+    }
+
     // 动态加载 COS SDK
     function loadCosSdk() {
         if (window.COS) return Promise.resolve();
@@ -328,26 +475,71 @@
         });
     }
 
-    // 通过 key 生成签名后播放视频
+    // 通过 key 生成签名后播放视频（带缓存）
     async function playVideoByKey(info) {
         let finalUrl = '';
+        let fromCache = false;
         const key = info.key || extractCosKey(info.url);
+
+        // 1. 优先查缓存
         if (key) {
-            const signed = await getSignedUrl(key);
-            if (signed) finalUrl = signed;
+            const cached = await getCachedVideo(key);
+            if (cached && cached.blob) {
+                finalUrl = URL.createObjectURL(cached.blob);
+                fromCache = true;
+                touchCachedVideo(key); // 更新访问时间（LRU）
+            }
         }
-        // 兜底
-        if (!finalUrl && info.url && !info.url.startsWith('cos://')) {
-            finalUrl = info.url;
+
+        // 2. 缓存未命中 → 获取签名 URL
+        if (!finalUrl) {
+            if (key) {
+                const signed = await getSignedUrl(key);
+                if (signed) finalUrl = signed;
+            }
+            // 兜底
+            if (!finalUrl && info.url && !info.url.startsWith('cos://')) {
+                finalUrl = info.url;
+            }
         }
+
         if (!finalUrl) {
             alert('视频加载失败');
             return;
         }
+
         const modal = document.getElementById('videoPreviewModal');
         const player = document.getElementById('videoPreviewPlayer');
         player.src = finalUrl;
         modal.classList.remove('hidden');
+
+        // 3. 命中缓存时显示提示
+        if (fromCache) {
+            showCacheIndicator('📱 已离线缓存');
+            setTimeout(hideCacheIndicator, 2000);
+        }
+
+        // 4. 未命中缓存 → 仅在用户「看完」后才下载缓存，避免不必要流量
+        //    （没看完就不缓存；播放器自身的流式下载是播放必需的，不重复下载）
+        if (key && !fromCache && !finalUrl.startsWith('blob:')) {
+            showCacheIndicator('▶️ 看完将自动缓存');
+            setTimeout(hideCacheIndicator, 2500);
+            // 用 onended 覆盖赋值，避免反复播放累积监听器
+            player.onended = () => {
+                showCacheIndicator('⬇️ 缓存中...');
+                fetchAndCacheVideo(key, finalUrl, info.title).then((blob) => {
+                    if (blob) {
+                        showCacheIndicator('✅ 已缓存，下次离线播放');
+                        setTimeout(hideCacheIndicator, 2000);
+                    } else {
+                        hideCacheIndicator();
+                    }
+                });
+            };
+        } else {
+            // 命中缓存或无 key，清掉可能残留的 onended
+            player.onended = null;
+        }
     }
 
     // 关闭视频预览
@@ -355,18 +547,27 @@
         if (e && e.target.tagName === 'VIDEO') return;
         const modal = document.getElementById('videoPreviewModal');
         const player = document.getElementById('videoPreviewPlayer');
+        // 释放 blob URL，避免内存泄漏
+        const src = player.src;
+        if (src && src.startsWith('blob:')) URL.revokeObjectURL(src);
         player.pause();
+        player.onended = null; // 清理缓存触发器，避免关闭后下载
         player.src = '';
         modal.classList.add('hidden');
+        hideCacheIndicator();
     }
 
-    // 删除视频（同时删 COS 文件 + 缩略图）
+    // 删除视频（同时删 COS 文件 + 缩略图 + 本地缓存）
     async function deleteVideo(id, url, thumbKey) {
         if (!confirm('确定删除这个视频吗？')) return;
 
         try {
             const { error: dbErr } = await window.sb.from('videos').delete().eq('id', id);
             if (dbErr) { alert('删除失败：' + dbErr.message); return; }
+
+            // 同步删除本地缓存
+            const videoKey = extractCosKey(url);
+            if (videoKey) removeCachedVideo(videoKey);
 
             if (window._cosBucket && window._cosRegion) {
                 try {
@@ -475,5 +676,6 @@
     window.deleteVideo = deleteVideo;
     window.loadVideoList = loadVideoList;
     window.saveCosConfig = saveCosConfig;
+    window.clearVideoCache = clearVideoCache;
     window.initVideoPage = initVideoPage;
 })();

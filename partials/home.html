@@ -229,6 +229,11 @@
 
             <!-- 现代音乐播放器 -->
             <div class="modern-player">
+                <!-- 右上角上传按钮 -->
+                <button class="mp-upload-toggle" onclick="toggleUploadArea()" id="mpUploadToggle" title="上传歌曲">
+                    <i class="fa fa-upload"></i>
+                </button>
+
                 <!-- 封面区 -->
                 <div class="mp-cover-wrap">
                     <div class="mp-cover-ring"></div>
@@ -290,11 +295,71 @@
                     </div>
                 </div>
 
-                <!-- 上传区 -->
-                <label class="mp-upload">
-                    <i class="fa fa-upload"></i> 上传歌曲
-                    <input type="file" id="musicUpload" accept="audio/*" class="hidden" onchange="uploadMusic(event)">
-                </label>
+                <!-- 隐藏的文件选择 input（由"立即上传"按钮直接触发） -->
+                <input type="file" id="musicUpload" accept="audio/*" class="hidden" onchange="uploadMusic(event)">
+            </div>
+        </div>
+    </div>
+
+    <!-- 音乐上传选择弹窗 -->
+    <div id="mpUploadChoiceModal" class="mp-lyrics-modal hidden" onclick="if(event.target===this) closeUploadChoice()">
+        <div class="mp-lyrics-modal-box" style="max-width:460px;">
+            <div class="mp-lyrics-modal-header">
+                <h3><i class="fa fa-upload"></i> 音乐来源</h3>
+                <span class="mp-lyrics-modal-close" onclick="closeUploadChoice()">&times;</span>
+            </div>
+            <div class="mp-upload-choice-content">
+                <div class="mp-upload-choice-desc">
+                    🎵 推荐在免费音乐网站下载喜欢的歌曲文件（mp3 等），再上传到情侣空间即可试听和K歌
+                </div>
+                <input type="text" id="mpDownloadSongInput" class="mp-download-song-input" placeholder="输入想搜索的歌曲名（可选，便于直接搜索）" oninput="updateDownloadLinks()">
+                <a id="mpDlLink1" href="https://myfreemp3ku.com/" target="_blank" rel="noopener" class="mp-upload-choice-btn mp-upload-choice-btn-download">
+                    <i class="fa fa-external-link"></i>
+                    <div>
+                        <div class="mp-choice-title">前往 MyFreeMP3</div>
+                        <div class="mp-choice-sub">myfreemp3ku.com</div>
+                    </div>
+                </a>
+                <a id="mpDlLink2" href="https://www.kkwpss.com/" target="_blank" rel="noopener" class="mp-upload-choice-btn mp-upload-choice-btn-download-alt">
+                    <i class="fa fa-external-link"></i>
+                    <div>
+                        <div class="mp-choice-title">前往 KKWPSS</div>
+                        <div class="mp-choice-sub">www.kkwpss.com</div>
+                    </div>
+                </a>
+                <div style="text-align:center;color:#aaa;margin:8px 0;">— 或 —</div>
+                <button onclick="chooseUploadDirect()" class="mp-upload-choice-btn mp-upload-choice-btn-upload">
+                    <i class="fa fa-upload"></i>
+                    <div>
+                        <div class="mp-choice-title">立即上传已有歌曲</div>
+                        <div class="mp-choice-sub">选择本地音乐文件</div>
+                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 歌词编辑弹窗 -->
+    <div id="mpLyricsModal" class="mp-lyrics-modal hidden" onclick="if(event.target===this) closeLyricsEditor()">
+        <div class="mp-lyrics-modal-box">
+            <div class="mp-lyrics-modal-header">
+                <h3><i class="fa fa-align-left"></i> 编辑歌词</h3>
+                <span class="mp-lyrics-modal-title" id="mpLyricsModalTitle">未知歌曲</span>
+                <span class="mp-lyrics-modal-close" onclick="closeLyricsEditor()">&times;</span>
+            </div>
+            <textarea id="mpLyricsTextarea" class="mp-lyrics-textarea" placeholder="粘贴 LRC 时间戳歌词或纯文本歌词...&#10;[00:12.50]月亮代表我的心&#10;[00:18.30]你问我爱你有多深" rows="14"></textarea>
+            <div class="mp-lyrics-modal-tips">
+                <div class="mp-lyrics-tip-row">
+                    <i class="fa fa-info-circle"></i>
+                    <span>支持 LRC 格式（带时间戳，可同步滚动）或纯文本（仅展示）</span>
+                </div>
+                <a id="lrclibSearchLink" href="https://lrclib.net/" target="_blank" rel="noopener" class="mp-lyrics-download-link">
+                    <i class="fa fa-external-link"></i> 前往 LRCLIB 下载同步歌词
+                </a>
+            </div>
+            <div class="mp-lyrics-modal-actions">
+                <button onclick="closeLyricsEditor()" class="mp-lyrics-btn-cancel">取消</button>
+                <button onclick="saveLyrics()" class="mp-lyrics-btn-save"><i class="fa fa-save"></i> 保存</button>
             </div>
         </div>
     </div>
@@ -387,10 +452,11 @@
                         <button onclick="window.karaokeDownload()" class="karaoke-btn karaoke-btn-secondary">
                             <i class="fa fa-download"></i> 下载
                         </button>
-                        <button onclick="window.karaokeDeleteRecording()" class="karaoke-btn karaoke-btn-secondary">
-                            <i class="fa fa-trash"></i> 删除
+                        <button onclick="window.saveToMusicLibrary()" class="karaoke-btn karaoke-btn-save hidden" id="karaokeSaveBtn">
+                            <i class="fa fa-cloud-upload"></i> 保存到录音库
                         </button>
                     </div>
+                    <div id="karaokeSaveStatus" class="karaoke-btn-status"></div>
                 </div>
 
                 <!-- 混音面板 -->
@@ -409,21 +475,28 @@
                         </div>
                         <div class="karaoke-mix-vol-row">
                             <span>⏱ 偏移</span>
-                            <input type="range" id="karaokeMixOffset" min="-500" max="500" value="0" step="50" class="karaoke-mix-slider">
-                            <span class="karaoke-mix-num" id="karaokeMixOffsetNum">0ms</span>
+                            <input type="range" id="karaokeMixOffset" min="-500" max="500" value="-200" step="50" class="karaoke-mix-slider">
+                            <span class="karaoke-mix-num" id="karaokeMixOffsetNum">-200ms</span>
                         </div>
                     </div>
                     <div class="flex gap-2">
                         <button onclick="window.previewMix()" class="karaoke-btn karaoke-btn-preview flex-1" id="karaokePreviewBtn">
                             <i class="fa fa-play-circle"></i> 试听
                         </button>
-                        <button onclick="window.mixAndExport()" class="karaoke-btn karaoke-btn-export flex-1">
+                        <button onclick="window.mixAndExport()" class="karaoke-btn karaoke-btn-export flex-1" id="karaokeExportBtn">
                             <i class="fa fa-magic"></i> 合成导出
                         </button>
                     </div>
-                    <button onclick="window.saveToMusicLibrary()" class="karaoke-btn karaoke-btn-save w-full mt-2">
-                        <i class="fa fa-cloud-upload"></i> 保存到录音库
-                    </button>
+                    <!-- 试听进度条 -->
+                    <div id="karaokePreviewProgress" class="karaoke-preview-progress hidden">
+                        <span id="karaokePreviewCur">0:00</span>
+                        <div class="karaoke-preview-progress-wrap" id="karaokePreviewProgressWrap" onclick="window.seekPreview(event)">
+                            <div class="karaoke-preview-progress-bar" id="karaokePreviewProgressBar"></div>
+                            <div class="karaoke-preview-progress-thumb" id="karaokePreviewProgressThumb"></div>
+                        </div>
+                        <span id="karaokePreviewDur">0:00</span>
+                    </div>
+                    <div id="karaokeMixStatus" class="karaoke-btn-status"></div>
                 </div>
 
                 <!-- 音量提示 -->
@@ -439,6 +512,7 @@
                     <i class="fa fa-chevron-down karaoke-record-toggle"></i>
                 </div>
                 <div id="karaokeRecordList"></div>
+                <div id="karaokeDeleteStatus" class="karaoke-btn-status"></div>
             </div>
 
             <!-- 未选歌提示 -->
@@ -448,4 +522,3 @@
             </div>
         </div>
     </div>
-</div>
