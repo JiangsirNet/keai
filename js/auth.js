@@ -44,6 +44,9 @@
     // 退出登录
     async function logout() {
         await sb.auth.signOut();
+        // 清除页面记忆，避免下次登录跳到旧页面
+        localStorage.removeItem('_lastPage');
+        localStorage.removeItem('_lastSubTab');
         window.myRpsEmail = "";
         window.currentUser = null;
         IMGBB_KEY = ""; window.IMGBB_KEY = "";
@@ -163,6 +166,15 @@
         document.getElementById("bellToggle").classList.remove("hidden");
         // 首页默认子 Tab 初始化
         initHomePage();
+        // 恢复上次打开的页面（下拉刷新后保持页面位置）
+        const lastPage = localStorage.getItem('_lastPage');
+        if (lastPage && lastPage !== 'home') {
+            showPage(lastPage);
+        } else {
+            showPage('home');
+            const lastSub = localStorage.getItem('_lastSubTab');
+            if (lastSub) switchSubTab(lastSub);
+        }
     }
 
     // 首页初始化（天气 + 通知 + 人物 + 宠物，相册/留言/AI/音乐 走子Tab懒加载）
@@ -261,6 +273,8 @@
         if (name === "journal") initJournalPage();
         if (name === "game") initGamePage();
         if (name === "config") initConfigPage();
+        // 记住当前页面，刷新后恢复
+        localStorage.setItem('_lastPage', name);
         window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
@@ -275,6 +289,8 @@
         document.querySelectorAll('.sub-tab-content').forEach(el => {
             el.classList.toggle('hidden', el.id !== 'subTab-' + sub);
         });
+        // 记住当前子 Tab，刷新后恢复
+        localStorage.setItem('_lastSubTab', sub);
         // 懒加载：首次切换时初始化
         if (sub === 'gallery' && !_subTabInited.gallery) {
             _subTabInited.gallery = true;

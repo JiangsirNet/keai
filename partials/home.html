@@ -229,10 +229,15 @@
 
             <!-- 现代音乐播放器 -->
             <div class="modern-player">
-                <!-- 右上角上传按钮 -->
-                <button class="mp-upload-toggle" onclick="toggleUploadArea()" id="mpUploadToggle" title="上传歌曲">
-                    <i class="fa fa-upload"></i>
-                </button>
+                <!-- 右上角按钮组：在线搜索 / 上传 -->
+                <div class="mp-top-actions">
+                    <button class="mp-upload-toggle" onclick="openOnlineSearch()" id="mpSearchToggle" title="在线搜歌">
+                        <i class="fa fa-search"></i>
+                    </button>
+                    <button class="mp-upload-toggle" onclick="toggleUploadArea()" id="mpUploadToggle" title="上传歌曲">
+                        <i class="fa fa-upload"></i>
+                    </button>
+                </div>
 
                 <!-- 封面区 -->
                 <div class="mp-cover-wrap">
@@ -328,13 +333,25 @@
                     </div>
                 </a>
                 <div style="text-align:center;color:#aaa;margin:8px 0;">— 或 —</div>
-                <button onclick="chooseUploadDirect()" class="mp-upload-choice-btn mp-upload-choice-btn-upload">
+                <button onclick="chooseUploadDirect()" class="mp-upload-choice-btn mp-upload-choice-btn-upload" id="mpUploadChoiceBtn">
                     <i class="fa fa-upload"></i>
                     <div>
                         <div class="mp-choice-title">立即上传已有歌曲</div>
                         <div class="mp-choice-sub">选择本地音乐文件</div>
                     </div>
                 </button>
+
+                <!-- 上传进度条 -->
+                <div id="mpUploadProgress" class="mp-upload-progress hidden">
+                    <div class="mp-upload-progress-info">
+                        <span id="mpUploadProgressName" class="mp-upload-progress-name"></span>
+                        <span id="mpUploadProgressPct" class="mp-upload-progress-pct">0%</span>
+                    </div>
+                    <div class="mp-upload-progress-bar">
+                        <div id="mpUploadProgressFill" class="mp-upload-progress-fill" style="width:0%"></div>
+                    </div>
+                    <div id="mpUploadProgressStatus" class="mp-upload-progress-status">上传中…</div>
+                </div>
             </div>
         </div>
     </div>
@@ -360,6 +377,94 @@
             <div class="mp-lyrics-modal-actions">
                 <button onclick="closeLyricsEditor()" class="mp-lyrics-btn-cancel">取消</button>
                 <button onclick="saveLyrics()" class="mp-lyrics-btn-save"><i class="fa fa-save"></i> 保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 在线搜索音乐弹窗 -->
+    <div id="mpOnlineSearchModal" class="mp-lyrics-modal hidden" onclick="if(event.target===this) closeOnlineSearch()">
+        <div class="mp-lyrics-modal-box" style="max-width:560px;">
+            <div class="mp-lyrics-modal-header">
+                <h3><i class="fa fa-search"></i> 在线搜歌</h3>
+                <span class="mp-lyrics-modal-close" onclick="closeOnlineSearch()">&times;</span>
+            </div>
+
+            <!-- 音源切换 + 搜索框 -->
+            <div class="mp-os-header">
+                <div class="mp-os-sources" id="mpOsSources">
+                    <!-- 音源按钮动态渲染（内置 + 自定义）-->
+                    <button class="mp-os-src-add" onclick="openSourceEditor()" title="添加自定义音源">
+                        <i class="fa fa-plus"></i>
+                    </button>
+                </div>
+                <div class="mp-os-search">
+                    <input id="mpOnlineSearchInput" type="text" placeholder="输入歌名/歌手，回车搜索" onkeydown="if(event.key==='Enter') searchOnline()">
+                    <button onclick="searchOnline()"><i class="fa fa-search"></i> 搜索</button>
+                </div>
+            </div>
+
+            <!-- 试听状态栏 -->
+            <div id="mpOnlineNowPlaying" class="mp-os-nowplaying hidden">
+                <i class="fa fa-music fa-spin"></i>
+                <span id="mpOnlineNowTitle">正在试听…</span>
+                <button onclick="stopOnlinePreview()" title="停止试听"><i class="fa fa-stop"></i></button>
+            </div>
+
+            <!-- 搜索结果列表 -->
+            <div id="mpOnlineSearchResults" class="mp-os-results">
+                <div class="mp-os-empty">
+                    <i class="fa fa-music"></i>
+                    <span>输入关键字开始搜索，支持第三方音源在线试听</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 音源编辑弹窗（添加/删除自定义音源 JS） -->
+    <div id="mpSourceEditorModal" class="mp-lyrics-modal hidden" onclick="if(event.target===this) closeSourceEditor()">
+        <div class="mp-lyrics-modal-box" style="max-width:620px;">
+            <div class="mp-lyrics-modal-header">
+                <h3><i class="fa fa-cog"></i> 自定义音源</h3>
+                <span class="mp-lyrics-modal-close" onclick="closeSourceEditor()">&times;</span>
+            </div>
+
+            <!-- 已添加的音源列表 -->
+            <div class="mp-src-list" id="mpSrcList"></div>
+
+            <!-- 表单 -->
+            <div class="mp-src-form">
+                <div class="mp-src-form-row">
+                    <input id="mpSrcId" type="text" placeholder="音源 ID（英文唯一，如 my_yinyuetai）" maxlength="32">
+                    <input id="mpSrcName" type="text" placeholder="显示名称（如 音悦台）" maxlength="16">
+                </div>
+                <p class="mp-src-form-tip">
+                    <i class="fa fa-info-circle"></i>
+                    音源 JS 需导出 <code>search(keyword) / getUrl(item) / getLyric(item)</code> 三个函数，返回 Promise。可直接参考下方模板修改。
+                </p>
+                <textarea id="mpSrcCode" class="mp-src-code" rows="14" placeholder="粘贴或编写音源脚本：
+/** 示例：一个简单的搜索接口
+module.exports = {
+  id: 'my_custom',
+  name: '我的音源',
+  async search(keyword) {
+    const { data } = await fetch('https://api.example.com/search?q='+encodeURIComponent(keyword)).then(r=>r.json());
+    return data.map(s => ({ id: s.id, name: s.title, artist: s.artist, pic: s.cover }));
+  },
+  async getUrl(item) {
+    const r = await fetch('https://api.example.com/url?id='+item.id).then(r=>r.json());
+    return r.url;
+  },
+  async getLyric(item) {
+    const r = await fetch('https://api.example.com/lrc?id='+item.id).then(r=>r.json());
+    return r.lrc; // 返回 LRC 字符串
+  }
+};
+"></textarea>
+                <div class="mp-src-actions">
+                    <button onclick="importSourceFile()" class="mp-src-btn-import"><i class="fa fa-file-import"></i> 导入 .js 文件</button>
+                    <button onclick="testSourceScript()" class="mp-src-btn-test"><i class="fa fa-flask"></i> 测试脚本</button>
+                    <button onclick="saveSourceScript()" class="mp-lyrics-btn-save"><i class="fa fa-save"></i> 保存音源</button>
+                </div>
             </div>
         </div>
     </div>

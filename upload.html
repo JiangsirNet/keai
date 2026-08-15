@@ -602,7 +602,24 @@ CREATE TABLE IF NOT EXISTS videos (
 DO $$ BEGIN ALTER TABLE videos ADD COLUMN IF NOT EXISTS thumbnail_key TEXT; EXCEPTION WHEN OTHERS THEN END $$;
 ALTER TABLE videos ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "allow_read_videos" ON videos FOR SELECT USING (true);
-CREATE POLICY "allow_write_videos" ON videos FOR ALL TO authenticated USING (true) WITH CHECK (true);`;
+CREATE POLICY "allow_write_videos" ON videos FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- 6. 音乐表
+CREATE TABLE IF NOT EXISTS music (
+    id              BIGSERIAL PRIMARY KEY,
+    title           TEXT NOT NULL,
+    url             TEXT NOT NULL,          -- Supabase Storage 公网 URL 或第三方音源直链
+    lyrics          TEXT,                   -- LRC 同步歌词或逐行文本
+    cover_url       TEXT,                   -- 歌曲封面 URL
+    uploader_email  TEXT,
+    created_at      TIMESTAMPTZ DEFAULT now()
+);
+DO $$ BEGIN ALTER TABLE music ADD COLUMN IF NOT EXISTS lyrics TEXT; EXCEPTION WHEN OTHERS THEN END $$;
+DO $$ BEGIN ALTER TABLE music ADD COLUMN IF NOT EXISTS cover_url TEXT; EXCEPTION WHEN OTHERS THEN END $$;
+DO $$ BEGIN ALTER TABLE music ADD COLUMN IF NOT EXISTS uploader_email TEXT; EXCEPTION WHEN OTHERS THEN END $$;
+ALTER TABLE music ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow_read_music" ON music FOR SELECT USING (true);
+CREATE POLICY "allow_write_music" ON music FOR ALL TO authenticated USING (true) WITH CHECK (true);`;
         document.getElementById('sqlBox').value = CREATE_SQL;
 
         // ===== 本地上传文件清单 =====
@@ -1042,7 +1059,7 @@ CREATE POLICY "allow_write_videos" ON videos FOR ALL TO authenticated USING (tru
                 monoEditor.onDidChangeModelContent(() => {
                     const count = monoEditor.getValue().length;
                     const type = document.getElementById('metaType')?.value || 'js';
-                    const max = type === 'md' ? 30000 : 30000;
+                    const max = type === 'md' ? 50000 : 50000;
                     const el = document.getElementById('editorCharCount');
                     if (el) {
                         el.textContent = `${count} / ${max} 字符`;
@@ -1372,7 +1389,7 @@ CREATE POLICY "allow_write_videos" ON videos FOR ALL TO authenticated USING (tru
             if (aiAutoMdFiles.length > 0) {
                 mdContext = '## 项目文档（请参考以下文档回答问题）\n\n';
                 aiAutoMdFiles.forEach(f => {
-                    mdContext += `### ${f.file_path}\n\`\`\`\n${(f.content || '').substring(0, 30000)}\n\`\`\`\n\n`;
+                    mdContext += `### ${f.file_path}\n\`\`\`\n${(f.content || '').substring(0, 50000)}\n\`\`\`\n\n`;
                 });
             }
 
@@ -1776,7 +1793,7 @@ CREATE POLICY "allow_write_videos" ON videos FOR ALL TO authenticated USING (tru
             setEditorValue(asset.content || '');
             // 更新字符数显示
             const _count = (asset.content || '').length;
-            const _max = asset.type === 'md' ? 30000 : 30000;
+            const _max = asset.type === 'md' ? 50000 : 50000;
             const _el = document.getElementById('editorCharCount');
             if (_el) {
                 _el.textContent = `${_count} / ${_max} 字符`;
@@ -1800,8 +1817,8 @@ CREATE POLICY "allow_write_videos" ON videos FOR ALL TO authenticated USING (tru
             const order = parseInt(document.getElementById('metaOrder').value) || 99;
             const active = document.getElementById('metaActive').checked;
 
-            // 字符数限制：代码文件 20000，md 文件 30000
-            const maxChars = type === 'md' ? 30000 : 30000;
+            // 字符数限制：代码文件 20000，md 文件 50000
+            const maxChars = type === 'md' ? 50000 : 50000;
             if (content.length > maxChars) {
                 document.getElementById('saveStatus').textContent = `❌ 内容超限：${content.length} 字符，最大允许 ${maxChars} 字符`;
                 document.getElementById('saveStatus').className = 'text-sm text-red-500 self-center';

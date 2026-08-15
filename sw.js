@@ -66,17 +66,8 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // 跨域 CDN 资源 → network first
+    // 跨域请求直接放行（不拦截，避免 CORS 导致 SW 报错）
     if (url.origin !== self.location.origin) {
-        event.respondWith(
-            fetch(req).then((resp) => {
-                if (resp && resp.status === 200) {
-                    const clone = resp.clone();
-                    caches.open(CACHE_VERSION).then((c) => c.put(req, clone));
-                }
-                return resp;
-            }).catch(() => caches.match(req))
-        );
         return;
     }
 

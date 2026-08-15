@@ -162,7 +162,13 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function () {
-                navigator.serviceWorker.register('./sw.js').catch(function (e) {
+                navigator.serviceWorker.register('./sw.js').then(function (reg) {
+                    // 强制检查更新，新 SW 立即激活（skipWaiting + clients.claim）
+                    reg.update();
+                    navigator.serviceWorker.addEventListener('controllerchange', function () {
+                        // 新 SW 已接管，无需刷新
+                    });
+                }).catch(function (e) {
                     console.warn('[PWA] Service Worker 注册失败:', e);
                 });
             });
