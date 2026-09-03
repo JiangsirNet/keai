@@ -460,6 +460,10 @@ body {
 }
 .mp-lyrics.hidden-lyrics { display: none; }
 
+/* 展示歌词时隐藏专辑封面，扩大歌词区以显示更多歌词 */
+.modern-player.lyrics-mode .mp-cover-wrap { display: none; }
+.modern-player.lyrics-mode .mp-lyrics { max-height: 420px; }
+
 .mp-playlist-toggle {
     width: 100%;
     display: flex;
@@ -1504,3 +1508,52 @@ body {
     text-align: center;
 }
 .ai-tip i { color: #ffb4c4; }
+
+/* ============== 主页面切换兜底不可见（防K歌/网盘浮层泄漏） ============== */
+/* 切离首页时给 #page-home 加此类 → 完全不可见+不可点+移出屏幕，彻底防泄漏 */
+.page-home-invisible-fallback {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    position: fixed !important;
+    top: -9999px !important;
+    left: -9999px !important;
+    width: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+}
+
+/* ================ 网盘 Tab 样式 ================ */
+.cloud-file-card {
+    /* 主要样式在 HTML 内联类中，这里补充细节 */
+}
+.cloud-file-card .aspect-video {
+    position: relative;
+}
+.cloud-file-card:hover .aspect-video .fa-play-circle {
+    opacity: 1 !important;
+}
+
+/* 网盘页视频预览弹窗已在 cloud.html 中用 fixed/flex 实现，这里避免全局冲突补充 */
+#cloudVideoModal.hidden { display: none !important; }
+#cloudVideoModal:not(.hidden) { display: flex !important; }
+
+/* 视频页已有 video-card 样式，补充网盘缩略图加载中效果 */
+.cloud-file-card img {
+    transition: opacity 0.3s;
+}
+
+/* 网盘文件删除按钮 */
+.cloud-del-icon {
+    cursor: pointer;
+    color: #ef4444;
+    opacity: 0.5;
+    font-size: 12px;
+    transition: opacity 0.2s, transform 0.2s;
+    padding: 2px;
+}
+.cloud-del-icon:hover {
+    opacity: 1;
+    transform: scale(1.15);
+}
+

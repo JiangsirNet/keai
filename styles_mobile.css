@@ -301,6 +301,9 @@
         max-height: 100px !important;
         font-size: 12px !important;
     }
+    /* 歌词模式下隐藏封面，加长歌词区 */
+    .modern-player.lyrics-mode .mp-cover-wrap { display: none !important; }
+    .modern-player.lyrics-mode .mp-lyrics { max-height: 300px !important; }
     .mp-playlist #mpList {
         max-height: 160px !important;
     }

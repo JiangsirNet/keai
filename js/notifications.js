@@ -94,8 +94,8 @@ async function sendNotification(type, content) {
         await window.sb.from("notifications").insert({
             type, content: fullContent, from_email: fromEmail, to_email: toEmail, is_read: false
         });
-        // 仅 K 歌作品上传 (type=karaoke) 时发送邮件通知对方；其它类型只写铃铛通知，不发邮件
-        if (type === "karaoke" && window.EMAILJS_SERVICE_ID && window.EMAILJS_TEMPLATE_ID && window.emailjs) {
+        // 发送邮件通知对方；其它类型只写铃铛通知，不发邮件
+        if (window.EMAILJS_SERVICE_ID && window.EMAILJS_TEMPLATE_ID && window.emailjs) {
             try {
                 await window.emailjs.send(window.EMAILJS_SERVICE_ID, window.EMAILJS_TEMPLATE_ID, {
                     to_email: toEmail,

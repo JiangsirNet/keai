@@ -53,6 +53,23 @@ async function loadMusicList() {
         return;
     }
 
+    // 默认载入第一首歌（不自动播放），方便用户直接点播放键
+    if (currentMusicIndex === -1 && musicList.length > 0) {
+        const audioEl = document.getElementById("musicAudio");
+        // 仅在未播放时载入，避免中断正在播放的歌曲
+        if (!audioEl || audioEl.paused) {
+            currentMusicIndex = 0;
+            const firstItem = musicList[0];
+            if (audioEl) audioEl.src = firstItem.url;
+            document.getElementById("mpTitle").innerText = firstItem.title || "未知歌曲";
+            updateCover(firstItem);
+            // 载入但不播放，移除封面旋转动画
+            const coverEl = document.getElementById("mpCover");
+            if (coverEl) coverEl.classList.remove("playing");
+            parseLyrics(firstItem.lyrics);
+        }
+    }
+
     musicList.forEach((item, idx) => {
         const div = document.createElement("div");
         div.className = "mp-item" + (idx === currentMusicIndex ? " active" : "");
@@ -461,8 +478,11 @@ function togglePlaylist() {
 
 function toggleLyricsView() {
     lyricsVisible = !lyricsVisible;
+    const player = document.querySelector('.modern-player');
     document.getElementById("mpLyrics").classList.toggle("hidden-lyrics", !lyricsVisible);
     document.getElementById("mpLyricsBtn").classList.toggle("active", lyricsVisible);
+    // 展示歌词时隐藏专辑封面，扩大歌词区以显示更多歌词
+    if (player) player.classList.toggle("lyrics-mode", lyricsVisible);
 }
 
 function updateProgress() {
@@ -557,34 +577,32 @@ const METING_BASES = [
 ];
 // CORS 代理列表（Meting 公共实例不支持 CORS，必须走代理）
 const CORS_PROXIES = [
-    (u) => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
     (u) => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
-    (u) => 'https://api.codetabs.com/v1/proxy/?quest=' + encodeURIComponent(u)
+    (u) => 'https://api.codetabs.com/v1/proxy/?quest=' + encodeURIComponent(u),
+    (u) => 'https://corsproxy.io/?url=' + encodeURIComponent(u)
 ];
 
+// 判断本地环境（localhost / 127.0.0.1 / file:）— 本地不走 CORS 代理，直连
+const _isLocalEnv = location.protocol === 'file:' ||
+    location.hostname === 'localhost' ||
+    location.hostname === '127.0.0.1' ||
+    location.hostname === '';
+
 async function _metingFetch(queryParams) {
-    const metingUrl = `${METING_BASES[0]}/?${queryParams}`;
-
-    // 1. 先直连试一次（部分实例可能支持 CORS）
-    try {
-        const resp = await fetch(metingUrl, { signal: AbortSignal.timeout(8000) });
-        if (resp.ok) {
-            const text = await resp.text();
-            try { return JSON.parse(text); } catch (_) { return text; }
-        }
-    } catch (_) { /* CORS 或网络错误，走代理 */ }
-
-    // 2. 通过 CORS 代理请求（多代理轮询）
+    // 走 CORS 代理（本地和线上统一）
+    // 先解码 queryParams，避免 encodeURIComponent 双重编码（%E5 → %25E5）
+    let rawParams;
+    try { rawParams = decodeURIComponent(queryParams); } catch (_) { rawParams = queryParams; }
     for (const proxy of CORS_PROXIES) {
         for (const base of METING_BASES) {
             try {
-                const targetUrl = `${base}/?${queryParams}`;
+                const targetUrl = `${base}/?${rawParams}`;
                 const resp = await fetch(proxy(targetUrl), { signal: AbortSignal.timeout(12000) });
                 if (!resp.ok) continue;
                 const text = await resp.text();
                 if (!text || text.length < 2) continue;
                 try { return JSON.parse(text); } catch (_) { return text; }
-            } catch (_) { /* 尝试下一个代理 */ }
+            } catch (_) { /* 尝试下一个 */ }
         }
     }
     return null;
@@ -598,10 +616,14 @@ function switchOnlineSrc(src) {
 }
 
 function openOnlineSearch() {
+    // 在线搜歌功能已隐藏（如需恢复请取消下方注释并恢复 home.html 中的弹窗 DOM）
+    return;
+    /* —— 原逻辑（已隐藏）——
     const modal = document.getElementById("mpOnlineSearchModal");
     if (modal) modal.classList.remove("hidden");
     const input = document.getElementById("mpOnlineSearchInput");
     if (input) { input.value = ""; input.focus(); }
+    */
 }
 
 function closeOnlineSearch() {
@@ -1375,11 +1397,11 @@ function createLxRuntime(scriptInfo) {
             return { statusCode: resp.status, body: text, headers: Object.fromEntries(resp.headers.entries()) };
         });
 
-        // 先直连，CORS 失败则依次走多个 CORS 代理
+        // 先直连，CORS 失败则依次走多个 CORS 代理（本地和线上统一）
         const proxies = [
-            (u) => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
             (u) => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
-            (u) => 'https://api.codetabs.com/v1/proxy/?quest=' + encodeURIComponent(u)
+            (u) => 'https://api.codetabs.com/v1/proxy/?quest=' + encodeURIComponent(u),
+            (u) => 'https://corsproxy.io/?url=' + encodeURIComponent(u)
         ];
 
         doFetch(safeUrl).then((result) => callback(null, result)).catch(() => {
@@ -1598,6 +1620,9 @@ function wrapLxScript(code, forcedId, forcedName) {
 
 // ---------- 导入 .js 文件 ----------
 function importSourceFile() {
+    // 音源导入功能已隐藏（如需恢复请取消下方注释并恢复 home.html 中的音源编辑弹窗）
+    return;
+    /* —— 原逻辑（已隐藏）——
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.js,text/javascript';
@@ -1631,7 +1656,8 @@ function importSourceFile() {
         reader.readAsText(file);
     };
     input.click();
+    */
 }
 
 // 所有 const 定义完毕后，加载自定义音源（含洛雪音源编译）
-loadCustomSources();
+// loadCustomSources(); // 在线搜歌功能已隐藏，无需加载/编译自定义音源

@@ -1,5 +1,5 @@
-<!-- 首页（含子Tab：相册/留言/日志/AI） -->
-<div id="page-home" class="page-content">
+<!-- 首页（含子Tab：相册/留言/日志/AI/音乐/K歌/网盘） -->
+<div id="page-home" class="page-content hidden">
     <!-- 恋爱计时器 -->
     <div class="bg-white/80 backdrop-blur rounded-3xl p-6 md:p-10 card-shadow text-center mb-6">
         <h1 class="text-[clamp(1.8rem,5vw,2.8rem)] font-bold text-love mb-3">
@@ -34,6 +34,9 @@
         </button>
         <button onclick="switchSubTab('karaoke')" class="sub-tab" data-sub="karaoke">
             <i class="fa fa-microphone"></i> K歌
+        </button>
+        <button onclick="switchSubTab('cloud')" class="sub-tab" data-sub="cloud">
+            <i class="fa fa-cloud"></i> 网盘
         </button>
     </div>
 
@@ -228,12 +231,12 @@
             </h2>
 
             <!-- 现代音乐播放器 -->
-            <div class="modern-player">
-                <!-- 右上角按钮组：在线搜索 / 上传 -->
+            <div class="modern-player lyrics-mode">
+                <!-- 右上角按钮组：上传（在线搜歌功能已隐藏，如需恢复取消下方注释即可） -->
                 <div class="mp-top-actions">
-                    <button class="mp-upload-toggle" onclick="openOnlineSearch()" id="mpSearchToggle" title="在线搜歌">
+                    <!-- <button class="mp-upload-toggle" onclick="openOnlineSearch()" id="mpSearchToggle" title="在线搜歌">
                         <i class="fa fa-search"></i>
-                    </button>
+                    </button> -->
                     <button class="mp-upload-toggle" onclick="toggleUploadArea()" id="mpUploadToggle" title="上传歌曲">
                         <i class="fa fa-upload"></i>
                     </button>
@@ -381,18 +384,16 @@
         </div>
     </div>
 
-    <!-- 在线搜索音乐弹窗 -->
-    <div id="mpOnlineSearchModal" class="mp-lyrics-modal hidden" onclick="if(event.target===this) closeOnlineSearch()">
+    <!-- ===== 在线搜歌功能已隐藏（如需恢复请取消下方 HTML 注释）===== -->
+    <!-- <div id="mpOnlineSearchModal" class="mp-lyrics-modal hidden" onclick="if(event.target===this) closeOnlineSearch()">
         <div class="mp-lyrics-modal-box" style="max-width:560px;">
             <div class="mp-lyrics-modal-header">
                 <h3><i class="fa fa-search"></i> 在线搜歌</h3>
                 <span class="mp-lyrics-modal-close" onclick="closeOnlineSearch()">&times;</span>
             </div>
 
-            <!-- 音源切换 + 搜索框 -->
             <div class="mp-os-header">
                 <div class="mp-os-sources" id="mpOsSources">
-                    <!-- 音源按钮动态渲染（内置 + 自定义）-->
                     <button class="mp-os-src-add" onclick="openSourceEditor()" title="添加自定义音源">
                         <i class="fa fa-plus"></i>
                     </button>
@@ -403,14 +404,12 @@
                 </div>
             </div>
 
-            <!-- 试听状态栏 -->
             <div id="mpOnlineNowPlaying" class="mp-os-nowplaying hidden">
                 <i class="fa fa-music fa-spin"></i>
                 <span id="mpOnlineNowTitle">正在试听…</span>
                 <button onclick="stopOnlinePreview()" title="停止试听"><i class="fa fa-stop"></i></button>
             </div>
 
-            <!-- 搜索结果列表 -->
             <div id="mpOnlineSearchResults" class="mp-os-results">
                 <div class="mp-os-empty">
                     <i class="fa fa-music"></i>
@@ -418,9 +417,8 @@
                 </div>
             </div>
         </div>
-    </div>
+    </div> -->
 
-    <!-- 音源编辑弹窗（添加/删除自定义音源 JS） -->
     <div id="mpSourceEditorModal" class="mp-lyrics-modal hidden" onclick="if(event.target===this) closeSourceEditor()">
         <div class="mp-lyrics-modal-box" style="max-width:620px;">
             <div class="mp-lyrics-modal-header">
@@ -432,7 +430,7 @@
             <div class="mp-src-list" id="mpSrcList"></div>
 
             <!-- 表单 -->
-            <div class="mp-src-form">
+            <div class="mp-src-form" style="display: none;">
                 <div class="mp-src-form-row">
                     <input id="mpSrcId" type="text" placeholder="音源 ID（英文唯一，如 my_yinyuetai）" maxlength="32">
                     <input id="mpSrcName" type="text" placeholder="显示名称（如 音悦台）" maxlength="16">
@@ -469,6 +467,7 @@ module.exports = {
         </div>
     </div>
 
+
     <!-- ===== 子Tab：K 歌 ===== -->
     <div id="subTab-karaoke" class="sub-tab-content hidden">
         <div class="bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow">
@@ -479,7 +478,7 @@ module.exports = {
             <!-- 选歌区 -->
             <div class="mb-4">
                 <label class="text-sm text-gray-600 block mb-2">选择要唱的歌</label>
-                <div id="karaokeSongList" class="flex flex-wrap gap-2">
+                <div id="karaokeSongList" class="karaoke-song-list">
                     <div class="text-gray-400 text-sm">加载歌曲列表中...</div>
                 </div>
             </div>
@@ -627,3 +626,97 @@ module.exports = {
             </div>
         </div>
     </div>
+
+    <!-- ===== 子Tab：网盘（百度网盘视频） ===== -->
+    <div id="subTab-cloud" class="sub-tab-content hidden">
+        <!-- 配置未填写提示 -->
+        <div id="cloudConfigHint" class="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 mb-4 hidden">
+            <div class="flex items-start gap-3">
+                <i class="fa fa-exclamation-triangle text-yellow-500 mt-1"></i>
+                <div class="flex-1">
+                    <p class="text-yellow-700 font-semibold text-sm">⚠️ 还没有配置 OpenList 连接</p>
+                    <p class="text-yellow-600 text-xs mt-1">请先在「设置」页面填写 OpenList 服务器地址、账号密码，以及百度网盘挂载路径。</p>
+                    <button onclick="window.showPage('config')" class="mt-2 bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded-lg text-xs transition">
+                        <i class="fa fa-cog"></i> 前往设置
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 登录状态 & 路径导航 -->
+        <div class="bg-white/80 backdrop-blur rounded-3xl p-4 card-shadow mb-4">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <span id="cloudLoginStatus" class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs bg-gray-100 text-gray-500">
+                        <span class="w-2 h-2 rounded-full bg-gray-400"></span> 未连接
+                    </span>
+                    <span id="cloudUserInfo" class="text-xs text-gray-500"></span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="cloudRefresh()" class="text-gray-500 hover:text-love transition px-3 py-1.5 rounded-lg hover:bg-rose-50 text-sm" title="刷新">
+                        <i class="fa fa-refresh"></i>
+                    </button>
+                    <button onclick="cloudToggleUpload()" id="cloudUploadBtn" class="bg-love hover:bg-loveDark text-white px-4 py-1.5 rounded-lg transition text-sm flex items-center gap-1">
+                        <i class="fa fa-upload"></i> 上传视频
+                    </button>
+                </div>
+            </div>
+
+            <!-- 面包屑导航 -->
+            <div id="cloudBreadcrumb" class="flex items-center gap-1 flex-wrap text-sm mb-2">
+                <span class="text-gray-400">路径：</span>
+            </div>
+
+            <!-- 上传区域（默认隐藏） -->
+            <div id="cloudUploadArea" class="hidden mt-3 border-2 border-dashed border-rose-200 rounded-xl p-4 bg-rose-50/50">
+                <input type="file" id="cloudFileInput" accept="video/*" class="hidden">
+                <div class="flex flex-col sm:flex-row items-center gap-3">
+                    <button onclick="document.getElementById('cloudFileInput').click()" class="bg-love hover:bg-loveDark text-white px-5 py-2 rounded-lg transition text-sm whitespace-nowrap">
+                        <i class="fa fa-plus"></i> 选择视频文件
+                    </button>
+                    <div id="cloudFileHint" class="text-xs text-gray-500 flex-1">
+                        支持 mp4、webm、mov 等视频格式，文件大小取决于百度网盘会员权限
+                    </div>
+                </div>
+                <!-- 上传进度 -->
+                <div id="cloudUploadProgress" class="hidden mt-3">
+                    <div class="flex items-center justify-between text-xs text-gray-600 mb-1">
+                        <span id="cloudUploadFileName">上传中...</span>
+                        <span id="cloudUploadProgressText">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                        <div id="cloudUploadProgressBar" class="bg-love h-2 rounded-full transition-all" style="width:0%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 文件列表 -->
+        <div class="bg-white/80 backdrop-blur rounded-3xl p-4 card-shadow">
+            <div id="cloudListLoading" class="text-center text-gray-400 py-10">
+                <i class="fa fa-spinner fa-spin"></i> 加载中...
+            </div>
+            <div id="cloudFileList" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                <!-- 动态生成 -->
+            </div>
+            <div id="cloudEmptyTip" class="text-center text-gray-400 py-10 hidden">
+                <i class="fa fa-folder-open text-4xl mb-2 block opacity-50"></i>
+                <p>暂无视频文件</p>
+                <p class="text-xs mt-1">点击右上角「上传视频」上传第一个视频吧</p>
+            </div>
+        </div>
+
+        <!-- 视频预览弹窗 -->
+        <div id="cloudVideoModal" class="fixed inset-0 bg-black/80 z-50 hidden items-center justify-center p-4" onclick="cloudCloseVideo(event)">
+            <div class="relative w-full max-w-4xl" onclick="event.stopPropagation()">
+                <button onclick="cloudCloseVideo()" class="absolute -top-10 right-0 text-white text-2xl hover:text-love transition">
+                    <i class="fa fa-times-circle"></i>
+                </button>
+                <video id="cloudVideoPlayer" controls class="w-full rounded-xl bg-black" playsinline>
+                    您的浏览器不支持视频播放
+                </video>
+                <div id="cloudVideoTitle" class="text-white text-sm mt-2 text-center truncate"></div>
+            </div>
+        </div>
+    </div>
+</div>

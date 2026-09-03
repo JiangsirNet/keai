@@ -77,7 +77,7 @@
         </div>
 
         <!-- Tab 切换 -->
-        <div class="tab-bar grid grid-cols-6 gap-1 sm:flex sm:gap-2 mb-4 pb-1">
+        <div class="tab-bar grid grid-cols-7 gap-1 sm:flex sm:gap-2 mb-4 pb-1">
             <button onclick="switchTab('local')" id="tabLocal" class="tab-btn active flex flex-col items-center py-2 px-1 sm:px-4 sm:flex-row rounded-lg bg-white text-gray-600 font-semibold text-sm shadow">
                 <i class="fa fa-upload text-base"></i> <span class="text-xs mt-0.5 sm:mt-0 sm:ml-1.5">上传</span>
             </button>
@@ -95,6 +95,9 @@
             </button>
             <button onclick="switchTab('sqlexec')" id="tabSqlExec" class="tab-btn flex flex-col items-center py-2 px-1 sm:px-4 sm:flex-row rounded-lg bg-white text-gray-600 font-semibold text-sm shadow">
                 <i class="fa fa-terminal text-base"></i> <span class="text-xs mt-0.5 sm:mt-0 sm:ml-1.5">执行</span>
+            </button>
+            <button onclick="switchTab('storage')" id="tabStorage" class="tab-btn flex flex-col items-center py-2 px-1 sm:px-4 sm:flex-row rounded-lg bg-white text-gray-600 font-semibold text-sm shadow">
+                <i class="fa fa-database text-base"></i> <span class="text-xs mt-0.5 sm:mt-0 sm:ml-1.5">存储</span>
             </button>
         </div>
 
@@ -317,6 +320,93 @@
             </div>
         </div>
 
+        <!-- ===== Tab: 存储配置 ===== -->
+        <div id="panelStorage" class="hidden bg-white rounded-xl p-4 shadow mb-6">
+            <h2 class="font-bold text-gray-700 mb-3 flex items-center gap-2"><i class="fa fa-database"></i> 存储 / 网盘配置</h2>
+            <p class="text-sm text-gray-500 mb-2">配置腾讯 COS（视频上传）和 OpenList（百度网盘接入）。配置保存在 <code class="bg-gray-100 px-1 rounded text-xs">app_config</code> 表，全局共享。</p>
+            <!-- 未登录提示 -->
+            <div id="storageAuthHint" class="hidden bg-orange-50 border border-orange-200 text-orange-700 rounded-lg px-4 py-3 mb-4 text-sm flex items-start gap-2">
+                <i class="fa fa-exclamation-triangle mt-0.5"></i>
+                <span>未登录无法保存配置。请先在页面 <b>顶部登录框</b> 输入情侣空间的邮箱和密码登录后再保存。测试连接功能无需登录。</span>
+            </div>
+
+            <!-- 腾讯 COS 配置 -->
+            <div class="mb-6">
+                <h3 class="font-semibold text-love flex items-center gap-2 mb-2"><i class="fa fa-cloud"></i> 腾讯 COS 配置</h3>
+                <p class="text-xs text-gray-500 mb-3">用于视频上传（在 <a href="https://console.cloud.tencent.com/cam/capi" target="_blank" class="text-love underline">API 密钥管理</a> 获取）</p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                    <div>
+                        <label class="block text-sm text-gray-600 mb-1">SecretId</label>
+                        <input id="cosSecretIdInput" type="password" placeholder="COS SecretId" class="w-full border border-rose-200 rounded-lg p-2 outline-none focus:border-love">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-600 mb-1">SecretKey</label>
+                        <input id="cosSecretKeyInput" type="password" placeholder="COS SecretKey" class="w-full border border-rose-200 rounded-lg p-2 outline-none focus:border-love">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-600 mb-1">Bucket</label>
+                        <input id="cosBucketInput" placeholder="如 xxx-1300000000" class="w-full border border-rose-200 rounded-lg p-2 outline-none focus:border-love">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-600 mb-1">Region</label>
+                        <input id="cosRegionInput" placeholder="如 ap-guangzhou" class="w-full border border-rose-200 rounded-lg p-2 outline-none focus:border-love">
+                    </div>
+                </div>
+                <button id="cosSaveBtn" onclick="saveCosConfig()" class="bg-love text-white px-4 py-2 rounded-lg hover:bg-loveDark transition w-full sm:w-auto">
+                    <i class="fa fa-save"></i> 保存 COS 配置
+                </button>
+            </div>
+
+            <!-- OpenList / 百度网盘配置 -->
+            <div>
+                <h3 class="font-semibold text-love flex items-center gap-2 mb-2"><i class="fa fa-cloud"></i> OpenList 百度网盘配置</h3>
+                <p class="text-xs text-gray-500 mb-3">
+                    通过 OpenList 服务接入百度网盘，用于在「网盘」Tab 中浏览和上传视频。
+                    <a href="https://github.com/OpenListTeam/OpenList" target="_blank" class="text-love underline">了解 OpenList</a> ·
+                    <a href="https://api.oplist.org/" target="_blank" class="text-love underline">获取百度网盘 Token</a>
+                </p>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-sm text-gray-600 mb-1">
+                            OpenList 服务地址
+                            <span class="text-[10px] text-gray-400">（如 http://localhost:5244）</span>
+                        </label>
+                        <input id="openlistBaseUrlInput" placeholder="http://你的-openlist-地址:端口" class="w-full border border-rose-200 rounded-lg p-2 outline-none focus:border-love">
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-sm text-gray-600 mb-1">用户名</label>
+                            <input id="openlistUserInput" placeholder="OpenList 登录账号" class="w-full border border-rose-200 rounded-lg p-2 outline-none focus:border-love">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-600 mb-1">密码</label>
+                            <input id="openlistPassInput" type="password" placeholder="OpenList 登录密码" class="w-full border border-rose-200 rounded-lg p-2 outline-none focus:border-love">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-600 mb-1">
+                            百度网盘挂载路径
+                            <span class="text-[10px] text-gray-400">（你在 OpenList 中添加百度网盘时填的挂载根路径）</span>
+                        </label>
+                        <input id="openlistMountPathInput" placeholder="如 /baidu 或 /我的网盘" class="w-full border border-rose-200 rounded-lg p-2 outline-none focus:border-love">
+                    </div>
+                    <div class="flex items-center gap-2 text-xs text-gray-500">
+                        <input type="checkbox" id="openlistAsTaskInput" class="w-4 h-4 accent-love">
+                        <label for="openlistAsTaskInput">使用异步任务模式上传（适合大文件，避免超时）</label>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button id="openlistSaveBtn" onclick="saveOpenListConfig()" class="flex-1 bg-love text-white px-4 py-2 rounded-lg hover:bg-loveDark transition">
+                            <i class="fa fa-save"></i> 保存 OpenList 配置
+                        </button>
+                        <button id="openlistTestBtn" onclick="testOpenListConnection()" class="px-4 py-2 bg-white border border-rose-200 text-love rounded-lg hover:bg-rose-50 transition">
+                            <i class="fa fa-plug"></i> 测试连接
+                        </button>
+                    </div>
+                    <div id="openlistTestResult" class="text-xs text-center hidden"></div>
+                </div>
+            </div>
+        </div>
+
         <!-- ===== Tab: SQL 执行 ===== -->
         <div id="panelSqlExec" class="hidden bg-white rounded-xl p-4 shadow mb-6">
             <div class="flex items-center justify-between mb-3">
@@ -468,9 +558,15 @@
                 status.innerHTML = '<span class="text-green-600"><i class="fa fa-check-circle"></i> 已登录</span>';
                 actions.innerHTML = '<button onclick="doLogout()" class="text-sm text-gray-500 hover:text-love"><i class="fa fa-sign-out"></i> 退出</button>';
                 loginPanel.classList.add('hidden');
-                // 恢复写入按钮
+                // 恢复写入按钮（上传 + 存储配置保存）
                 const uploadBtn = document.getElementById('uploadBtn');
                 if (uploadBtn) { uploadBtn.disabled = false; uploadBtn.classList.remove('opacity-50', 'cursor-not-allowed'); }
+                [document.getElementById('cosSaveBtn'), document.getElementById('openlistSaveBtn')].forEach(btn => {
+                    if (btn) { btn.disabled = false; btn.classList.remove('opacity-50', 'cursor-not-allowed'); }
+                });
+                // 隐藏未登录提示
+                const hint = document.getElementById('storageAuthHint');
+                if (hint) hint.classList.add('hidden');
             } else {
                 status.innerHTML = '<span class="text-orange-500"><i class="fa fa-exclamation-circle"></i> 未登录（只读模式）</span>';
                 actions.innerHTML = '';
@@ -483,6 +579,17 @@
             // 禁用所有写入相关按钮
             const uploadBtn = document.getElementById('uploadBtn');
             if (uploadBtn) { uploadBtn.disabled = true; uploadBtn.classList.add('opacity-50', 'cursor-not-allowed'); }
+            // 存储配置保存按钮（未登录写数据库会被RLS拒绝，先禁用避免用户以为保存成功）
+            const storageSaveButtons = [
+                document.getElementById('cosSaveBtn'),
+                document.getElementById('openlistSaveBtn')
+            ];
+            storageSaveButtons.forEach(btn => {
+                if (btn) { btn.disabled = true; btn.classList.add('opacity-50', 'cursor-not-allowed'); }
+            });
+            // 显示未登录提示横幅
+            const hint = document.getElementById('storageAuthHint');
+            if (hint) hint.classList.remove('hidden');
         }
 
         async function doLogin() {
@@ -650,18 +757,19 @@ CREATE POLICY "allow_write_music" ON music FOR ALL TO authenticated USING (true)
             { path: 'js/ai_chat.js',         type: 'js', container: null, order: 24 },
             { path: 'js/karaoke.js',         type: 'js', container: null, order: 25 },
             { path: 'js/video.js',           type: 'js', container: null, order: 26 },
-            { path: 'js/pull_refresh.js',    type: 'js', container: null, order: 27 },
-            { path: 'js/auth.js',            type: 'js', container: null, order: 28 },
+            { path: 'js/cloud.js',           type: 'js', container: null, order: 27 },
+            { path: 'js/pull_refresh.js',    type: 'js', container: null, order: 28 },
+            { path: 'js/auth.js',            type: 'js', container: null, order: 29 },
             { path: 'ARCHITECTURE.md',       type: 'md', container: null, order: 99 },
         ];
 
         // ===== Tab 切换 =====
         function switchTab(name) {
-            ['Local', 'Online', 'Sql', 'Docs', 'Containers', 'SqlExec'].forEach(t => {
+            ['Local', 'Online', 'Sql', 'Docs', 'Containers', 'SqlExec', 'Storage'].forEach(t => {
                 document.getElementById('tab' + t).classList.remove('active');
                 document.getElementById('panel' + t).classList.add('hidden');
             });
-            const map = { local: 'Local', online: 'Online', sql: 'Sql', docs: 'Docs', containers: 'Containers', sqlexec: 'SqlExec' };
+            const map = { local: 'Local', online: 'Online', sql: 'Sql', docs: 'Docs', containers: 'Containers', sqlexec: 'SqlExec', storage: 'Storage' };
             document.getElementById('tab' + map[name]).classList.add('active');
             document.getElementById('panel' + map[name]).classList.remove('hidden');
             if (name === 'online') {
@@ -685,6 +793,169 @@ CREATE POLICY "allow_write_music" ON music FOR ALL TO authenticated USING (true)
             if (name === 'docs') loadDoc();
             if (name === 'containers') loadContainers();
             if (name === 'sqlexec') checkExecDdl();
+            if (name === 'storage') loadStorageConfig();
+        }
+
+        // ======================================================
+        // 存储配置：腾讯 COS + OpenList 百度网盘
+        // ======================================================
+
+        // —— 腾讯 COS ——
+        async function saveCosConfig() {
+            // 双重保险：即使按钮被绕过，未登录也不能写数据库（否则 RLS 报错信息容易让用户困惑）
+            if (!requireAuth()) return;
+            const secretId = document.getElementById('cosSecretIdInput').value.trim();
+            const secretKey = document.getElementById('cosSecretKeyInput').value.trim();
+            const bucket = document.getElementById('cosBucketInput').value.trim();
+            const region = document.getElementById('cosRegionInput').value.trim();
+            if (!secretId || !secretKey || !bucket || !region) { alert('请填写所有 COS 字段'); return; }
+            const configs = [
+                { key: 'cos_secret_id', value: secretId },
+                { key: 'cos_secret_key', value: secretKey },
+                { key: 'cos_bucket',     value: bucket },
+                { key: 'cos_region',     value: region }
+            ];
+            for (const c of configs) {
+                const { error } = await sb.from('app_config')
+                    .upsert({ config_key: c.key, config_value: c.value }, { onConflict: 'config_key' });
+                if (error) { alert('保存 COS 失败：' + error.message); return; }
+            }
+            window._cosSecretId  = secretId;
+            window._cosSecretKey = secretKey;
+            window._cosBucket    = bucket;
+            window._cosRegion    = region;
+            alert('✅ COS 配置已保存');
+        }
+
+        async function loadCosConfigForm() {
+            try {
+                const keys = ['cos_secret_id', 'cos_secret_key', 'cos_bucket', 'cos_region'];
+                const { data, error } = await sb.from('app_config')
+                    .select('config_key, config_value').in('config_key', keys);
+                if (error) throw error;
+                const map = {};
+                (data || []).forEach(r => map[r.config_key] = r.config_value);
+                window._cosSecretId  = map.cos_secret_id  || '';
+                window._cosSecretKey = map.cos_secret_key || '';
+                window._cosBucket    = map.cos_bucket     || '';
+                window._cosRegion    = map.cos_region     || '';
+                document.getElementById('cosSecretIdInput').value   = window._cosSecretId;
+                document.getElementById('cosSecretKeyInput').value  = window._cosSecretKey;
+                document.getElementById('cosBucketInput').value     = window._cosBucket;
+                document.getElementById('cosRegionInput').value     = window._cosRegion;
+            } catch (e) { console.warn('[Storage] 加载 COS 配置失败:', e); }
+        }
+
+        // —— OpenList 百度网盘 ——
+        const OPENLIST_CONFIG_KEYS = [
+            { key: 'openlist_base_url',   var: '_openlistBaseUrl' },
+            { key: 'openlist_username',   var: '_openlistUsername' },
+            { key: 'openlist_password',   var: '_openlistPassword' },
+            { key: 'openlist_mount_path', var: '_openlistMountPath' },
+            { key: 'openlist_as_task',    var: '_openlistAsTask' }
+        ];
+
+        async function saveOpenListConfig() {
+            if (!requireAuth()) return; // 登录校验
+            const baseUrl   = document.getElementById('openlistBaseUrlInput').value.trim();
+            const username  = document.getElementById('openlistUserInput').value.trim();
+            const password  = document.getElementById('openlistPassInput').value;
+            const mountPath = document.getElementById('openlistMountPathInput').value.trim();
+            const asTask    = document.getElementById('openlistAsTaskInput').checked;
+            if (!baseUrl || !username) { alert('请至少填写 OpenList 服务地址和用户名'); return; }
+            const configs = [
+                { key: 'openlist_base_url',   value: baseUrl },
+                { key: 'openlist_username',   value: username },
+                { key: 'openlist_password',   value: password },
+                { key: 'openlist_mount_path', value: mountPath },
+                { key: 'openlist_as_task',    value: asTask ? '1' : '0' }
+            ];
+            try {
+                for (const c of configs) {
+                    const { error } = await sb.from('app_config')
+                        .upsert({ config_key: c.key, config_value: c.value }, { onConflict: 'config_key' });
+                    if (error) throw new Error(`保存 ${c.key} 失败：${error.message}`);
+                }
+                window._openlistBaseUrl   = baseUrl;
+                window._openlistUsername   = username;
+                window._openlistPassword   = password;
+                window._openlistMountPath  = mountPath;
+                window._openlistAsTask     = asTask;
+                alert('✅ OpenList 配置已保存');
+            } catch (e) { alert('保存 OpenList 失败：' + e.message); }
+        }
+
+        async function loadOpenListConfigForm() {
+            try {
+                const keys = OPENLIST_CONFIG_KEYS.map(k => k.key);
+                const { data, error } = await sb.from('app_config')
+                    .select('config_key, config_value').in('config_key', keys);
+                if (error) throw error;
+                const map = {};
+                (data || []).forEach(r => map[r.config_key] = r.config_value);
+                window._openlistBaseUrl   = map.openlist_base_url   || '';
+                window._openlistUsername   = map.openlist_username   || '';
+                window._openlistPassword   = map.openlist_password   || '';
+                window._openlistMountPath  = map.openlist_mount_path || '';
+                window._openlistAsTask     = map.openlist_as_task === '1';
+                document.getElementById('openlistBaseUrlInput').value   = window._openlistBaseUrl;
+                document.getElementById('openlistUserInput').value      = window._openlistUsername;
+                document.getElementById('openlistPassInput').value      = window._openlistPassword;
+                document.getElementById('openlistMountPathInput').value = window._openlistMountPath;
+                document.getElementById('openlistAsTaskInput').checked  = window._openlistAsTask;
+            } catch (e) { console.warn('[Storage] 加载 OpenList 配置失败:', e); }
+        }
+
+        async function testOpenListConnection() {
+            const resultEl = document.getElementById('openlistTestResult');
+            resultEl.className = 'text-xs text-center mt-2 py-2 rounded-lg';
+            resultEl.classList.remove('hidden');
+            resultEl.style.background = '#f3f4f6';
+            resultEl.style.color = '#6b7280';
+            resultEl.innerHTML = '<i class="fa fa-spinner fa-spin"></i> 正在测试连接...';
+            const baseUrl   = document.getElementById('openlistBaseUrlInput').value.trim().replace(/\/$/, '');
+            const username  = document.getElementById('openlistUserInput').value.trim();
+            const password  = document.getElementById('openlistPassInput').value;
+            const mountPath = document.getElementById('openlistMountPathInput').value.trim() || '/';
+            if (!baseUrl || !username) {
+                resultEl.style.background = '#fef2f2';
+                resultEl.style.color = '#dc2626';
+                resultEl.innerHTML = '❌ 请先填写服务地址和用户名';
+                return;
+            }
+            try {
+                const loginResp = await fetch(`${baseUrl}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                if (!loginResp.ok) throw new Error(`登录 HTTP ${loginResp.status}`);
+                const loginJson = await loginResp.json();
+                if (!loginJson || loginJson.code !== 200) throw new Error(loginJson?.message || '登录失败');
+                const token = loginJson.data?.token;
+                if (!token) throw new Error('未返回 token');
+                // 测试列目录
+                const listResp = await fetch(`${baseUrl}/api/fs/list?path=${encodeURIComponent(mountPath)}&password=`, {
+                    method: 'GET',
+                    headers: { 'Authorization': token }
+                });
+                if (!listResp.ok) throw new Error(`列目录 HTTP ${listResp.status}`);
+                const listJson = await listResp.json();
+                if (listJson.code !== 200) throw new Error(listJson.message || '挂载路径可能不正确');
+                resultEl.style.background = '#dcfce7';
+                resultEl.style.color = '#166534';
+                const total = (listJson.data?.files || []).length;
+                resultEl.innerHTML = `✅ 连接成功！OpenList 版本 ${loginJson.data?.version || '-'}，根目录共 ${total} 个项目`;
+            } catch (err) {
+                resultEl.style.background = '#fef2f2';
+                resultEl.style.color = '#dc2626';
+                resultEl.innerHTML = '❌ 连接失败：' + (err.message || err);
+            }
+        }
+
+        // —— 组合入口：进入「存储」Tab 时自动加载两份配置 ——
+        async function loadStorageConfig() {
+            await Promise.all([loadCosConfigForm(), loadOpenListConfigForm()]);
         }
 
         // ===== 架构文档动态加载 =====

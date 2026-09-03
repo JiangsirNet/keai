@@ -212,11 +212,57 @@
         window.syncLbBgmBtn();
     }
 
+    // ======================================================
+    // 全局存储配置加载（COS + OpenList）
+    // —— 直接从 app_config 表读取并赋值到 window.*，
+    //    保证网盘/视频等使用方无需经过设置页即可拿到最新值
+    // ======================================================
+    let _storageGlobalsLoaded = false;
+    async function initStorageGlobals({ force = false } = {}) {
+        if (_storageGlobalsLoaded && !force) return;
+        try {
+            const keys = [
+                // 腾讯 COS（4 key）
+                'cos_secret_id', 'cos_secret_key', 'cos_bucket', 'cos_region',
+                // OpenList 百度网盘（5 key）
+                'openlist_base_url', 'openlist_username', 'openlist_password',
+                'openlist_mount_path', 'openlist_as_task'
+            ];
+            if (!window.sb) { console.warn('[Storage] sb 未就绪，跳过加载'); return; }
+            const { data, error } = await window.sb
+                .from('app_config').select('config_key, config_value').in('config_key', keys);
+            if (error) throw error;
+            const map = {};
+            (data || []).forEach(r => map[r.config_key] = r.config_value);
+
+            // 赋值到 window 全局变量（与 cloud.js / video.js 使用的变量名一致）
+            window._cosSecretId    = map.cos_secret_id    || '';
+            window._cosSecretKey   = map.cos_secret_key   || '';
+            window._cosBucket      = map.cos_bucket       || '';
+            window._cosRegion      = map.cos_region       || '';
+            window._openlistBaseUrl  = map.openlist_base_url  || '';
+            window._openlistUsername = map.openlist_username || '';
+            window._openlistPassword = map.openlist_password || '';
+            window._openlistMountPath= map.openlist_mount_path|| '';
+            window._openlistAsTask   = map.openlist_as_task === '1';
+            _storageGlobalsLoaded = true;
+        } catch (e) {
+            console.warn('[Storage] 加载全局配置失败:', e);
+        }
+    }
+    window.initStorageGlobals = initStorageGlobals;
+
     // 设置页初始化
     function initConfigPage() {
         if (_pageInited.config) return;
         _pageInited.config = true;
         window.loadCharacterQuotes();
+        // 先拿最新的全局值（确保即使设置页无表单也能填到 window.*）
+        initStorageGlobals({ force: true }).then(() => {
+            // 再让旧 loader 把值填到表单里（如果表单存在）
+            if (window.loadCosConfigForm) window.loadCosConfigForm();
+            if (window.loadOpenListConfigForm) window.loadOpenListConfigForm();
+        });
     }
 
     // ==================== 显示设置（localStorage 记忆）====================
@@ -263,16 +309,40 @@
 
     // 切换页面
     function showPage(name) {
+        // 防御：空/非法页面名直接返回
+        if (!name) return;
+
+        // 网盘已并入首页子Tab：cloud 入口 → 跳首页 + 切网盘子Tab
+        if (name === "cloud") {
+            showPage('home');
+            setTimeout(() => switchSubTab('cloud'), 50);
+            return;
+        }
+
+        // ========== 主 Tab 显隐切换 ==========
+        // 用户说得对：只要K歌/网盘的DOM在#page-home里，父级 .hidden { display:none !important }
+        // 就会把所有子元素（包括 fixed 弹窗）一起隐藏，不需要任何兜底 workaround
         document.querySelectorAll('.page-content').forEach(el => {
             el.classList.toggle('hidden', el.id !== 'page-' + name);
         });
+
+        // 主 Tab 按钮高亮
         document.querySelectorAll('.nav-btn').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.page === name);
         });
+
+        // 如果切回首页 → 恢复上次停留的子 Tab
+        if (name === "home") {
+            const lastSub = localStorage.getItem('_lastSubTab') || 'gallery';
+            if (window.switchSubTab) switchSubTab(lastSub);
+        }
+
+        // 各页面初始化
         if (name === "home") initHomePage();
         if (name === "journal") initJournalPage();
         if (name === "game") initGamePage();
         if (name === "config") initConfigPage();
+
         // 记住当前页面，刷新后恢复
         localStorage.setItem('_lastPage', name);
         window.scrollTo({ top: 0, behavior: "smooth" });
@@ -281,14 +351,20 @@
     // 首页内子 Tab 切换
     const _subTabInited = {};
     function switchSubTab(sub) {
+        // 防御：空子 tab 名直接返回，避免清空所有内容
+        if (!sub) return;
+
         // 切换按钮高亮
         document.querySelectorAll('.sub-tab').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.sub === sub);
         });
-        // 切换内容
+
+        // 切换内容：除了当前 sub，其它都隐藏
+        const targetId = 'subTab-' + sub;
         document.querySelectorAll('.sub-tab-content').forEach(el => {
-            el.classList.toggle('hidden', el.id !== 'subTab-' + sub);
+            el.classList.toggle('hidden', el.id !== targetId);
         });
+
         // 记住当前子 Tab，刷新后恢复
         localStorage.setItem('_lastSubTab', sub);
         // 懒加载：首次切换时初始化
@@ -323,6 +399,13 @@
             _subTabInited.video = true;
             if (window.initVideoPage) window.initVideoPage();
             else if (window.loadVideoList) window.loadVideoList();
+        }
+        if (sub === 'cloud' && !_subTabInited.cloud) {
+            // 仅在初始化函数存在时才标记，避免 cloud.js 未加载时永久跳过
+            if (window.initCloudPage) {
+                _subTabInited.cloud = true;
+                window.initCloudPage();
+            }
         }
     }
 

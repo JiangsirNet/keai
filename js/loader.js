@@ -39,8 +39,9 @@
         { path: 'js/ai_chat.js',         type: 'js', container: null, order: 24 },
         { path: 'js/karaoke.js',         type: 'js', container: null, order: 25 },
         { path: 'js/video.js',           type: 'js', container: null, order: 26 },
-        { path: 'js/pull_refresh.js',    type: 'js', container: null, order: 27 },
-        { path: 'js/auth.js',            type: 'js', container: null, order: 28 },
+        { path: 'js/cloud.js',           type: 'js', container: null, order: 27 },
+        { path: 'js/pull_refresh.js',    type: 'js', container: null, order: 28 },
+        { path: 'js/auth.js',            type: 'js', container: null, order: 29 },
     ];
 
     // ---- 本地容器配置 ----

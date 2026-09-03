@@ -597,7 +597,6 @@
                 } catch (e) { console.warn('COS 删除失败:', e); }
             }
 
-            window.sendNotification('video', '🗑️ 视频已删除');
             loadVideoList(currentPage);
         } catch (err) {
             alert('删除失败：' + err.message);
