@@ -98,9 +98,21 @@
         @media (min-width: 641px) {
             .container-cards { display: none; }
         }
+        /* 移动端侧边栏转为横向滚动，大屏垂直侧边栏 */
+@media (max-width: 767px) {
+    .space-y-1.flex {
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+    .space-y-1.flex::-webkit-scrollbar {
+        display: none;
+    }
+}
+
     </style>
 </head>
 <body class="min-h-screen p-3 sm:p-4">
+        <div class="w-full max-w-full flex gap-4 flex-wrap md:flex-nowrap">
     <!-- 左侧侧边栏 -->
 <div class="w-full md:w-48 flex-shrink-0 bg-vspanel rounded-xl p-3 shadow border border-vsborder">
     <h3 class="text-sm font-bold text-vstext mb-3">菜单</h3>
@@ -129,7 +141,6 @@
     </div>
 </div>
     <div class="flex-1 min-w-0">
-    <div class="w-full max-w-full flex gap-4 flex-wrap md:flex-nowrap">
         <h1 class="text-xl sm:text-2xl font-bold text-love mb-2"><i class="fa fa-database"></i> 资源管理工具</h1>
         <!-- 登录状态条 -->
         <div id="authBar" class="mb-3 p-3 rounded-xl shadow-sm flex items-center justify-between">
