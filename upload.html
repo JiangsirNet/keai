@@ -98,14 +98,25 @@
         @media (min-width: 641px) {
             .container-cards { display: none; }
         }
-        /* 移动端侧边栏转为横向滚动，大屏垂直侧边栏 */
+/* 手机端：隐藏滚动条，开启顺滑横向滚动 */
 @media (max-width: 767px) {
-    .space-y-1.flex {
+    /* 侧边栏容器小屏100%宽度 */
+    .max-w-full.flex {
+        flex-direction: column;
+    }
+    /* 菜单滚动容器 */
+    .overflow-x-auto {
         -webkit-overflow-scrolling: touch;
         scrollbar-width: none;
     }
-    .space-y-1.flex::-webkit-scrollbar {
+    .overflow-x-auto::-webkit-scrollbar {
         display: none;
+    }
+}
+/* 大屏>=768px恢复左右并排布局 */
+@media (min-width:768px){
+    .max-w-full.flex {
+        flex-direction: row;
     }
 }
 
@@ -116,26 +127,27 @@
     <!-- 左侧侧边栏 -->
 <div class="w-full md:w-48 flex-shrink-0 bg-vspanel rounded-xl p-3 shadow border border-vsborder">
     <h3 class="text-sm font-bold text-vstext mb-3">菜单</h3>
-    <div class="space-y-1 md:space-y-1 flex md:flex-col gap-1 overflow-x-auto pb-2 md:pb-0">
-        <button onclick="switchTab('local')" id="tabLocal" class="tab-btn active w-full md:w-auto text-left py-2 px-3 rounded-lg bg-vspanel text-vstext font-semibold text-sm border border-vsborder flex items-center gap-2 flex-shrink-0">
+    <!-- md以上：flex-col垂直；小屏：flex-row横向滚动 -->
+    <div class="flex flex-col md:flex-row gap-1 overflow-x-auto pb-2 md:pb-0 md:flex-col">
+        <button onclick="switchTab('local')" id="tabLocal" class="tab-btn active w-auto md:w-full text-left py-2 px-3 rounded-lg bg-vspanel text-vstext font-semibold text-sm border border-vsborder flex items-center gap-2 flex-shrink-0">
             <i class="fa fa-upload"></i> <span>上传</span>
         </button>
-        <button onclick="switchTab('online')" id="tabOnline" class="tab-btn w-full md:w-auto text-left py-2 px-3 rounded-lg bg-vspanel text-vstext font-semibold text-sm border border-vsborder flex items-center gap-2 flex-shrink-0">
+        <button onclick="switchTab('online')" id="tabOnline" class="tab-btn w-auto md:w-full text-left py-2 px-3 rounded-lg bg-vspanel text-vstext font-semibold text-sm border border-vsborder flex items-center gap-2 flex-shrink-0">
             <i class="fa fa-pencil"></i> <span>管理</span>
         </button>
-        <button onclick="switchTab('sql')" id="tabSql" class="tab-btn w-full md:w-auto text-left py-2 px-3 rounded-lg bg-vspanel text-vstext font-semibold text-sm border border-vsborder flex items-center gap-2 flex-shrink-0">
+        <button onclick="switchTab('sql')" id="tabSql" class="tab-btn w-auto md:w-full text-left py-2 px-3 rounded-lg bg-vspanel text-vstext font-semibold text-sm border border-vsborder flex items-center gap-2 flex-shrink-0">
             <i class="fa fa-code"></i> <span>建表</span>
         </button>
-        <button onclick="switchTab('docs')" id="tabDocs" class="tab-btn w-full md:w-auto text-left py-2 px-3 rounded-lg bg-vspanel text-vstext font-semibold text-sm border border-vsborder flex items-center gap-2 flex-shrink-0">
+        <button onclick="switchTab('docs')" id="tabDocs" class="tab-btn w-auto md:w-full text-left py-2 px-3 rounded-lg bg-vspanel text-vstext font-semibold text-sm border border-vsborder flex items-center gap-2 flex-shrink-0">
             <i class="fa fa-book"></i> <span>文档</span>
         </button>
-        <button onclick="switchTab('containers')" id="tabContainers" class="tab-btn w-full md:w-auto text-left py-2 px-3 rounded-lg bg-vspanel text-vstext font-semibold text-sm border border-vsborder flex items-center gap-2 flex-shrink-0">
+        <button onclick="switchTab('containers')" id="tabContainers" class="tab-btn w-auto md:w-full text-left py-2 px-3 rounded-lg bg-vspanel text-vstext font-semibold text-sm border border-vsborder flex items-center gap-2 flex-shrink-0">
             <i class="fa fa-th"></i> <span>容器</span>
         </button>
-        <button onclick="switchTab('sqlexec')" id="tabSqlExec" class="tab-btn w-full md:w-auto text-left py-2 px-3 rounded-lg bg-vspanel text-vstext font-semibold text-sm border border-vsborder flex items-center gap-2 flex-shrink-0">
+        <button onclick="switchTab('sqlexec')" id="tabSqlExec" class="tab-btn w-auto md:w-full text-left py-2 px-3 rounded-lg bg-vspanel text-vstext font-semibold text-sm border border-vsborder flex items-center gap-2 flex-shrink-0">
             <i class="fa fa-terminal"></i> <span>执行</span>
         </button>
-        <button onclick="switchTab('storage')" id="tabStorage" class="tab-btn w-full md:w-auto text-left py-2 px-3 rounded-lg bg-vspanel text-vstext font-semibold text-sm border border-vsborder flex items-center gap-2 flex-shrink-0">
+        <button onclick="switchTab('storage')" id="tabStorage" class="tab-btn w-auto md:w-full text-left py-2 px-3 rounded-lg bg-vspanel text-vstext font-semibold text-sm border border-vsborder flex items-center gap-2 flex-shrink-0">
             <i class="fa fa-database"></i> <span>存储</span>
         </button>
     </div>
