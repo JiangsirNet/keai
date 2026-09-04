@@ -12,32 +12,80 @@
     <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.52/min/vs/loader.min.js"></script>
     <script>
         tailwind.config = {
-            theme: { extend: { colors: { love: '#ff6b8b', loveDark: '#e04c6e' } } }
+            theme: {
+                extend: {
+                    colors: {
+                        love: '#ff6b8b',
+                        loveDark: '#e04c6e',
+                        vsbg: '#1e1e1e',
+                        vspanel: '#252526',
+                        vsborder: '#3c3c3c',
+                        vstext: '#d4d4d4',
+                        vsgray: '#858585'
+                    }
+                }
+            }
         }
     </script>
     <style>
-        body { font-family: system-ui, sans-serif; background: #fef2f4; }
+        /* VS Code Dark+ 主题全局 */
+        body {
+            font-family: system-ui, sans-serif;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
         .log-line { padding: 2px 0; font-size: 13px; }
-        .log-ok { color: #16a34a; } .log-err { color: #dc2626; } .log-info { color: #2563eb; }
+        .log-ok { color: #4ec990; }
+        .log-err { color: #f48771; }
+        .log-info { color: #569cd6; }
+
         .tab-btn.active { background: #ff6b8b; color: #fff; }
         .asset-item.active { background: #ff6b8b; color: #fff; }
         .asset-item { cursor: pointer; }
-        .asset-item:hover { background: #ffe4e9; }
-        #authBar { background: #fff; border: 1px solid #ffe4e9; }
-        #editorArea { border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
+        .asset-item:hover { background: #2d2d30; }
+
+        #authBar {
+            background: #252526;
+            border: 1px solid #3c3c3c;
+        }
+        #editorArea {
+            border: 1px solid #3c3c3c;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        /* Markdown文档暗色渲染 */
         #docView h1 { font-size: 1.5rem; font-weight: bold; color: #ff6b8b; margin: 1rem 0 0.5rem; }
-        #docView h2 { font-size: 1.2rem; font-weight: bold; color: #e04c6e; margin: 1rem 0 0.5rem; border-bottom: 1px solid #ffe4e9; padding-bottom: 0.25rem; }
-        #docView h3 { font-size: 1rem; font-weight: bold; color: #444; margin: 0.75rem 0 0.25rem; }
-        #docView p { font-size: 0.875rem; color: #555; margin: 0.25rem 0; }
-        #docView ul, #docView ol { font-size: 0.875rem; color: #555; margin: 0.25rem 0 0.25rem 1.5rem; }
+        #docView h2 { font-size: 1.2rem; font-weight: bold; color: #ff87a2; margin: 1rem 0 0.5rem; border-bottom: 1px solid #3c3c3c; padding-bottom: 0.25rem; }
+        #docView h3 { font-size: 1rem; font-weight: bold; color: #e0e0e0; margin: 0.75rem 0 0.25rem; }
+        #docView p { font-size: 0.875rem; color: #cccccc; margin: 0.25rem 0; }
+        #docView ul, #docView ol { font-size: 0.875rem; color: #cccccc; margin: 0.25rem 0 0.25rem 1.5rem; }
         #docView li { margin: 0.15rem 0; }
-        #docView code { background: #f3f4f6; padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.8rem; color: #d6336c; }
-        #docView pre { background: #1e293b; color: #e2e8f0; padding: 0.75rem; border-radius: 8px; overflow-x: auto; margin: 0.5rem 0; }
+        #docView code { background: #2d2d30; padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.8rem; color: #ff6b8b; }
+        #docView pre { background: #111111; color: #e2e8f0; padding: 0.75rem; border-radius: 8px; overflow-x: auto; margin: 0.5rem 0; }
         #docView pre code { background: none; color: inherit; padding: 0; }
         #docView table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin: 0.5rem 0; }
-        #docView th, #docView td { border: 1px solid #e5e7eb; padding: 0.3rem 0.5rem; text-align: left; }
-        #docView th { background: #f9fafb; font-weight: 600; }
-        #docView blockquote { border-left: 3px solid #ff6b8b; padding-left: 0.75rem; color: #6b7280; margin: 0.5rem 0; }
+        #docView th, #docView td { border: 1px solid #3c3c3c; padding: 0.3rem 0.5rem; text-align: left; color:#cccccc; }
+        #docView th { background: #2d2d30; font-weight: 600; }
+        #docView blockquote { border-left: 3px solid #ff6b8b; padding-left: 0.75rem; color: #999999; margin: 0.5rem 0; }
+
+        /* 表单输入框暗色 */
+        input, select, textarea {
+            background-color:#2d2d30 !important;
+            color:#d4d4d4 !important;
+            border-color:#3c3c3c !important;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline:none;
+            border-color:#ff6b8b !important;
+        }
+
+        /* 滚动条适配暗色 */
+        ::-webkit-scrollbar { width:8px;height:8px; }
+        ::-webkit-scrollbar-track { background:#1e1e1e; }
+        ::-webkit-scrollbar-thumb { background:#444444; border-radius:4px; }
+        ::-webkit-scrollbar-thumb:hover { background:#555555; }
+
         /* 移动端适配 */
         @media (max-width: 640px) {
             .tab-bar { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
@@ -55,108 +103,102 @@
 <body class="min-h-screen p-3 sm:p-4">
     <div class="w-full max-w-full">
         <h1 class="text-xl sm:text-2xl font-bold text-love mb-2"><i class="fa fa-database"></i> 资源管理工具</h1>
-
         <!-- 登录状态条 -->
         <div id="authBar" class="mb-3 p-3 rounded-xl shadow-sm flex items-center justify-between">
             <div id="authStatus" class="text-sm"></div>
             <div id="authActions"></div>
         </div>
-
         <!-- 登录面板 -->
-        <div id="loginPanel" class="hidden mb-3 bg-white rounded-xl p-4 shadow">
-            <h2 class="font-bold text-gray-700 mb-2"><i class="fa fa-lock"></i> 需要登录</h2>
-            <p class="text-sm text-gray-500 mb-3">上传/修改/删除资源需要认证用户权限。请使用情侣空间账号登录。</p>
+        <div id="loginPanel" class="hidden mb-3 bg-vspanel rounded-xl p-4 shadow border border-vsborder">
+            <h2 class="font-bold text-vstext mb-2"><i class="fa fa-lock"></i> 需要登录</h2>
+            <p class="text-sm text-vsgray mb-3">上传/修改/删除资源需要认证用户权限。请使用情侣空间账号登录。</p>
             <div class="flex flex-col sm:flex-row gap-2">
-                <input id="loginEmail" type="email" placeholder="邮箱" class="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-love">
-                <input id="loginPwd" type="password" placeholder="密码" class="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-love">
+                <input id="loginEmail" type="email" placeholder="邮箱" class="flex-1 border border-vsborder rounded-lg px-3 py-2 text-sm outline-none focus:border-love">
+                <input id="loginPwd" type="password" placeholder="密码" class="flex-1 border border-vsborder rounded-lg px-3 py-2 text-sm outline-none focus:border-love">
                 <button onclick="doLogin()" class="bg-love text-white px-6 py-2 rounded-lg font-semibold hover:bg-loveDark transition">
                     <i class="fa fa-sign-in"></i> 登录
                 </button>
             </div>
-            <p id="loginErr" class="text-sm text-red-500 mt-2 hidden"></p>
+            <p id="loginErr" class="text-sm text-red-400 mt-2 hidden"></p>
         </div>
-
         <!-- Tab 切换 -->
         <div class="tab-bar grid grid-cols-7 gap-1 sm:flex sm:gap-2 mb-4 pb-1">
-            <button onclick="switchTab('local')" id="tabLocal" class="tab-btn active flex flex-col items-center py-2 px-1 sm:px-4 sm:flex-row rounded-lg bg-white text-gray-600 font-semibold text-sm shadow">
+            <button onclick="switchTab('local')" id="tabLocal" class="tab-btn active flex flex-col items-center py-2 px-1 sm:px-4 sm:flex-row rounded-lg bg-vspanel text-vstext font-semibold text-sm shadow border border-vsborder">
                 <i class="fa fa-upload text-base"></i> <span class="text-xs mt-0.5 sm:mt-0 sm:ml-1.5">上传</span>
             </button>
-            <button onclick="switchTab('online')" id="tabOnline" class="tab-btn flex flex-col items-center py-2 px-1 sm:px-4 sm:flex-row rounded-lg bg-white text-gray-600 font-semibold text-sm shadow">
+            <button onclick="switchTab('online')" id="tabOnline" class="tab-btn flex flex-col items-center py-2 px-1 sm:px-4 sm:flex-row rounded-lg bg-vspanel text-vstext font-semibold text-sm shadow border border-vsborder">
                 <i class="fa fa-pencil text-base"></i> <span class="text-xs mt-0.5 sm:mt-0 sm:ml-1.5">管理</span>
             </button>
-            <button onclick="switchTab('sql')" id="tabSql" class="tab-btn flex flex-col items-center py-2 px-1 sm:px-4 sm:flex-row rounded-lg bg-white text-gray-600 font-semibold text-sm shadow">
+            <button onclick="switchTab('sql')" id="tabSql" class="tab-btn flex flex-col items-center py-2 px-1 sm:px-4 sm:flex-row rounded-lg bg-vspanel text-vstext font-semibold text-sm shadow border border-vsborder">
                 <i class="fa fa-code text-base"></i> <span class="text-xs mt-0.5 sm:mt-0 sm:ml-1.5">建表</span>
             </button>
-            <button onclick="switchTab('docs')" id="tabDocs" class="tab-btn flex flex-col items-center py-2 px-1 sm:px-4 sm:flex-row rounded-lg bg-white text-gray-600 font-semibold text-sm shadow">
+            <button onclick="switchTab('docs')" id="tabDocs" class="tab-btn flex flex-col items-center py-2 px-1 sm:px-4 sm:flex-row rounded-lg bg-vspanel text-vstext font-semibold text-sm shadow border border-vsborder">
                 <i class="fa fa-book text-base"></i> <span class="text-xs mt-0.5 sm:mt-0 sm:ml-1.5">文档</span>
             </button>
-            <button onclick="switchTab('containers')" id="tabContainers" class="tab-btn flex flex-col items-center py-2 px-1 sm:px-4 sm:flex-row rounded-lg bg-white text-gray-600 font-semibold text-sm shadow">
+            <button onclick="switchTab('containers')" id="tabContainers" class="tab-btn flex flex-col items-center py-2 px-1 sm:px-4 sm:flex-row rounded-lg bg-vspanel text-vstext font-semibold text-sm shadow border border-vsborder">
                 <i class="fa fa-th text-base"></i> <span class="text-xs mt-0.5 sm:mt-0 sm:ml-1.5">容器</span>
             </button>
-            <button onclick="switchTab('sqlexec')" id="tabSqlExec" class="tab-btn flex flex-col items-center py-2 px-1 sm:px-4 sm:flex-row rounded-lg bg-white text-gray-600 font-semibold text-sm shadow">
+            <button onclick="switchTab('sqlexec')" id="tabSqlExec" class="tab-btn flex flex-col items-center py-2 px-1 sm:px-4 sm:flex-row rounded-lg bg-vspanel text-vstext font-semibold text-sm shadow border border-vsborder">
                 <i class="fa fa-terminal text-base"></i> <span class="text-xs mt-0.5 sm:mt-0 sm:ml-1.5">执行</span>
             </button>
-            <button onclick="switchTab('storage')" id="tabStorage" class="tab-btn flex flex-col items-center py-2 px-1 sm:px-4 sm:flex-row rounded-lg bg-white text-gray-600 font-semibold text-sm shadow">
+            <button onclick="switchTab('storage')" id="tabStorage" class="tab-btn flex flex-col items-center py-2 px-1 sm:px-4 sm:flex-row rounded-lg bg-vspanel text-vstext font-semibold text-sm shadow border border-vsborder">
                 <i class="fa fa-database text-base"></i> <span class="text-xs mt-0.5 sm:mt-0 sm:ml-1.5">存储</span>
             </button>
         </div>
-
         <!-- ===== Tab: 本地上传 ===== -->
-        <div id="panelLocal" class="bg-white rounded-xl p-4 shadow mb-6">
-            <h2 class="font-bold text-gray-700 mb-2">上传本地文件到数据库</h2>
-            <p class="text-sm text-gray-500 mb-3">读取本地 styles.css、partials/ 和 js/ 目录的文件并上传。仅在本地服务器可用。</p>
+        <div id="panelLocal" class="bg-vspanel rounded-xl p-4 shadow mb-6 border border-vsborder">
+            <h2 class="font-bold text-vstext mb-2">上传本地文件到数据库</h2>
+            <p class="text-sm text-vsgray mb-3">读取本地 styles.css、partials/ 和 js/ 目录的文件并上传。仅在本地服务器可用。</p>
             <button onclick="uploadAll()" id="uploadBtn" class="bg-love text-white px-6 py-3 rounded-xl font-semibold hover:bg-loveDark transition">
                 <i class="fa fa-upload"></i> 全部上传
             </button>
-            <div id="logBox" class="mt-4 bg-gray-900 text-gray-100 rounded-lg p-3 max-h-60 overflow-y-auto font-mono"></div>
+            <div id="logBox" class="mt-4 bg-[#111111] text-gray-100 rounded-lg p-3 max-h-60 overflow-y-auto font-mono"></div>
         </div>
-
         <!-- ===== Tab: 在线管理 ===== -->
         <div id="panelOnline" class="hidden">
             <div class="flex flex-col md:flex-row gap-4">
                 <!-- 资源列表 -->
-                <div class="bg-white rounded-xl p-3 shadow w-full md:w-64 flex-shrink-0">
+                <div class="bg-vspanel rounded-xl p-3 shadow w-full md:w-64 flex-shrink-0 border border-vsborder">
                     <div class="flex items-center justify-between mb-2">
-                        <h2 class="font-bold text-gray-700 text-sm">资源列表</h2>
+                        <h2 class="font-bold text-vstext text-sm">资源列表</h2>
                         <button onclick="showNewForm()" class="text-love text-sm hover:text-loveDark"><i class="fa fa-plus"></i> 新增</button>
                     </div>
                     <div id="assetList" class="space-y-1 max-h-[300px] md:max-h-[500px] overflow-y-auto">
-                        <div class="text-center text-gray-400 text-sm py-4">加载中...</div>
+                        <div class="text-center text-vsgray text-sm py-4">加载中...</div>
                     </div>
                 </div>
-
                 <!-- 编辑器 -->
-                <div class="bg-white rounded-xl p-4 shadow flex-1 min-w-0">
+                <div class="bg-vspanel rounded-xl p-4 shadow flex-1 min-w-0 border border-vsborder">
                     <div id="editorBar" class="flex items-center gap-2 mb-3 flex-wrap">
-                        <span id="editorPath" class="text-sm font-bold text-gray-600 break-all">未选择资源</span>
-                        <span id="editorType" class="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-500"></span>
+                        <span id="editorPath" class="text-sm font-bold text-vstext break-all">未选择资源</span>
+                        <span id="editorType" class="text-xs px-2 py-0.5 rounded bg-[#333333] text-vsgray"></span>
                         <div class="flex-1"></div>
-                        <button onclick="downloadAllAssets()" class="text-xs bg-purple-500 text-white px-3 py-1.5 rounded-lg hover:bg-purple-600 flex items-center gap-1">
+                        <button onclick="downloadAllAssets()" class="text-xs bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700 flex items-center gap-1">
                             <i class="fa fa-download"></i> 全部下载（ZIP）
                         </button>
                     </div>
                     <div id="editorMeta" class="hidden flex flex-wrap gap-2 mb-3 text-xs">
-                        <label class="flex items-center gap-1">类型:
-                            <select id="metaType" class="border border-gray-200 rounded px-2 py-1">
+                        <label class="flex items-center gap-1 text-vsgray">类型:
+                            <select id="metaType" class="border border-vsborder rounded px-2 py-1">
                                 <option value="css">css</option>
                                 <option value="js">js</option>
                                 <option value="html">html</option>
                                 <option value="md">md</option>
                             </select>
                         </label>
-                        <label class="flex items-center gap-1">容器ID:
-                            <input id="metaContainer" type="text" placeholder="如 pageHomeContainer" class="border border-gray-200 rounded px-2 py-1 w-32 sm:w-40">
+                        <label class="flex items-center gap-1 text-vsgray">容器ID:
+                            <input id="metaContainer" type="text" placeholder="如 pageHomeContainer" class="border border-vsborder rounded px-2 py-1 w-32 sm:w-40">
                         </label>
-                        <label class="flex items-center gap-1">顺序:
-                            <input id="metaOrder" type="number" class="border border-gray-200 rounded px-2 py-1 w-16">
+                        <label class="flex items-center gap-1 text-vsgray">顺序:
+                            <input id="metaOrder" type="number" class="border border-vsborder rounded px-2 py-1 w-16">
                         </label>
-                        <label class="flex items-center gap-1">启用:
-                            <input id="metaActive" type="checkbox" checked class="w-4 h-4">
+                        <label class="flex items-center gap-1 text-vsgray">启用:
+                            <input id="metaActive" type="checkbox" checked class="w-4 h-4 accent-love">
                         </label>
                     </div>
                     <!-- Monaco 编辑器工具栏 -->
-                    <div class="flex items-center gap-2 mb-2 flex-wrap text-xs">
-                        <select id="editorLang" title="语言模式" class="border border-gray-200 rounded px-2 py-1 bg-white">
+                    <div class="flex items-center gap-2 mb-2 flex-wrap text-xs text-vsgray">
+                        <select id="editorLang" title="语言模式" class="border border-vsborder rounded px-2 py-1 bg-vspanel">
                             <option value="javascript">JavaScript</option>
                             <option value="html">HTML</option>
                             <option value="css">CSS</option>
@@ -164,48 +206,47 @@
                             <option value="json">JSON</option>
                             <option value="sql">SQL</option>
                         </select>
-                        <select id="editorTheme" title="主题" class="border border-gray-200 rounded px-2 py-1 bg-white">
+                        <select id="editorTheme" title="主题" class="border border-vsborder rounded px-2 py-1 bg-vspanel">
                             <option value="vs">浅色</option>
                             <option value="vs-dark">深色</option>
                         </select>
-                        <button onclick="formatEditor()" title="格式化文档" class="border border-gray-200 rounded px-2 py-1 bg-white hover:bg-rose-50"><i class="fa fa-indent"></i> 格式化</button>
-                        <span class="text-gray-400" id="editorCursor">Ln 1, Col 1</span>
-                        <span class="text-gray-400" id="editorCharCount">0 字符</span>
-                        <button onclick="toggleAiPanel()" title="AI 助手" class="border border-love text-love rounded px-2 py-1 bg-white hover:bg-rose-50 ml-auto md:hidden"><i class="fa fa-magic"></i> AI</button>
+                        <button onclick="formatEditor()" title="格式化文档" class="border border-vsborder rounded px-2 py-1 bg-vspanel hover:bg-[#2d2d30]"><i class="fa fa-indent"></i> 格式化</button>
+                        <span class="text-vsgray" id="editorCursor">Ln 1, Col 1</span>
+                        <span class="text-vsgray" id="editorCharCount">0 字符</span>
+                        <button onclick="toggleAiPanel()" title="AI 助手" class="border border-love text-love rounded px-2 py-1 bg-vspanel hover:bg-[#2d2d30] ml-auto md:hidden"><i class="fa fa-magic"></i> AI</button>
                     </div>
                     <div id="editorArea" class="w-full h-[400px]"></div>
                     <div class="flex flex-wrap gap-2 mt-3">
                         <button onclick="saveAsset()" id="saveBtn" class="bg-love text-white px-5 py-2 rounded-lg font-semibold hover:bg-loveDark transition disabled:opacity-50" disabled>
                             <i class="fa fa-save"></i> 保存
                         </button>
-                        <button onclick="deleteAsset()" id="deleteBtn" class="bg-red-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-red-600 transition disabled:opacity-50" disabled>
+                        <button onclick="deleteAsset()" id="deleteBtn" class="bg-red-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-red-700 transition disabled:opacity-50" disabled>
                             <i class="fa fa-trash"></i> 删除
                         </button>
                         <button onclick="copyAsset()" id="copyBtn" class="bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-gray-700 transition disabled:opacity-50" disabled>
                             <i class="fa fa-clipboard"></i> 复制
                         </button>
-                        <button onclick="downloadAsset()" id="downloadBtn" class="bg-blue-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-600 transition disabled:opacity-50" disabled>
+                        <button onclick="downloadAsset()" id="downloadBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50" disabled>
                             <i class="fa fa-download"></i> 下载
                         </button>
-                        <button onclick="showHistory()" id="historyBtn" class="bg-purple-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-600 transition disabled:opacity-50" disabled>
+                        <button onclick="showHistory()" id="historyBtn" class="bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-700 transition disabled:opacity-50" disabled>
                             <i class="fa fa-history"></i> 历史版本
                         </button>
-                        <span id="saveStatus" class="text-sm text-gray-400 self-center"></span>
+                        <span id="saveStatus" class="text-sm text-vsgray self-center"></span>
                     </div>
                 </div>
-
                 <!-- AI 代码助手面板 -->
-                <div id="aiPanel" class="hidden md:flex bg-white rounded-xl p-3 shadow w-full md:w-96 lg:w-[420px] flex-shrink-0 flex-col">
+                <div id="aiPanel" class="hidden md:flex bg-vspanel rounded-xl p-3 shadow w-full md:w-96 lg:w-[420px] flex-shrink-0 flex-col border border-vsborder">
                     <div class="flex items-center justify-between mb-2">
-                        <h2 class="font-bold text-gray-700 text-sm flex items-center gap-1">
+                        <h2 class="font-bold text-vstext text-sm flex items-center gap-1">
                             <i class="fa fa-magic text-love"></i> AI 代码助手
                         </h2>
-                        <button onclick="toggleAiPanel()" class="text-gray-400 hover:text-gray-600 md:hidden">
+                        <button onclick="toggleAiPanel()" class="text-vsgray hover:text-vstext md:hidden">
                             <i class="fa fa-times"></i>
                         </button>
                     </div>
                     <div id="aiChatMsgs" class="flex-1 overflow-y-auto space-y-2 mb-2 min-h-[200px] max-h-[300px] md:max-h-[400px] text-sm">
-                        <div class="text-center text-gray-400 text-xs py-4">
+                        <div class="text-center text-vsgray text-xs py-4">
                             <i class="fa fa-comments block mb-1"></i>
                             自动加载项目文档，可手动引用代码文件
                         </div>
@@ -214,17 +255,17 @@
                     <div id="aiRefFiles" class="hidden mb-2"></div>
                     <!-- 快捷指令 -->
                     <div class="flex flex-wrap items-center gap-1 mb-2">
-                        <button onclick="aiQuickCmd('优化这段代码')" class="text-xs bg-rose-50 text-love px-2 py-1 rounded hover:bg-rose-100">优化</button>
-                        <button onclick="aiQuickCmd('解释这段代码')" class="text-xs bg-rose-50 text-love px-2 py-1 rounded hover:bg-rose-100">解释</button>
-                        <button onclick="aiQuickCmd('修复这个Bug')" class="text-xs bg-rose-50 text-love px-2 py-1 rounded hover:bg-rose-100">修复</button>
-                        <button onclick="aiQuickCmd('添加详细注释')" class="text-xs bg-rose-50 text-love px-2 py-1 rounded hover:bg-rose-100">注释</button>
-                        <button onclick="clearAiChat()" class="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded hover:bg-gray-200 ml-auto" title="清空聊天记录">
+                        <button onclick="aiQuickCmd('优化这段代码')" class="text-xs bg-[#38282c] text-love px-2 py-1 rounded hover:bg-[#48343a]">优化</button>
+                        <button onclick="aiQuickCmd('解释这段代码')" class="text-xs bg-[#38282c] text-love px-2 py-1 rounded hover:bg-[#48343a]">解释</button>
+                        <button onclick="aiQuickCmd('修复这个Bug')" class="text-xs bg-[#38282c] text-love px-2 py-1 rounded hover:bg-[#48343a]">修复</button>
+                        <button onclick="aiQuickCmd('添加详细注释')" class="text-xs bg-[#38282c] text-love px-2 py-1 rounded hover:bg-[#48343a]">注释</button>
+                        <button onclick="clearAiChat()" class="text-xs bg-[#333333] text-vsgray px-2 py-1 rounded hover:bg-[#444444] ml-auto" title="清空聊天记录">
                             <i class="fa fa-trash"></i> 清空
                         </button>
                     </div>
                     <div class="flex gap-1">
                         <input id="aiChatInput" type="text" placeholder="对 AI 说..."
-                            class="flex-1 border border-gray-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:border-love"
+                            class="flex-1 border border-vsborder rounded-lg px-2 py-1.5 text-sm outline-none focus:border-love"
                             onkeydown="if(event.key==='Enter')sendAiChat()">
                         <button onclick="sendAiChat()" class="bg-love text-white px-3 py-1.5 rounded-lg text-sm hover:bg-loveDark flex-shrink-0">
                             <i class="fa fa-paper-plane"></i>
@@ -233,164 +274,157 @@
                 </div>
             </div>
         </div>
-
         <!-- ===== 历史版本弹窗 ===== -->
-        <div id="historyModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
-                <div class="flex items-center justify-between p-4 border-b">
-                    <h3 class="font-bold text-gray-700 flex items-center gap-2">
-                        <i class="fa fa-history text-purple-500"></i>
+        <div id="historyModal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+            <div class="bg-vspanel rounded-2xl shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col border border-vsborder">
+                <div class="flex items-center justify-between p-4 border-b border-vsborder">
+                    <h3 class="font-bold text-vstext flex items-center gap-2">
+                        <i class="fa fa-history text-purple-400"></i>
                         <span id="historyTitle">历史版本</span>
                     </h3>
-                    <button onclick="closeHistory()" class="text-gray-400 hover:text-gray-600 text-xl">
+                    <button onclick="closeHistory()" class="text-vsgray hover:text-vstext text-xl">
                         <i class="fa fa-times"></i>
                     </button>
                 </div>
                 <div id="historyList" class="flex-1 overflow-y-auto p-4 space-y-2">
-                    <div class="text-center text-gray-400 py-8">加载中...</div>
+                    <div class="text-center text-vsgray py-8">加载中...</div>
                 </div>
             </div>
         </div>
-
         <!-- ===== Tab: 建表 SQL ===== -->
-        <div id="panelSql" class="hidden bg-white rounded-xl p-4 shadow mb-6">
-            <p class="text-sm text-gray-500 mb-2">在 Supabase Dashboard → SQL Editor 中执行：</p>
-            <textarea id="sqlBox" readonly class="w-full h-[300px] sm:h-96 bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs font-mono text-gray-700"></textarea>
+        <div id="panelSql" class="hidden bg-vspanel rounded-xl p-4 shadow mb-6 border border-vsborder">
+            <p class="text-sm text-vsgray mb-2">在 Supabase Dashboard → SQL Editor 中执行：</p>
+            <textarea id="sqlBox" readonly class="w-full h-[300px] sm:h-96 bg-[#111111] border border-vsborder rounded-lg p-3 text-xs font-mono text-vstext"></textarea>
             <div class="flex flex-wrap gap-2 mt-2">
                 <button onclick="copySQL()" class="bg-love text-white px-4 py-2 rounded-lg text-sm hover:bg-loveDark">
                     <i class="fa fa-clipboard"></i> 复制 SQL
                 </button>
-                <button onclick="downloadSQL()" class="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-600">
+                <button onclick="downloadSQL()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700">
                     <i class="fa fa-download"></i> 下载 SQL
                 </button>
             </div>
         </div>
-
         <!-- ===== Tab: 架构文档 ===== -->
-        <div id="panelDocs" class="hidden bg-white rounded-xl p-4 sm:p-6 shadow mb-6 max-h-[80vh] overflow-y-auto">
+        <div id="panelDocs" class="hidden bg-vspanel rounded-xl p-4 sm:p-6 shadow mb-6 max-h-[80vh] overflow-y-auto border border-vsborder">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="text-lg sm:text-xl font-bold text-love"><i class="fa fa-book"></i> 项目架构文档</h2>
                 <span class="flex items-center gap-2">
-                    <button onclick="copyDoc()" class="text-sm text-gray-500 hover:text-gray-700"><i class="fa fa-clipboard"></i> 复制</button>
-                    <button onclick="downloadDoc()" class="text-sm text-blue-500 hover:text-blue-700"><i class="fa fa-download"></i> 下载</button>
+                    <button onclick="copyDoc()" class="text-sm text-vsgray hover:text-vstext"><i class="fa fa-clipboard"></i> 复制</button>
+                    <button onclick="downloadDoc()" class="text-sm text-blue-400 hover:text-blue-300"><i class="fa fa-download"></i> 下载</button>
                     <button onclick="toggleDocEdit()" id="docEditBtn" class="text-sm text-love hover:text-loveDark"><i class="fa fa-pencil"></i> 编辑</button>
                 </span>
             </div>
             <div id="docView" class="prose prose-sm max-w-none"></div>
             <div id="docEdit" class="hidden">
-                <textarea id="docTextarea" class="w-full h-[300px] sm:h-[500px] bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs font-mono"></textarea>
+                <textarea id="docTextarea" class="w-full h-[300px] sm:h-[500px] bg-[#111111] border border-vsborder rounded-lg p-3 text-xs font-mono"></textarea>
                 <div class="flex gap-2 mt-2">
                     <button onclick="saveDoc()" class="bg-love text-white px-4 py-2 rounded-lg text-sm hover:bg-loveDark"><i class="fa fa-save"></i> 保存</button>
-                    <button onclick="cancelDocEdit()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-300"><i class="fa fa-times"></i> 取消</button>
-                    <span id="docStatus" class="text-sm text-gray-400 self-center"></span>
+                    <button onclick="cancelDocEdit()" class="bg-[#444444] text-vstext px-4 py-2 rounded-lg text-sm hover:bg-[#555555]"><i class="fa fa-times"></i> 取消</button>
+                    <span id="docStatus" class="text-sm text-vsgray self-center"></span>
                 </div>
             </div>
         </div>
-
         <!-- ===== Tab: 容器配置 ===== -->
-        <div id="panelContainers" class="hidden bg-white rounded-xl p-4 shadow mb-6">
+        <div id="panelContainers" class="hidden bg-vspanel rounded-xl p-4 shadow mb-6 border border-vsborder">
             <div class="flex items-center justify-between mb-3">
-                <h2 class="font-bold text-gray-700">页面容器配置</h2>
+                <h2 class="font-bold text-vstext">页面容器配置</h2>
                 <button onclick="addContainerRow()" class="bg-love text-white px-3 py-1.5 rounded-lg text-sm hover:bg-loveDark"><i class="fa fa-plus"></i> 新增容器</button>
             </div>
-            <p class="text-sm text-gray-500 mb-3">配置导航按钮和页面容器。新增页面只需加一行配置 + 上传对应 HTML/JS 文件。</p>
+            <p class="text-sm text-vsgray mb-3">配置导航按钮和页面容器。新增页面只需加一行配置 + 上传对应 HTML/JS 文件。</p>
             <!-- 桌面端表格 -->
             <div class="container-table-wrap">
-            <table class="desktop-table w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
-                <thead class="bg-gray-100">
+            <table class="desktop-table w-full text-sm border border-vsborder rounded-lg overflow-hidden">
+                <thead class="bg-[#2d2d30]">
                     <tr>
-                        <th class="text-left px-3 py-2">container_id</th>
-                        <th class="text-left px-3 py-2">page_name</th>
-                        <th class="text-left px-3 py-2">导航文字</th>
-                        <th class="text-left px-3 py-2">图标</th>
-                        <th class="text-left px-3 py-2">排序</th>
-                        <th class="text-left px-3 py-2">位置</th>
-                        <th class="text-left px-3 py-2">启用</th>
-                        <th class="text-left px-3 py-2">操作</th>
+                        <th class="text-left px-3 py-2 text-vstext">container_id</th>
+                        <th class="text-left px-3 py-2 text-vstext">page_name</th>
+                        <th class="text-left px-3 py-2 text-vstext">导航文字</th>
+                        <th class="text-left px-3 py-2 text-vstext">图标</th>
+                        <th class="text-left px-3 py-2 text-vstext">排序</th>
+                        <th class="text-left px-3 py-2 text-vstext">位置</th>
+                        <th class="text-left px-3 py-2 text-vstext">启用</th>
+                        <th class="text-left px-3 py-2 text-vstext">操作</th>
                     </tr>
                 </thead>
                 <tbody id="containerTableBody">
-                    <tr><td colspan="8" class="text-center text-gray-400 py-4">加载中...</td></tr>
+                    <tr><td colspan="8" class="text-center text-vsgray py-4">加载中...</td></tr>
                 </tbody>
             </table>
             <!-- 移动端卡片 -->
             <div id="containerCards" class="container-cards space-y-2 hidden">
-                <div class="text-center text-gray-400 text-sm py-4">加载中...</div>
+                <div class="text-center text-vsgray text-sm py-4">加载中...</div>
             </div>
             </div>
         </div>
-
         <!-- ===== Tab: 存储配置 ===== -->
-        <div id="panelStorage" class="hidden bg-white rounded-xl p-4 shadow mb-6">
-            <h2 class="font-bold text-gray-700 mb-3 flex items-center gap-2"><i class="fa fa-database"></i> 存储 / 网盘配置</h2>
-            <p class="text-sm text-gray-500 mb-2">配置腾讯 COS（视频上传）和 OpenList（百度网盘接入）。配置保存在 <code class="bg-gray-100 px-1 rounded text-xs">app_config</code> 表，全局共享。</p>
+        <div id="panelStorage" class="hidden bg-vspanel rounded-xl p-4 shadow mb-6 border border-vsborder">
+            <h2 class="font-bold text-vstext mb-3 flex items-center gap-2"><i class="fa fa-database"></i> 存储 / 网盘配置</h2>
+            <p class="text-sm text-vsgray mb-2">配置腾讯 COS（视频上传）和 OpenList（百度网盘接入）。配置保存在 <code class="bg-[#333333] px-1 rounded text-xs">app_config</code> 表，全局共享。</p>
             <!-- 未登录提示 -->
-            <div id="storageAuthHint" class="hidden bg-orange-50 border border-orange-200 text-orange-700 rounded-lg px-4 py-3 mb-4 text-sm flex items-start gap-2">
+            <div id="storageAuthHint" class="hidden bg-[#443828] border border-orange-700 text-orange-300 rounded-lg px-4 py-3 mb-4 text-sm flex items-start gap-2">
                 <i class="fa fa-exclamation-triangle mt-0.5"></i>
                 <span>未登录无法保存配置。请先在页面 <b>顶部登录框</b> 输入情侣空间的邮箱和密码登录后再保存。测试连接功能无需登录。</span>
             </div>
-
             <!-- 腾讯 COS 配置 -->
             <div class="mb-6">
                 <h3 class="font-semibold text-love flex items-center gap-2 mb-2"><i class="fa fa-cloud"></i> 腾讯 COS 配置</h3>
-                <p class="text-xs text-gray-500 mb-3">用于视频上传（在 <a href="https://console.cloud.tencent.com/cam/capi" target="_blank" class="text-love underline">API 密钥管理</a> 获取）</p>
+                <p class="text-xs text-vsgray mb-3">用于视频上传（在 <a href="https://console.cloud.tencent.com/cam/capi" target="_blank" class="text-love underline">API 密钥管理</a> 获取）</p>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                     <div>
-                        <label class="block text-sm text-gray-600 mb-1">SecretId</label>
-                        <input id="cosSecretIdInput" type="password" placeholder="COS SecretId" class="w-full border border-rose-200 rounded-lg p-2 outline-none focus:border-love">
+                        <label class="block text-sm text-vsgray mb-1">SecretId</label>
+                        <input id="cosSecretIdInput" type="password" placeholder="COS SecretId" class="w-full border border-vsborder rounded-lg p-2 outline-none focus:border-love">
                     </div>
                     <div>
-                        <label class="block text-sm text-gray-600 mb-1">SecretKey</label>
-                        <input id="cosSecretKeyInput" type="password" placeholder="COS SecretKey" class="w-full border border-rose-200 rounded-lg p-2 outline-none focus:border-love">
+                        <label class="block text-sm text-vsgray mb-1">SecretKey</label>
+                        <input id="cosSecretKeyInput" type="password" placeholder="COS SecretKey" class="w-full border border-vsborder rounded-lg p-2 outline-none focus:border-love">
                     </div>
                     <div>
-                        <label class="block text-sm text-gray-600 mb-1">Bucket</label>
-                        <input id="cosBucketInput" placeholder="如 xxx-1300000000" class="w-full border border-rose-200 rounded-lg p-2 outline-none focus:border-love">
+                        <label class="block text-sm text-vsgray mb-1">Bucket</label>
+                        <input id="cosBucketInput" placeholder="如 xxx-1300000000" class="w-full border border-vsborder rounded-lg p-2 outline-none focus:border-love">
                     </div>
                     <div>
-                        <label class="block text-sm text-gray-600 mb-1">Region</label>
-                        <input id="cosRegionInput" placeholder="如 ap-guangzhou" class="w-full border border-rose-200 rounded-lg p-2 outline-none focus:border-love">
+                        <label class="block text-sm text-vsgray mb-1">Region</label>
+                        <input id="cosRegionInput" placeholder="如 ap-guangzhou" class="w-full border border-vsborder rounded-lg p-2 outline-none focus:border-love">
                     </div>
                 </div>
                 <button id="cosSaveBtn" onclick="saveCosConfig()" class="bg-love text-white px-4 py-2 rounded-lg hover:bg-loveDark transition w-full sm:w-auto">
                     <i class="fa fa-save"></i> 保存 COS 配置
                 </button>
             </div>
-
             <!-- OpenList / 百度网盘配置 -->
             <div>
                 <h3 class="font-semibold text-love flex items-center gap-2 mb-2"><i class="fa fa-cloud"></i> OpenList 百度网盘配置</h3>
-                <p class="text-xs text-gray-500 mb-3">
+                <p class="text-xs text-vsgray mb-3">
                     通过 OpenList 服务接入百度网盘，用于在「网盘」Tab 中浏览和上传视频。
                     <a href="https://github.com/OpenListTeam/OpenList" target="_blank" class="text-love underline">了解 OpenList</a> ·
                     <a href="https://api.oplist.org/" target="_blank" class="text-love underline">获取百度网盘 Token</a>
                 </p>
                 <div class="space-y-3">
                     <div>
-                        <label class="block text-sm text-gray-600 mb-1">
+                        <label class="block text-sm text-vsgray mb-1">
                             OpenList 服务地址
-                            <span class="text-[10px] text-gray-400">（如 http://localhost:5244）</span>
+                            <span class="text-[10px] text-vsgray">（如 http://localhost:5244）</span>
                         </label>
-                        <input id="openlistBaseUrlInput" placeholder="http://你的-openlist-地址:端口" class="w-full border border-rose-200 rounded-lg p-2 outline-none focus:border-love">
+                        <input id="openlistBaseUrlInput" placeholder="http://你的-openlist-地址:端口" class="w-full border border-vsborder rounded-lg p-2 outline-none focus:border-love">
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                            <label class="block text-sm text-gray-600 mb-1">用户名</label>
-                            <input id="openlistUserInput" placeholder="OpenList 登录账号" class="w-full border border-rose-200 rounded-lg p-2 outline-none focus:border-love">
+                            <label class="block text-sm text-vsgray mb-1">用户名</label>
+                            <input id="openlistUserInput" placeholder="OpenList 登录账号" class="w-full border border-vsborder rounded-lg p-2 outline-none focus:border-love">
                         </div>
                         <div>
-                            <label class="block text-sm text-gray-600 mb-1">密码</label>
-                            <input id="openlistPassInput" type="password" placeholder="OpenList 登录密码" class="w-full border border-rose-200 rounded-lg p-2 outline-none focus:border-love">
+                            <label class="block text-sm text-vsgray mb-1">密码</label>
+                            <input id="openlistPassInput" type="password" placeholder="OpenList 登录密码" class="w-full border border-vsborder rounded-lg p-2 outline-none focus:border-love">
                         </div>
                     </div>
                     <div>
-                        <label class="block text-sm text-gray-600 mb-1">
+                        <label class="block text-sm text-vsgray mb-1">
                             百度网盘挂载路径
-                            <span class="text-[10px] text-gray-400">（你在 OpenList 中添加百度网盘时填的挂载根路径）</span>
+                            <span class="text-[10px] text-vsgray">（你在 OpenList 中添加百度网盘时填的挂载根路径）</span>
                         </label>
-                        <input id="openlistMountPathInput" placeholder="如 /baidu 或 /我的网盘" class="w-full border border-rose-200 rounded-lg p-2 outline-none focus:border-love">
+                        <input id="openlistMountPathInput" placeholder="如 /baidu 或 /我的网盘" class="w-full border border-vsborder rounded-lg p-2 outline-none focus:border-love">
                     </div>
-                    <div class="flex items-center gap-2 text-xs text-gray-500">
+                    <div class="flex items-center gap-2 text-xs text-vsgray">
                         <input type="checkbox" id="openlistAsTaskInput" class="w-4 h-4 accent-love">
                         <label for="openlistAsTaskInput">使用异步任务模式上传（适合大文件，避免超时）</label>
                     </div>
@@ -398,7 +432,7 @@
                         <button id="openlistSaveBtn" onclick="saveOpenListConfig()" class="flex-1 bg-love text-white px-4 py-2 rounded-lg hover:bg-loveDark transition">
                             <i class="fa fa-save"></i> 保存 OpenList 配置
                         </button>
-                        <button id="openlistTestBtn" onclick="testOpenListConnection()" class="px-4 py-2 bg-white border border-rose-200 text-love rounded-lg hover:bg-rose-50 transition">
+                        <button id="openlistTestBtn" onclick="testOpenListConnection()" class="px-4 py-2 bg-vspanel border border-vsborder text-love rounded-lg hover:bg-[#2d2d30] transition">
                             <i class="fa fa-plug"></i> 测试连接
                         </button>
                     </div>
@@ -406,85 +440,79 @@
                 </div>
             </div>
         </div>
-
         <!-- ===== Tab: SQL 执行 ===== -->
-        <div id="panelSqlExec" class="hidden bg-white rounded-xl p-4 shadow mb-6">
+        <div id="panelSqlExec" class="hidden bg-vspanel rounded-xl p-4 shadow mb-6 border border-vsborder">
             <div class="flex items-center justify-between mb-3">
-                <h2 class="font-bold text-gray-700">SQL 执行器</h2>
+                <h2 class="font-bold text-vstext">SQL 执行器</h2>
                 <div class="flex items-center gap-2">
-                    <span id="sqlExecStatus" class="text-sm text-gray-400"></span>
-                    <button onclick="installExecDdl()" id="installBtn" class="bg-gray-500 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-gray-600 transition">
+                    <span id="sqlExecStatus" class="text-sm text-vsgray"></span>
+                    <button onclick="installExecDdl()" id="installBtn" class="bg-gray-600 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-gray-700 transition">
                         <i class="fa fa-plug"></i> 安装函数
                     </button>
                 </div>
             </div>
-            <p class="text-sm text-gray-500 mb-3">通过 <code class="bg-gray-100 px-1 rounded text-xs">exec_ddl</code> RPC 函数执行 DDL 语句（建表/删表/改表/加策略）。<b>仅认证用户可用。</b></p>
-
+            <p class="text-sm text-vsgray mb-3">通过 <code class="bg-[#333333] px-1 rounded text-xs">exec_ddl</code> RPC 函数执行 DDL 语句（建表/删表/改表/加策略）。<b>仅认证用户可用。</b></p>
             <div class="flex flex-wrap gap-2 mb-3">
-                <button onclick="sqlExecPreset('create')" class="bg-blue-50 text-blue-600 px-3 py-1 rounded-lg text-xs hover:bg-blue-100 transition">📝 建表示例</button>
-                <button onclick="sqlExecPreset('policy')" class="bg-green-50 text-green-600 px-3 py-1 rounded-lg text-xs hover:bg-green-100 transition">🔒 RLS策略示例</button>
-                <button onclick="sqlExecPreset('drop')" class="bg-red-50 text-red-600 px-3 py-1 rounded-lg text-xs hover:bg-red-100 transition">🗑️ 删表示例</button>
-                <button onclick="sqlExecPreset('alter')" class="bg-yellow-50 text-yellow-600 px-3 py-1 rounded-lg text-xs hover:bg-yellow-100 transition">📝 加字段示例</button>
-                <button onclick="sqlExecPreset('backup')" class="bg-purple-50 text-purple-600 px-3 py-1 rounded-lg text-xs hover:bg-purple-100 transition">💾 版本备份表</button>
+                <button onclick="sqlExecPreset('create')" class="bg-[#202b40] text-blue-400 px-3 py-1 rounded-lg text-xs hover:bg-[#283855] transition">📝 建表示例</button>
+                <button onclick="sqlExecPreset('policy')" class="bg-[#1e3328] text-green-400 px-3 py-1 rounded-lg text-xs hover:bg-[#264434] transition">🔒 RLS策略示例</button>
+                <button onclick="sqlExecPreset('drop')" class="bg-[#382222] text-red-400 px-3 py-1 rounded-lg text-xs hover:bg-[#4c2c2c] transition">🗑️ 删表示例</button>
+                <button onclick="sqlExecPreset('alter')" class="bg-[#383222] text-yellow-400 px-3 py-1 rounded-lg text-xs hover:bg-[#4c422c] transition">📝 加字段示例</button>
+                <button onclick="sqlExecPreset('backup')" class="bg-[#2f2240] text-purple-400 px-3 py-1 rounded-lg text-xs hover:bg-[#3f2c55] transition">💾 版本备份表</button>
             </div>
-
-            <textarea id="sqlExecInput" placeholder="-- 输入 SQL 语句，可多条以分号分隔&#10;CREATE TABLE IF NOT EXISTS my_table (&#10;    id BIGSERIAL PRIMARY KEY,&#10;    name TEXT NOT NULL&#10;);" class="w-full h-[200px] sm:h-[260px] bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs font-mono text-gray-700 focus:outline-none focus:border-love"></textarea>
-
+            <textarea id="sqlExecInput" placeholder="-- 输入 SQL 语句，可多条以分号分隔&#10;CREATE TABLE IF NOT EXISTS my_table (&#10;    id BIGSERIAL PRIMARY KEY,&#10;    name TEXT NOT NULL&#10;);" class="w-full h-[200px] sm:h-[260px] bg-[#111111] border border-vsborder rounded-lg p-3 text-xs font-mono text-vstext focus:outline-none focus:border-love"></textarea>
             <div class="flex flex-wrap gap-2 mt-3">
                 <button onclick="execSql()" id="execBtn" class="bg-love text-white px-6 py-2 rounded-lg font-semibold hover:bg-loveDark transition">
                     <i class="fa fa-play"></i> 执行
                 </button>
-                <button onclick="document.getElementById('sqlExecInput').value=''" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-semibold hover:bg-gray-300 transition">
+                <button onclick="document.getElementById('sqlExecInput').value=''" class="bg-[#444444] text-vstext px-4 py-2 rounded-lg font-semibold hover:bg-[#555555] transition">
                     <i class="fa fa-eraser"></i> 清空
                 </button>
                 <button onclick="copyExecSql()" class="bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-gray-700 transition">
                     <i class="fa fa-clipboard"></i> 复制
                 </button>
             </div>
-
             <div id="sqlExecResult" class="mt-4 hidden">
                 <div class="flex items-center gap-2 mb-2">
                     <span id="sqlExecIcon" class="text-lg"></span>
                     <span id="sqlExecLabel" class="font-semibold text-sm"></span>
                 </div>
-                <pre id="sqlExecOutput" class="bg-gray-900 text-gray-100 rounded-lg p-3 text-xs font-mono overflow-x-auto max-h-60 overflow-y-auto"></pre>
+                <pre id="sqlExecOutput" class="bg-[#111111] text-gray-100 rounded-lg p-3 text-xs font-mono overflow-x-auto max-h-60 overflow-y-auto"></pre>
             </div>
         </div>
     </div>
-    <div id="confirmModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50" style="display:none;">
-        <div class="modal-card bg-white rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl">
-            <h3 class="text-lg font-bold text-gray-700 mb-2"><i class="fa fa-question-circle text-love"></i> 确认操作</h3>
-            <p id="confirmMsg" class="text-sm text-gray-600 mb-5">确认执行此操作？</p>
+    <div id="confirmModal" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-50" style="display:none;">
+        <div class="modal-card bg-vspanel rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl border border-vsborder">
+            <h3 class="text-lg font-bold text-vstext mb-2"><i class="fa fa-question-circle text-love"></i> 确认操作</h3>
+            <p id="confirmMsg" class="text-sm text-vsgray mb-5">确认执行此操作？</p>
             <div class="flex items-center justify-end gap-2">
-                <button onclick="closeConfirm()" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition">取消</button>
-                <button onclick="confirmAction()" id="confirmOkBtn" class="bg-red-500 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-red-600 transition">
+                <button onclick="closeConfirm()" class="px-4 py-2 text-sm text-vsgray hover:text-vstext hover:bg-[#2d2d30] rounded-lg transition">取消</button>
+                <button onclick="confirmAction()" id="confirmOkBtn" class="bg-red-600 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-red-700 transition">
                     确认
                 </button>
             </div>
         </div>
     </div>
-
     <!-- ===== 容器编辑模态框 ===== -->
-    <div id="containerModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50" style="display:none;">
-        <div class="modal-card bg-white rounded-2xl p-6 w-full max-w-lg mx-4 shadow-2xl">
+    <div id="containerModal" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-50" style="display:none;">
+        <div class="modal-card bg-vspanel rounded-2xl p-6 w-full max-w-lg mx-4 shadow-2xl border border-vsborder">
             <div class="flex items-center justify-between mb-4">
-                <h3 id="containerModalTitle" class="text-lg font-bold text-gray-700"><i class="fa fa-th"></i> 新增容器</h3>
-                <button onclick="closeContainerModal()" class="text-gray-400 hover:text-gray-600 text-xl"><i class="fa fa-times"></i></button>
+                <h3 id="containerModalTitle" class="text-lg font-bold text-vstext"><i class="fa fa-th"></i> 新增容器</h3>
+                <button onclick="closeContainerModal()" class="text-vsgray hover:text-vstext text-xl"><i class="fa fa-times"></i></button>
             </div>
             <div class="space-y-3">
                 <div>
-                    <label class="block text-sm font-semibold text-gray-600 mb-1">container_id <span class="text-red-500">*</span></label>
-                    <input id="modalContainerId" type="text" placeholder="如 pageFavoriteContainer" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-love">
-                    <p class="text-xs text-gray-400 mt-1">唯一标识符，页面容器建议以 page 开头，全局容器以 panel 结尾</p>
+                    <label class="block text-sm font-semibold text-vsgray mb-1">container_id <span class="text-red-400">*</span></label>
+                    <input id="modalContainerId" type="text" placeholder="如 pageFavoriteContainer" class="w-full border border-vsborder rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-love">
+                    <p class="text-xs text-vsgray mt-1">唯一标识符，页面容器建议以 page 开头，全局容器以 panel 结尾</p>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-sm font-semibold text-gray-600 mb-1">page_name</label>
-                        <input id="modalPageName" type="text" placeholder="如 favorite（全局留空）" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-love">
+                        <label class="block text-sm font-semibold text-vsgray mb-1">page_name</label>
+                        <input id="modalPageName" type="text" placeholder="如 favorite（全局留空）" class="w-full border border-vsborder rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-love">
                     </div>
                     <div>
-                        <label class="block text-sm font-semibold text-gray-600 mb-1">位置</label>
-                        <select id="modalPlacement" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-love">
+                        <label class="block text-sm font-semibold text-vsgray mb-1">位置</label>
+                        <select id="modalPlacement" class="w-full border border-vsborder rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-love">
                             <option value="page">page（导航栏显示按钮）</option>
                             <option value="global">global（全局容器）</option>
                         </select>
@@ -492,31 +520,31 @@
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-sm font-semibold text-gray-600 mb-1">导航文字</label>
-                        <input id="modalNavLabel" type="text" placeholder="如 收藏" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-love">
+                        <label class="block text-sm font-semibold text-vsgray mb-1">导航文字</label>
+                        <input id="modalNavLabel" type="text" placeholder="如 收藏" class="w-full border border-vsborder rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-love">
                     </div>
                     <div>
-                        <label class="block text-sm font-semibold text-gray-600 mb-1">图标 emoji</label>
-                        <input id="modalNavIcon" type="text" placeholder="如 ⭐" maxlength="4" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-love">
+                        <label class="block text-sm font-semibold text-vsgray mb-1">图标 emoji</label>
+                        <input id="modalNavIcon" type="text" placeholder="如 ⭐" maxlength="4" class="w-full border border-vsborder rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-love">
                     </div>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                    <label class="block text-sm font-semibold text-gray-600 mb-1">排序</label>
-                    <input id="modalSortOrder" type="number" value="5" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-love">
-                    <p class="text-xs text-gray-400 mt-1">小的排在前面</p>
+                    <label class="block text-sm font-semibold text-vsgray mb-1">排序</label>
+                    <input id="modalSortOrder" type="number" value="5" class="w-full border border-vsborder rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-love">
+                    <p class="text-xs text-vsgray mt-1">小的排在前面</p>
                     </div>
                     <div class="flex items-end">
-                        <label class="flex items-center gap-2 text-sm text-gray-600">
-                            <input id="modalActive" type="checkbox" checked class="w-4 h-4">
+                        <label class="flex items-center gap-2 text-sm text-vsgray">
+                            <input id="modalActive" type="checkbox" checked class="w-4 h-4 accent-love">
                             <span>启用</span>
                         </label>
                     </div>
                 </div>
-                <div id="containerModalError" class="text-red-500 text-sm hidden"></div>
+                <div id="containerModalError" class="text-red-400 text-sm hidden"></div>
             </div>
             <div class="flex items-center justify-end gap-2 mt-5">
-                <button onclick="closeContainerModal()" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition">取消</button>
+                <button onclick="closeContainerModal()" class="px-4 py-2 text-sm text-vsgray hover:text-vstext hover:bg-[#2d2d30] rounded-lg transition">取消</button>
                 <button onclick="saveContainerModal()" id="saveContainerBtn" class="bg-love text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-loveDark transition">
                     <i class="fa fa-save"></i> 保存
                 </button>
