@@ -260,29 +260,41 @@ function startDragCat(e) {
 
 const maoGreetPhrases = ["你好呀~", "喵！打招呼", "好久不见！", "来摸摸我", "喵呜~"];
 let maoWalkingTimer = null;
+let maoWalkEndTimer = null;   // 行走结束后切回待机的定时器
 let maoDragging = false;
 let maoGreetingTimer = null;
 let maoGreetingActive = false;
 
+const MAO_IDLE = "images/猫-待机.gif";
+const MAO_WALK = "images/猫-行走.gif";
+const MAO_GREET = "images/猫-打招呼.gif";
+
 function initMao() {
     document.getElementById("maoPet").classList.remove("hidden");
+    // 预加载三张 GIF，切换时命中浏览器缓存，避免重复下载大文件
+    [MAO_IDLE, MAO_WALK, MAO_GREET].forEach(url => { const im = new Image(); im.src = url; });
     startMaoWalking();
+}
+
+// 切换显示的 GIF：直接赋缓存 URL（已预加载，命中缓存立即显示）。
+// 不清空 src，避免大 GIF 重新解码期间出现空白
+function maoSetImg(url) {
+    const img = document.getElementById("maoImg");
+    if (!img || img.dataset.src === url) return;
+    img.dataset.src = url;
+    img.src = url;
 }
 
 function maoSetWalking(walking) {
     if (maoGreetingActive) return;
-    const img = document.getElementById("maoImg");
-    if (!img) return;
-    img.src = walking
-        ? "images/猫-行走.gif?t=" + Date.now()
-        : "images/猫-待机.gif?t=" + Date.now();
+    maoSetImg(walking ? MAO_WALK : MAO_IDLE);
 }
 
 function maoPlayGreeting(duration) {
     if (maoGreetingTimer) clearTimeout(maoGreetingTimer);
+    if (maoWalkEndTimer) { clearTimeout(maoWalkEndTimer); maoWalkEndTimer = null; }
     maoGreetingActive = true;
-    const img = document.getElementById("maoImg");
-    if (img) img.src = "images/猫-打招呼.gif?t=" + Date.now();
+    maoSetImg(MAO_GREET);
     maoGreetingTimer = setTimeout(() => {
         maoGreetingActive = false;
         maoSetWalking(false);
@@ -291,18 +303,20 @@ function maoPlayGreeting(duration) {
 
 function startMaoWalking() {
     if (maoWalkingTimer) clearInterval(maoWalkingTimer);
+    if (maoWalkEndTimer) { clearTimeout(maoWalkEndTimer); maoWalkEndTimer = null; }
     maoWalkingTimer = setInterval(() => {
-        if (maoDragging) return;
+        if (maoDragging || maoGreetingActive) return;
         const pet = document.getElementById("maoPet");
         const curLeft = parseInt(pet.style.left) || 130;
-        const move = Math.random() > 0.5 ? 30 : -30;
+        const move = Math.random() > 0.5 ? 80 : -80;
         let newLeft = curLeft + move;
         newLeft = Math.max(10, Math.min(window.innerWidth - 110, newLeft));
         pet.style.left = newLeft + "px";
         pet.style.right = "auto";
         pet.style.transform = move < 0 ? "scaleX(-1)" : "scaleX(1)";
         maoSetWalking(true);
-        setTimeout(() => maoSetWalking(false), 2000);
+        if (maoWalkEndTimer) clearTimeout(maoWalkEndTimer);
+        maoWalkEndTimer = setTimeout(() => maoSetWalking(false), 4000);
     }, 9000);
 }
 
@@ -340,6 +354,7 @@ function spawnMaoHeart() {
 
 function startDragMao(e) {
     if (maoGreetingTimer) { clearTimeout(maoGreetingTimer); maoGreetingTimer = null; }
+    if (maoWalkEndTimer) { clearTimeout(maoWalkEndTimer); maoWalkEndTimer = null; }
     maoGreetingActive = false;
     const pet = document.getElementById("maoPet");
     const rect = pet.getBoundingClientRect();

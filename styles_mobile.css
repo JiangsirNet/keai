@@ -381,10 +381,14 @@
 
     /* 宠物缩小 */
     .husky-pet,
-    .cat-pet,
-    .mao-pet {
+    .cat-pet {
         width: 70px !important;
         height: 70px !important;
+    }
+
+    .mao-pet {
+        width: 100px !important;
+        height: 100px !important;
     }
 
     /* 人物贴着宠物 */
@@ -462,10 +466,14 @@
     }
 
     .husky-pet,
-    .cat-pet,
-    .mao-pet {
+    .cat-pet {
         width: 56px !important;
         height: 56px !important;
+    }
+
+    .mao-pet {
+        width: 80px !important;
+        height: 80px !important;
     }
 
     .boy-pet,

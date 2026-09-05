@@ -636,7 +636,7 @@ GRANT EXECUTE ON FUNCTION exec_ddl(TEXT) TO authenticated;
 
 - **选歌**：从 `music` 表读取歌曲列表，点击选歌后加载歌词
 - **歌词同步**：支持 LRC 时间戳格式，自动高亮当前行 + 滚动
-- **录音**：Web Audio API + ScriptProcessorNode 采集麦克风 PCM 数据
+- **录音**：优先 **AudioWorklet**（独立音频线程采集 PCM + tanh 软限幅防削波），不支持时回退 ScriptProcessorNode（缓冲 16384）；统一开启 AEC/降噪/AGC
 - **实时音量条**：录音时显示音量电平（AnalyserNode）
 - **人声回放**：录音停止后编码 MP3（LameJS）或 WAV，显示在顶部回放面板（🟣 紫色主题）
 - **混音合成**：伴奏 + 人声离线合成（Web Audio API 渲染），导出 MP3（🟣 粉色主题）
@@ -677,6 +677,8 @@ GRANT EXECUTE ON FUNCTION exec_ddl(TEXT) TO authenticated;
 ### 关键实现细节
 
 - **录音数据**：`recordedSamples` 存 Float32Array 数组，录音完成复制到 `vocalSamples` 供混音用
+- **录音采集**：`createAudioWorkletRecorder()` 内联 Worklet 代码为 Blob URL 加载（无需部署额外文件），逐样本 `tanh` 软限幅（0.9 内原样通过，超出平滑压到 1.0）；块内累积 4096 采样回传主线程；老浏览器回退 ScriptProcessorNode（bufferSize=16384）
+- **麦克风约束**：`echoCancellation + noiseSuppression + autoGainControl` 全平台开启（防近讲削波、压环境噪、外放消伴奏回授）
 - **MP3 编码**：`loadLameJS()` 动态加载 lamejs 库，`encodePcmToMp3` 编码 128kbps mono；失败回退 WAV
 - **混音**：`mixAndExport()` 用 OfflineAudioContext 离线渲染伴奏+人声，支持手动偏移（`karaokeMixOffset` 滑块，-500ms~+500ms）
 - **试听**：`previewMix()` 用实时 AudioContext 播放，伴奏截取前后各 3 秒
@@ -729,6 +731,62 @@ GRANT EXECUTE ON FUNCTION exec_ddl(TEXT) TO authenticated;
 - **直链播放**：`GET /api/fs/get?path=` 取 `raw_url` 给 `<video>`
 - **初始化防跳过**：auth.js 的 `switchSubTab('cloud')` 仅在 `window.initCloudPage` 存在时才标记已初始化，避免 cloud.js 未加载时永久卡在"未连接"
 - **HTTPS 要求**：主应用若为 HTTPS，OpenList 必须配置受信 CA 证书（自签名会被浏览器 `ERR_CERT_AUTHORITY_INVALID` 拦截，fetch 无法绕过）
+
+## 十五点八、宠物系统
+
+### 宠物列表
+
+| 宠物 | 实现方式 | 素材 | 互动 |
+|---|---|---|---|
+| 哈士奇 | SVG 绘制 + CSS 弹跳 | 无外部图 | 点击打招呼、拖拽、抱抱 |
+| 暹罗猫 | SVG 绘制 + CSS 呼吸 | 无外部图 | 点击打招呼、拖拽、抱抱 |
+| 猫猫 | GIF 动图切换 | `images/猫-待机.gif` / `猫-行走.gif` / `猫-打招呼.gif` | 点击打招呼动画、随机行走、拖拽、抱抱 |
+
+### 猫猫 GIF 宠物（maoPet）
+
+- **状态机**：待机 → 行走（每 9 秒随机 ±80px，4 秒线性过渡）→ 待机；点击 → 打招呼（2 秒）→ 待机
+- **GIF 切换**：`initMao()` 用 `new Image()` 预加载三张 GIF 到浏览器缓存；`maoSetImg(url)` 直接赋缓存 URL（`data-src` 去重），**不清空 src**（避免大 GIF 重新解码期间空白）
+- **定时器管理**：`maoWalkEndTimer`（行走→待机）、`maoGreetingTimer`（打招呼→待机）在开始行走/打招呼/拖拽时统一清理，杜绝旧定时器乱入导致行走时显示待机图
+- **方向**：通过 `transform: scaleX(-1)` 镜像，左走朝左、右走朝右
+- **抱抱系统**：拖拽到人物身上触发抱抱（跟随人物移动），5 秒自动放回底部继续行走
+- **尺寸**：桌面端 130px；手机端 100px（超小屏 80px）
+
+### 文件结构
+
+| 文件 | 作用 |
+|---|---|
+| `index.html` | 宠物容器（`#huskyPet` / `#catPet` / `#maoPet`） |
+| `js/pets.js` | 三只宠物的动画、拖拽、点击、抱抱逻辑 |
+| `styles_layout.css` `.husky-pet` / `.cat-pet` / `.mao-pet` | 宠物样式与动画 |
+| `styles_mobile.css` | 移动端宠物尺寸适配 |
+| `images/猫-*.gif` | 猫猫宠物三张动图素材（静态文件，不进数据库） |
+
+> 显示开关在设置页「显示设置」，存 `profiles.show_husky` / `show_cat` / `show_mao`。
+
+## 十五点九、跳一跳游戏
+
+### 功能
+
+- **游戏嵌入**：`partials/game.html` 以 `<iframe src="Jump-master/index.html">` 加载跳一跳游戏（静态文件，部署在网站根目录 `Jump-master/`）
+- **分数上报**：游戏结束时 `Jump-master/js/main.js` 通过 `postMessage({type:'jump_score', score})` 通知父页面
+- **入库**：`js/game.js` 监听消息 → 写入 `game_scores` 表（`game='jump'`，带 `user_id`/`nickname`/`score`）
+- **通知**：
+  - 破对方记录：站内铃铛 + 邮件（受设置页"通知同时发送邮件"开关控制）
+  - 未破记录：仅站内铃铛，不发邮件
+  - 对方无成绩时不发邮件
+- **排行榜**：游戏页显示情侣两人最高分排行（奖牌排序、自己行高亮），按 `score desc` 取前 100 条去重每人最高分
+
+### 部署
+
+1. Supabase SQL Editor 执行 `game_scores` 建表 SQL（见第三章）
+2. upload.html 上传 `js/game.js`、`js/auth.js`、`partials/game.html`
+3. 把整个 `Jump-master/` 文件夹原样传到网站托管根目录（与 index.html 同级，静态文件不进数据库）
+
+### 移动端适配（Jump-master）
+
+- `index.html` 加 `viewport` 禁止缩放
+- `js/game.js` canvas 加 `touchstart`/`touchend`（按住蓄力、松手起跳）+ `touch-action:none`
+- 结算弹窗 `max-width:90vw / max-height:90vh`
 
 ## 十六、下拉刷新（橡皮条）
 
