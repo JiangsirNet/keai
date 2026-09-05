@@ -63,6 +63,7 @@ class Game {
 			this._handleWindowResize(); //绑定窗口大小
 		});
 		let canvas = document.querySelector("canvas");
+		canvas.style.touchAction = "none"; // 阻止触摸时的页面滚动/缩放
 		canvas.addEventListener("mousedown", () => {
 			//鼠标按下状态
 			this._handleMouseDown();
@@ -71,6 +72,15 @@ class Game {
 			//鼠标松开状态
 			this._handleMouseUp()
 		});
+		//手机触摸支持：按下蓄力、松开起跳
+		canvas.addEventListener("touchstart", (e) => {
+			e.preventDefault(); // 阻止合成鼠标事件，避免重复蓄力
+			this._handleMouseDown();
+		}, { passive: false });
+		canvas.addEventListener("touchend", (e) => {
+			e.preventDefault();
+			this._handleMouseUp();
+		}, { passive: false });
 	};
 
 	_addSuccessFn(fn) {
