@@ -482,6 +482,69 @@
     opacity: 1;
 }
 
+/* 猫咪宠物（GIF 动图） */
+.mao-pet {
+    position: fixed;
+    bottom: 20px;
+    left: 130px;
+    z-index: 90;
+    width: 100px;
+    height: 100px;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+    user-select: none;
+    touch-action: none;
+}
+
+.mao-pet img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.15));
+    pointer-events: none;
+}
+
+.mao-pet.happy {
+    animation: mao-happy 0.5s ease;
+}
+
+@keyframes mao-happy {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+}
+
+.mao-bubble {
+    position: absolute;
+    top: -35px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: white;
+    color: #ff9ec4;
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+}
+
+.mao-bubble:after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: white;
+    border-bottom: 0;
+}
+
+.mao-bubble.show {
+    opacity: 1;
+}
+
 /* 删除按钮 */
 .del-btn {
     width: 28px !important;

@@ -258,6 +258,157 @@ function startDragCat(e) {
     document.addEventListener("touchend", onUp);
 }
 
+const maoGreetPhrases = ["你好呀~", "喵！打招呼", "好久不见！", "来摸摸我", "喵呜~"];
+let maoWalkingTimer = null;
+let maoDragging = false;
+let maoGreetingTimer = null;
+let maoGreetingActive = false;
+
+function initMao() {
+    document.getElementById("maoPet").classList.remove("hidden");
+    startMaoWalking();
+}
+
+function maoSetWalking(walking) {
+    if (maoGreetingActive) return;
+    const img = document.getElementById("maoImg");
+    if (!img) return;
+    img.src = walking
+        ? "images/猫-行走.gif?t=" + Date.now()
+        : "images/猫-待机.gif?t=" + Date.now();
+}
+
+function maoPlayGreeting(duration) {
+    if (maoGreetingTimer) clearTimeout(maoGreetingTimer);
+    maoGreetingActive = true;
+    const img = document.getElementById("maoImg");
+    if (img) img.src = "images/猫-打招呼.gif?t=" + Date.now();
+    maoGreetingTimer = setTimeout(() => {
+        maoGreetingActive = false;
+        maoSetWalking(false);
+    }, duration || 2000);
+}
+
+function startMaoWalking() {
+    if (maoWalkingTimer) clearInterval(maoWalkingTimer);
+    maoWalkingTimer = setInterval(() => {
+        if (maoDragging) return;
+        const pet = document.getElementById("maoPet");
+        const curLeft = parseInt(pet.style.left) || 130;
+        const move = Math.random() > 0.5 ? 30 : -30;
+        let newLeft = curLeft + move;
+        newLeft = Math.max(10, Math.min(window.innerWidth - 110, newLeft));
+        pet.style.left = newLeft + "px";
+        pet.style.right = "auto";
+        pet.style.transform = move < 0 ? "scaleX(-1)" : "scaleX(1)";
+        maoSetWalking(true);
+        setTimeout(() => maoSetWalking(false), 2000);
+    }, 9000);
+}
+
+function petMao() {
+    if (maoDragging) return;
+    const pet = document.getElementById("maoPet");
+    pet.classList.add("happy");
+    setTimeout(() => pet.classList.remove("happy"), 500);
+
+    // 打招呼动画 2 秒后恢复待机
+    maoPlayGreeting(2000);
+
+    const bubble = document.getElementById("maoBubble");
+    bubble.innerText = maoGreetPhrases[Math.floor(Math.random() * maoGreetPhrases.length)];
+    bubble.classList.add("show");
+    setTimeout(() => bubble.classList.remove("show"), 2000);
+
+    for (let i = 0; i < 3; i++) {
+        setTimeout(() => spawnMaoHeart(), i * 150);
+    }
+}
+
+function spawnMaoHeart() {
+    const pet = document.getElementById("maoPet");
+    const heart = document.createElement("i");
+    heart.className = "fa fa-heart husky-heart";
+    heart.style.color = "#ff9ec4";
+    heart.style.left = (40 + Math.random() * 20) + "px";
+    heart.style.top = "20px";
+    heart.style.setProperty("--dx", (Math.random() * 60 - 30) + "px");
+    heart.style.animation = "heart-float 1.2s ease-out forwards";
+    pet.appendChild(heart);
+    setTimeout(() => heart.remove(), 1200);
+}
+
+function startDragMao(e) {
+    if (maoGreetingTimer) { clearTimeout(maoGreetingTimer); maoGreetingTimer = null; }
+    maoGreetingActive = false;
+    const pet = document.getElementById("maoPet");
+    const rect = pet.getBoundingClientRect();
+    const isTouch = !!e.touches;
+    const point = isTouch ? e.touches[0] : e;
+    const startX = point.clientX;
+    const startY = point.clientY;
+    const offsetX = point.clientX - rect.left;
+    const offsetY = point.clientY - rect.top;
+    let hasMoved = false;
+    const wasHugging = !!(hugState && hugState.petId === 'maoPet');
+    pet.style.transition = "none";
+
+    function onMove(ev) {
+        const pt = ev.touches ? ev.touches[0] : ev;
+        if (ev.touches) ev.preventDefault();
+        const dx = pt.clientX - startX;
+        const dy = pt.clientY - startY;
+        if (!hasMoved && Math.abs(dx) + Math.abs(dy) > 5) {
+            hasMoved = true;
+            maoDragging = true;
+            if (wasHugging && hugState) {
+                hugDragging = true;
+                clearTimeout(hugState.timer);
+            }
+        }
+        if (!hasMoved) return;
+        let x = pt.clientX - offsetX;
+        let y = pt.clientY - offsetY;
+        x = Math.max(0, Math.min(window.innerWidth - pet.offsetWidth, x));
+        y = Math.max(0, Math.min(window.innerHeight - pet.offsetHeight, y));
+        pet.style.left = x + "px";
+        pet.style.top = y + "px";
+        pet.style.right = "auto";
+        pet.style.bottom = "auto";
+        pet.style.transform = "scaleX(1)";
+        if (hugDragging && hugState) {
+            moveCharacterWithPet(hugState.characterId, pet);
+        }
+    }
+    function onUp() {
+        maoDragging = false;
+        hugDragging = false;
+        pet.style.transition = "";
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+        document.removeEventListener("touchmove", onMove);
+        document.removeEventListener("touchend", onUp);
+        if (!hasMoved) {
+            petMao();
+        } else {
+            if (hugState) {
+                clearTimeout(hugState.timer);
+                cancelAnimationFrame(hugState.rafId);
+                if (hugState.characterId === 'boyPet') window.boyHugging = false;
+                if (hugState.characterId === 'girlPet') window.girlHugging = false;
+                hugState = null;
+            }
+            checkHugOnDrop(pet);
+            if (!hugState) resumePetWalking("maoPet");
+        }
+    }
+    if (isTouch) e.preventDefault();
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+    document.addEventListener("touchmove", onMove, { passive: false });
+    document.addEventListener("touchend", onUp);
+}
+
 let hugState = null;
 let hugDragging = false;
 
@@ -271,6 +422,7 @@ function triggerHug(petId, characterId) {
 
     if (petId === 'huskyPet' && huskyWalkingTimer) clearInterval(huskyWalkingTimer);
     if (petId === 'catPet' && catWalkingTimer) clearInterval(catWalkingTimer);
+    if (petId === 'maoPet' && maoWalkingTimer) clearInterval(maoWalkingTimer);
 
     if (characterId === 'boyPet') window.boyHugging = true;
     if (characterId === 'girlPet') window.girlHugging = true;
@@ -356,6 +508,8 @@ function resumePetWalking(petId) {
         pet.style.right = Math.max(10, window.innerWidth - curLeft - pet.offsetWidth) + "px";
         pet.style.left = "auto";
         startCatWalking();
+    } else if (petId === 'maoPet') {
+        startMaoWalking();
     }
 }
 
@@ -386,6 +540,11 @@ window.startCatWalking = startCatWalking;
 window.petCat = petCat;
 window.spawnCatHeart = spawnCatHeart;
 window.startDragCat = startDragCat;
+window.initMao = initMao;
+window.startMaoWalking = startMaoWalking;
+window.petMao = petMao;
+window.spawnMaoHeart = spawnMaoHeart;
+window.startDragMao = startDragMao;
 window.rectsOverlap = rectsOverlap;
 window.triggerHug = triggerHug;
 window.syncHugPet = syncHugPet;

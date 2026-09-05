@@ -15,7 +15,8 @@
     let vocalSamples = [];      // 录音完成后保留的副本（供混音用）
     let vocalSampleRate = 0;    // 人声采样率
     let recordStartTime = 0;    // 录音开始时伴奏的播放位置（秒）
-    let processor = null;       // ScriptProcessorNode
+    let processor = null;       // ScriptProcessorNode（老浏览器回退用）
+    let workletNode = null;     // AudioWorkletNode（首选，独立音频线程采集）
     let isRecording = false;
     let isPlaying = false;
     let animFrame = null;
@@ -433,6 +434,51 @@
         }
     }
 
+    // AudioWorklet 处理器（内联代码，通过 Blob URL 加载，无需部署额外文件）
+    // 运行在独立音频线程：累积 4096 采样块再回传主线程，并做软限幅防削波
+    const RECORDER_WORKLET_CODE = `
+class RecorderProcessor extends AudioWorkletProcessor {
+    constructor() {
+        super();
+        this.buf = new Float32Array(4096);
+        this.pos = 0;
+    }
+    // 软限幅：0.9 以内原样通过，超出部分 tanh 平滑压缩，避免硬削波刺耳声
+    softLimit(x) {
+        const t = 0.9;
+        if (x > t) return t + (1 - t) * Math.tanh((x - t) / (1 - t));
+        if (x < -t) return -t - (1 - t) * Math.tanh((-x - t) / (1 - t));
+        return x;
+    }
+    process(inputs) {
+        const ch = inputs[0] && inputs[0][0];
+        if (ch) {
+            for (let i = 0; i < ch.length; i++) {
+                this.buf[this.pos++] = this.softLimit(ch[i]);
+                if (this.pos === this.buf.length) {
+                    this.port.postMessage(this.buf.slice(0));
+                    this.pos = 0;
+                }
+            }
+        }
+        return true;
+    }
+}
+registerProcessor('recorder-processor', RecorderProcessor);
+`;
+
+    // 老浏览器回退：ScriptProcessor（主线程采集），用大缓冲 16384 降低 underrun 概率
+    function setupScriptProcessorFallback(source, silentGain) {
+        processor = mixAudioCtx.createScriptProcessor(16384, 1, 1);
+        processor.onaudioprocess = (e) => {
+            if (!isRecording) return;
+            const input = e.inputBuffer.getChannelData(0);
+            recordedSamples.push(new Float32Array(input));
+        };
+        source.connect(processor);
+        processor.connect(silentGain);
+    }
+
     async function startRecording() {
         try {
             // 录音前暂停音乐播放器，避免同时播放
@@ -461,21 +507,15 @@
                 }).catch(e => { audio.muted = false; });
             }
 
-            // 3. iOS Safari 在 echoCancellation/noiseSuppression/autoGainControl = false 时
-            //    有已知 bug 会录到空音频。这里改为 true（默认处理）保证能录到声音
-            //    音质略有损失，但至少能录到人声
+            // 3. 麦克风约束：iOS/Android 统一开启回声消除、降噪、自动增益
+            //    手机麦近讲极易超 0dB 硬削波（刺耳爆音），AGC 可压住电平；
+            //    NS 滤环境噪声；开外放录歌时 AEC 避免伴奏回授
             const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
                           (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-            const audioConstraints = isIOS ? {
-                // iOS：保留默认音频处理，避免录到空音频
+            const audioConstraints = {
                 echoCancellation: true,
                 noiseSuppression: true,
-                autoGainControl: true
-            } : {
-                // 非 iOS：关闭处理，保留人声原始细节
-                echoCancellation: false,
-                noiseSuppression: false,
-                autoGainControl: false,
+                autoGainControl: true,
                 channelCount: 1
             };
 
@@ -491,26 +531,38 @@
             micSource = mixAudioCtx.createMediaStreamSource(mediaStream);
             analyser = mixAudioCtx.createAnalyser();
             analyser.fftSize = 256;
+            micSource.connect(analyser);
 
-            // ScriptProcessorNode 捕获原始 PCM 数据
-            const bufferSize = 4096;
-            processor = mixAudioCtx.createScriptProcessor(bufferSize, 1, 1);
             recordedSamples = [];
 
-            processor.onaudioprocess = (e) => {
-                const input = e.inputBuffer.getChannelData(0);
-                // iOS 兼容：检测是否真的录到数据（非空检测）
-                recordedSamples.push(new Float32Array(input));
-            };
-
-            // 连接：麦克风 → analyser（音量指示）+ processor（录音）
-            micSource.connect(analyser);
-            micSource.connect(processor);
-            // processor 需要连接 destination 才能触发 onaudioprocess，用静音 gain 避免用户听到自己
+            // 录音节点需连入音频图才会持续拉取数据；gain=0 静音避免自己听到返听
             const silentGain = mixAudioCtx.createGain();
             silentGain.gain.value = 0;
-            processor.connect(silentGain);
             silentGain.connect(mixAudioCtx.destination);
+
+            // 首选 AudioWorklet：在独立音频线程采集 PCM，
+            // 主线程（歌词滚动/伴奏解码/音量表动画）卡顿不会造成断流爆音
+            if (typeof mixAudioCtx.audioWorklet === 'object') {
+                try {
+                    const workletUrl = URL.createObjectURL(new Blob([RECORDER_WORKLET_CODE], { type: 'application/javascript' }));
+                    await mixAudioCtx.audioWorklet.addModule(workletUrl);
+                    URL.revokeObjectURL(workletUrl);
+                    workletNode = new AudioWorkletNode(mixAudioCtx, 'recorder-processor', {
+                        numberOfInputs: 1, numberOfOutputs: 1, channelCount: 1
+                    });
+                    workletNode.port.onmessage = (e) => {
+                        if (isRecording) recordedSamples.push(e.data);
+                    };
+                    micSource.connect(workletNode);
+                    workletNode.connect(silentGain);
+                } catch (wErr) {
+                    console.warn('AudioWorklet 初始化失败，回退 ScriptProcessor:', wErr);
+                    workletNode = null;
+                    setupScriptProcessorFallback(micSource, silentGain);
+                }
+            } else {
+                setupScriptProcessorFallback(micSource, silentGain);
+            }
 
             isRecording = true;
 
@@ -710,9 +762,16 @@
             cancelAnimationFrame(animFrame);
             animFrame = null;
         }
+        if (workletNode) {
+            try { workletNode.port.onmessage = null; } catch(e) {}
+            try { workletNode.disconnect(); } catch(e) {}
+            try { micSource && micSource.disconnect(workletNode); } catch(e) {}
+            workletNode = null;
+        }
         if (processor) {
             try { processor.disconnect(); } catch(e) {}
-            try { micSource.disconnect(processor); } catch(e) {}
+            try { micSource && micSource.disconnect(processor); } catch(e) {}
+            processor.onaudioprocess = null;
             processor = null;
         }
         if (mediaStream) {

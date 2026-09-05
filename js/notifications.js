@@ -9,7 +9,7 @@ let unreadCount = 0;
 
 const NOTIF_ICONS = {
     message: '💬', journal: '📔', photo: '📷', music: '🎵',
-    quote: '💬', comment: '💭', like: '❤️', voice: '🎤'
+    quote: '💬', comment: '💭', like: '❤️', voice: '🎤', game: '🐸'
 };
 
 const _sentNotifications = new Map();

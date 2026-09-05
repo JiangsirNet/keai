@@ -381,7 +381,8 @@
 
     /* 宠物缩小 */
     .husky-pet,
-    .cat-pet {
+    .cat-pet,
+    .mao-pet {
         width: 70px !important;
         height: 70px !important;
     }
@@ -398,6 +399,10 @@
 
     .cat-pet {
         right: 10px;
+    }
+
+    .mao-pet {
+        left: 90px;
     }
 
     /* 大图预览 */
@@ -457,7 +462,8 @@
     }
 
     .husky-pet,
-    .cat-pet {
+    .cat-pet,
+    .mao-pet {
         width: 56px !important;
         height: 56px !important;
     }

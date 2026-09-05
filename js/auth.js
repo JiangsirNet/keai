@@ -69,6 +69,8 @@
         if (window.huskyWalkingTimer) clearInterval(window.huskyWalkingTimer);
         document.getElementById("catPet").classList.add("hidden");
         if (window.catWalkingTimer) clearInterval(window.catWalkingTimer);
+        document.getElementById("maoPet").classList.add("hidden");
+        if (window.maoWalkingTimer) clearInterval(window.maoWalkingTimer);
         document.getElementById("boyPet").classList.add("hidden");
         document.getElementById("girlPet").classList.add("hidden");
     }
@@ -185,6 +187,7 @@
         _pageInited.home = true;
         window.initHusky();
         window.initCat();
+        window.initMao();
         window.initBoy();
         window.initGirl();
         window.initWeather();
@@ -275,7 +278,8 @@
         boy: { id: 'boyPet', toggleId: 'toggleBoy' },
         girl: { id: 'girlPet', toggleId: 'toggleGirl' },
         husky: { id: 'huskyPet', toggleId: 'toggleHusky' },
-        cat: { id: 'catPet', toggleId: 'toggleCat' }
+        cat: { id: 'catPet', toggleId: 'toggleCat' },
+        mao: { id: 'maoPet', toggleId: 'toggleMao' }
     };
 
     function isDisplayOn(key) {
@@ -304,7 +308,7 @@
         localStorage.setItem('show_' + key, on ? '1' : '0');
         // 如果隐藏的元素正在抱抱，先释放
         if (!on && window.hugState) {
-            const idMap = { boy: 'boyPet', girl: 'girlPet', husky: 'huskyPet', cat: 'catPet' };
+            const idMap = { boy: 'boyPet', girl: 'girlPet', husky: 'huskyPet', cat: 'catPet', mao: 'maoPet' };
             if (window.hugState.petId === idMap[key] || window.hugState.characterId === idMap[key]) {
                 window.releaseHug();
             }

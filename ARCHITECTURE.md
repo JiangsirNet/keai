@@ -36,13 +36,13 @@ js/                     — JS 模块
 ├── weather.js          — 天气组件
 ├── audio.js            — BGM / 音效
 ├── music.js            — 音乐播放器
-├── pets.js             — 宠物动画
+├── pets.js             — 宠物动画（哈士奇 SVG / 暹罗猫 SVG / 猫猫 GIF 动图，含拖拽、点击互动、抱抱系统）
 ├── characters.js       — 男生 Live2D 人物形象
 ├── characters_girl.js  — 女生 Live2D 人物形象
 ├── home.js             — 首页逻辑（相册/留言）
 ├── video.js            — 视频 Tab（腾讯 COS 私有桶上传/签名播放/缩略图/删除）
 ├── cloud.js            — 网盘 Tab（OpenList 多挂载浏览/上传任意文件（多选）/视频图片音频预览/删除）
-├── karaoke.js          — K 歌房（选歌/歌词/录音/混音/作品库独立播放器）
+├── karaoke.js          — K 歌房（选歌/歌词/录音/混音/作品库独立播放器；录音用 AudioWorklet 独立线程采集+软限幅，老浏览器回退 ScriptProcessor）
 ├── journal.js          — 日志逻辑
 ├── calendar.js         — 日历/打卡/纪念日
 ├── game.js             — 跳一跳（iframe 加载 Jump-master，postMessage 收分数入库 + 情侣排行榜）
@@ -736,7 +736,7 @@ GRANT EXECUTE ON FUNCTION exec_ddl(TEXT) TO authenticated;
 - **HTML**：`index.html` 中的 `#pullRefreshIndicator` 元素
 - **CSS**：`styles.css` 中的 `.pull-refresh-indicator` 样式
 - **触发条件**：页面在顶部（`scrollY === 0`）时手指下拉超过 70px
-- **排除元素**：拖拽人物/宠物（`.boy-pet, .girl-pet, .husky-pet, .cat-pet`）时不触发
+- **排除元素**：拖拽人物/宠物（`.boy-pet, .girl-pet, .husky-pet, .cat-pet, .mao-pet`）时不触发
 - **流程**：下拉显示指示器 → 超过阈值显示"松开刷新" → 松手刷新页面
 
 ## 十七、分页功能

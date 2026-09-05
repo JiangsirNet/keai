@@ -38,10 +38,29 @@ function onJumpMessage(e) {
 async function saveJumpScore(score) {
     if (!myUserId) return;
     try {
+        // 查询双方最高分，判断是否超越对方的最高纪录
+        const { data: rows, error: qErr } = await sb.from("game_scores")
+            .select("user_id, score")
+            .eq("game", "jump")
+            .order("score", { ascending: false })
+            .limit(100);
+        if (qErr) throw qErr;
+        let partnerBest = 0;
+        (rows || []).forEach(r => {
+            if (r.user_id !== myUserId && r.score > partnerBest) partnerBest = r.score;
+        });
+        const beatPartner = partnerBest > 0 && score > partnerBest;
+
         const { error } = await sb.from("game_scores")
             .insert({ game: "jump", user_id: myUserId, nickname: myNickname, score: score });
         if (error) throw error;
-        if (window.sendNotification) window.sendNotification("game", `🐸 跳一跳得分：${score}`);
+        // 站内铃铛每局都发；超越对方最高纪录时才发邮件（且受设置页邮件开关控制）
+        if (window.sendNotification) {
+            const content = beatPartner
+                ? `🐸 跳一跳：${score} 分，超越 TA 的最高纪录 ${partnerBest}！`
+                : `🐸 跳一跳得分：${score}`;
+            window.sendNotification("game", content, beatPartner);
+        }
         loadJumpLeaderboard();
     } catch (e) {
         console.warn("[Jump] 分数保存失败:", e);
