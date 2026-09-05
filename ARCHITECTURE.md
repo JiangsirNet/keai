@@ -4,7 +4,7 @@
 
 ## 一、项目概述
 
-情侣空间是一个双人互动 Web 应用，功能包括：相册、视频（腾讯 COS 私有桶）、网盘（OpenList 接入百度网盘，浏览/上传/删除视频）、留言、日志、日历打卡、猜拳游戏、骗子酒馆、Live2D 风格人物形象、宠物动画、现代音乐播放器（封面/歌词/播放模式）、K 歌房（录音+混音+作品库）、天气组件、背景图自定义、AI 标签页（嵌入豆包网页版）、下拉刷新、资源本地缓存等。
+情侣空间是一个双人互动 Web 应用，功能包括：相册、视频（腾讯 COS 私有桶）、网盘（OpenList 接入百度网盘等，支持多挂载路径切换，浏览/上传任意文件（可多选）/删除）、留言、日志、日历打卡、跳一跳游戏（iframe 内嵌 + 分数入库 + 情侣排行榜）、骗子酒馆、Live2D 风格人物形象、宠物动画、现代音乐播放器（封面/歌词/播放模式）、K 歌房（录音+混音+作品库）、天气组件、背景图自定义、AI 标签页（嵌入豆包网页版）、下拉刷新、资源本地缓存等。
 
 ## 二、文件结构
 
@@ -31,7 +31,7 @@ partials/               — HTML 片段
 ├── game.html           — 游戏页
 └── config.html         — 设置页（含腾讯 COS 配置）
 js/                     — JS 模块
-├── config_page.js      — 人物话语管理
+├── config_page.js      — 人物话语管理 + 通知邮件开关
 ├── notifications.js    — 通知系统（sendNotification）
 ├── weather.js          — 天气组件
 ├── audio.js            — BGM / 音效
@@ -41,11 +41,11 @@ js/                     — JS 模块
 ├── characters_girl.js  — 女生 Live2D 人物形象
 ├── home.js             — 首页逻辑（相册/留言）
 ├── video.js            — 视频 Tab（腾讯 COS 私有桶上传/签名播放/缩略图/删除）
-├── cloud.js            — 网盘 Tab（OpenList 百度网盘浏览/上传/播放/删除视频）
+├── cloud.js            — 网盘 Tab（OpenList 多挂载浏览/上传任意文件（多选）/视频图片音频预览/删除）
 ├── karaoke.js          — K 歌房（选歌/歌词/录音/混音/作品库独立播放器）
 ├── journal.js          — 日志逻辑
 ├── calendar.js         — 日历/打卡/纪念日
-├── game.js             — 猜拳对战
+├── game.js             — 跳一跳（iframe 加载 Jump-master，postMessage 收分数入库 + 情侣排行榜）
 ├── game_liar.js        — 骗子酒馆
 ├── background.js       — 背景图设置
 ├── ai_chat.js          — ⚠️ 已废弃（智谱 AI 聊天，不再被 loader.js 加载，文件保留备用）
@@ -94,14 +94,14 @@ ARCHITECTURE.md         — 本架构文档（type=md, 供 upload.html 渲染用
 ### 加载顺序
 
 ```
-CSS (0) → HTML (1-6) → JS (10-29)
+CSS (0) → HTML (1-6) → JS (10-26)
 ```
 
 | 类型 | load_order 范围 | 说明 |
 |---|---|---|
 | `css` | 0 | 所有样式最先加载（按 file_path 排序），确保页面渲染时样式已就绪 |
 | `html` | 1-6 | 全局容器(1-2) → 各页面容器(3-6) |
-| `js` | 10-29 | 功能模块(10-28) → auth.js(29) |
+| `js` | 10-26 | 功能模块(10-25) → auth.js(26) |
 | `md` | 99 | 仅供 upload.html 渲染，不参与页面加载 |
 
 ### JS 加载顺序（依赖关系）
@@ -110,13 +110,12 @@ CSS (0) → HTML (1-6) → JS (10-29)
 config_page.js (10) → notifications.js (11) → weather.js (12) → audio.js (13)
 → music.js (14) → pets.js (15) → characters.js (16) → characters_girl.js (17)
 → home.js (18) → journal.js (19) → calendar.js (20) → game.js (21) → game_liar.js (22)
-→ background.js (23) → karaoke.js (25) → video.js (26) → cloud.js (27)
-→ pull_refresh.js (28) → auth.js (29)
+→ background.js (23) → video.js (24) → karaoke.js (25) → pull_refresh.js (?) → auth.js (26)
 ```
 
 > **关键**：`auth.js` 必须最后加载，因为它的 `initPage()` 会调用所有模块的初始化函数。
 > **注**：`ai_chat.js` 已废弃，loader.js 不再加载（AI 标签页改为 iframe 嵌入豆包网页版）。
-> **注**：`video.js`、`karaoke.js`、`cloud.js` 共享 home.html 页面，懒加载初始化（首次切到对应子 Tab 才 init）。
+> **注**：`video.js` 和 `karaoke.js` 共享 home.html 页面，懒加载初始化（首次切到对应子 Tab 才 init）。
 
 ## 四、数据库表结构
 
@@ -185,7 +184,25 @@ config_page.js (10) → notifications.js (11) → weather.js (12) → audio.js (
 | `anniversaries` | 纪念日 | `date`, `title` |
 | `music` | 音乐 | `title`, `url`, `uploader_email`, `cover_url`(可选), `lyrics`(可选) |
 | `karaoke_recordings` | K 歌录音作品 | `title`, `url`, `singer_name`, `song_title`, `uploader_email` |
-| `rps_games` | 猜拳游戏记录 | `player_email`, `choice` |
+| `rps_games` | 猜拳游戏记录（已弃用，情侣对战已移除，表可保留） | `player_email`, `choice` |
+| `game_scores` | 小游戏分数（通用，game 字段区分游戏） | `game`('jump'), `user_id`, `nickname`, `score` |
+
+**game_scores 建表 SQL（跳一跳排行榜用，需在 Supabase SQL Editor 执行）**：
+
+```sql
+create table if not exists game_scores (
+  id uuid primary key default gen_random_uuid(),
+  game text not null default 'jump',
+  user_id uuid not null references auth.users(id) on delete cascade,
+  nickname text not null default '',
+  score int not null default 0,
+  created_at timestamptz not null default now()
+);
+alter table game_scores enable row level security;
+create policy "game_scores 公开读" on game_scores for select using (true);
+create policy "game_scores 认证写" on game_scores for insert to authenticated with check (auth.uid() = user_id);
+create index if not exists idx_game_scores_board on game_scores (game, score desc);
+```
 
 ### RLS 策略规则
 
@@ -325,7 +342,7 @@ CREATE POLICY "allow_auth_write_xxx" ON favorites FOR ALL TO authenticated USING
 })();
 ```
 
-2. 上传到数据库，设置 `load_order`（功能模块 10-28 之间，`auth.js` 必须 29 最后）
+2. 上传到数据库，设置 `load_order`（功能模块 10-21 之间，`auth.js` 必须 22 最后）
 
 > **注意**：不要在顶层用 `const sb` 或 `const CONFIG`，会与 `config.js` 冲突。用 IIFE 或 `window.sb` 访问。
 
@@ -400,14 +417,16 @@ GRANT EXECUTE ON FUNCTION exec_ddl(TEXT) TO authenticated;
 | `window._openlistBaseUrl` | string | OpenList 服务地址（网盘用） |
 | `window._openlistUsername` | string | OpenList 登录账号 |
 | `window._openlistPassword` | string | OpenList 登录密码 |
-| `window._openlistMountPath` | string | OpenList 百度网盘挂载路径 |
+| `window._openlistMountPath` | string | 默认网盘挂载路径（第一个挂载） |
+| `window._openlistMountPaths` | string | 网盘挂载路径列表（换行/逗号分隔，如 `/baidu\n/quark`） |
 | `window._openlistAsTask` | boolean | 网盘上传是否用异步任务模式 |
+| `window._notifyEmailEnabled` | boolean | 发送通知时是否同时发邮件（localStorage 键 `notify_email_enabled`，仅本机生效，无记录默认 true） |
 
 ### 全局函数参考
 
 | 函数 | 来源文件 | 说明 |
 |---|---|---|
-| `window.sendNotification(type, msg)` | notifications.js | 发送通知（有 500ms 去重） |
+| `window.sendNotification(type, msg)` | notifications.js | 发送通知（有 500ms 去重；受设置页「通知同时发送邮件」开关控制是否发邮件） |
 | `window.showPage(pageName)` | auth.js | 切换页面 tab（通过 .page-content 类和 data-page 属性动态匹配） |
 | `window.compressImage(file, maxW, quality)` | auth.js | 压缩图片 |
 | `window.loadGallery()` | home.js | 加载相册 |
@@ -436,8 +455,12 @@ GRANT EXECUTE ON FUNCTION exec_ddl(TEXT) TO authenticated;
 | `window.cloudRefresh()` | cloud.js | 刷新当前网盘目录 |
 | `window.cloudToggleUpload()` | cloud.js | 展开/收起网盘上传区 |
 | `window.cloudEnterDir(path)` | cloud.js | 进入网盘目录 |
-| `window.cloudGoHome()` | cloud.js | 返回网盘根目录 |
+| `window.cloudSwitchMount(mountPath)` | cloud.js | 切换当前浏览的网盘挂载路径 |
+| `window.cloudGoHome()` | cloud.js | 返回当前挂载根目录 |
 | `window.cloudPlayVideo(name, path)` | cloud.js | 获取直链并弹窗播放网盘视频 |
+| `window.cloudPreviewImage(name, path)` | cloud.js | 获取直链并弹窗预览网盘图片 |
+| `window.cloudPlayAudio(name, path)` | cloud.js | 获取直链并弹窗播放网盘音频 |
+| `window.cloudOpenFile(name, path)` | cloud.js | 获取直链并新窗口打开/下载非视频文件 |
 | `window.cloudDeleteFile(name, path)` | cloud.js | 删除网盘视频文件（confirm 确认） |
 | `window.cloudCloseVideo(e)` | cloud.js | 关闭网盘视频播放弹窗 |
 
@@ -660,14 +683,15 @@ GRANT EXECUTE ON FUNCTION exec_ddl(TEXT) TO authenticated;
 - **互斥播放**：录音作品 `play` 事件触发时遍历 `recordAudioMap` 暂停其它所有 Audio
 - **删除清理**：`deleteKaraokeRecording` 先停对应 Audio 并从 Map 移除，再删数据库 + Storage
 
-## 十五点七、网盘 Tab（OpenList 百度网盘）
+## 十五点七、网盘 Tab（OpenList 多挂载）
 
 ### 功能特性
 
-- **浏览**：通过 OpenList API 浏览百度网盘目录（面包屑导航 + 网盘根快捷返回），只显示文件夹和视频文件
-- **上传**：选择本地视频上传到当前浏览目录（XHR PUT 带进度条），可选异步任务模式（As-Task，适合大文件）
+- **多挂载支持**：支持配置多个网盘挂载路径（如 `/baidu`、`/quark`、`/115`），网盘页顶部以按钮组切换，点击即加载对应挂载根目录
+- **浏览**：通过 OpenList API 浏览网盘目录（面包屑导航 + 挂载根快捷返回），显示全部文件（文件夹在前）；视频弹窗播放，图片弹窗预览，音频弹窗播放（卡片直接显示缩略图/封面），其它文件点击新窗口打开/下载
+- **上传**：支持任意类型文件且可多选，统一填写一个名称（扩展名自动保留原文件的；多选自动加 `名称_YYYYMMDD_序号`），上传区提供「上传到挂载」下拉框切换目标挂载；当前浏览目录位于所选挂载下时传到当前目录，否则传到该挂载根目录（XHR PUT 带进度条，可选异步任务模式）
 - **播放**：点击视频 → `/fs/get` 获取直链（raw_url）→ 弹窗播放
-- **删除**：视频卡片日期旁红色垃圾桶按钮 → confirm 确认 → 删除网盘文件（401 时自动重登录并重试一次）
+- **删除**：视频卡片红色垃圾桶按钮 → confirm 确认 → 删除网盘文件（401 时自动重登录并重试一次）
 - **连接状态**：右上角状态徽章（未连接/未配置/连接中/失败/错误/用户名），配置缺失时显示黄色提示条
 - **懒加载**：首次切到网盘子 Tab 才初始化（`initCloudPage()`），并强制从 app_config 重新拉取最新配置
 
@@ -675,8 +699,8 @@ GRANT EXECUTE ON FUNCTION exec_ddl(TEXT) TO authenticated;
 
 | 文件 | 作用 |
 |---|---|
-| `partials/home.html` `#subTab-cloud` | 网盘 Tab UI（状态徽章/面包屑/文件网格/上传区/视频弹窗） |
-| `js/cloud.js` | 网盘逻辑（登录/浏览/上传/播放/删除），load_order=27 |
+| `partials/home.html` `#subTab-cloud` | 网盘 Tab UI（挂载切换按钮组/状态徽章/面包屑/文件网格/上传区+挂载下拉/视频弹窗） |
+| `js/cloud.js` | 网盘逻辑（登录/多挂载切换/浏览/任意文件多选上传/播放/打开/删除），load_order=27 |
 | `styles.css` `.cloud-file-card` / `.cloud-del-icon` | 文件卡片与删除按钮样式 |
 
 ### 配置（app_config 表）
@@ -686,14 +710,18 @@ GRANT EXECUTE ON FUNCTION exec_ddl(TEXT) TO authenticated;
 | `openlist_base_url` | OpenList 服务地址（如 `https://xxx:5244`） |
 | `openlist_username` | 登录账号 |
 | `openlist_password` | 登录密码（必填，缺失则网盘页显示"未配置"） |
-| `openlist_mount_path` | 百度网盘挂载路径（如 `/baidu`） |
+| `openlist_mount_paths` | 挂载路径列表，换行或逗号分隔（如 `/baidu\n/quark`），第一个为默认挂载 |
+| `openlist_mount_path` | 兼容旧版单挂载配置（= 第一个挂载） |
 | `openlist_as_task` | `'1'` 启用异步任务上传 |
 
-> 配置入口：upload.html「存储」Tab 或应用内设置页。
+> 配置入口：upload.html「存储」Tab（挂载路径为多行文本框，每行一个，或逗号分隔）。
 > `auth.js` 的 `initStorageGlobals()` 登录后/进入网盘 Tab 时把配置读到 `window._openlist*` 全局变量。
 
 ### 关键实现细节
 
+- **挂载解析**：`parseMountPaths()` 按 `\n\r,，;；` 分隔 → trim → 过滤空 → 统一以 `/` 开头 → 去重；兼容旧 `openlist_mount_path`
+- **挂载切换**：`cloudSwitchMount(m)` 渲染按钮组（`#cloudMountChips`，当前挂载高亮）+ 重置浏览路径到挂载根
+- **上传目标**：上传区下拉 `#cloudUploadMountSelect`；`underSelected` 判断当前浏览目录是否在所选挂载下（根挂载 `''` 除外），在则传 `currentPath`，否则传挂载根
 - **登录**：`POST /api/auth/login` 获取 JWT，后续请求 `Authorization` 头直接带裸 token（无 Bearer 前缀）
 - **列目录**：`GET /api/fs/list?path=绝对路径`，过滤只留文件夹+视频，文件夹在前
 - **上传**：XHR `PUT /api/fs/put`，Header `File-Path`（encodeURIComponent 编码的远端路径）+ `As-Task: true`（可选）；成功后**延迟 3 秒**刷新列表（等待异步任务落盘）
@@ -704,7 +732,7 @@ GRANT EXECUTE ON FUNCTION exec_ddl(TEXT) TO authenticated;
 
 ## 十六、下拉刷新（橡皮条）
 
-- **文件**：`js/pull_refresh.js`（load_order=28）
+- **文件**：`js/pull_refresh.js`（load_order=25）
 - **HTML**：`index.html` 中的 `#pullRefreshIndicator` 元素
 - **CSS**：`styles.css` 中的 `.pull-refresh-indicator` 样式
 - **触发条件**：页面在顶部（`scrollY === 0`）时手指下拉超过 70px
@@ -774,7 +802,7 @@ GRANT EXECUTE ON FUNCTION exec_ddl(TEXT) TO authenticated;
 10. **Modal/模态框替代原生弹窗**：upload.html 中使用自定义模态框表单（containerModal）和自定义确认框（confirmModal），不使用 prompt/confirm
 11. **CSS 文件 type=css, load_order=0**，确保最先加载（多个 CSS 文件按 file_path 排序）
 12. **HTML 文件必须指定 container_id**，对应 app_containers 表中的 container_id
-13. **JS 文件 load_order 必须在 10-29 之间**，auth.js(29) 必须最后
+13. **JS 文件 load_order 必须在 10-26 之间**，auth.js(26) 必须最后
 14. **新增文件后需更新两处**：upload.html 的 FILES 数组（本地上传用）和本文档的文件结构
 15. **upload.html 保存资源后必须调用 `bumpAssetsVersion()`** 更新版本号，否则用户缓存不会刷新
 16. **文件字符数限制 20000**：超过的文件必须拆分（如 styles.css 拆成 3 个、characters.js 拆成 2 个、game.js 拆成 2 个）

@@ -1,30 +1,27 @@
 <!-- 游戏页 -->
 <div id="page-game" class="page-content hidden">
+    <!-- 跳一跳 -->
     <div class="bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow mb-6">
         <h2 class="text-xl font-bold text-love flex items-center mb-4">
-            <i class="fa fa-gamepad mr-2"></i>情侣对战
-            <span id="partnerOnline" class="ml-auto text-sm font-normal text-gray-400">对方离线</span>
+            <i class="fa fa-frog mr-2"></i>跳一跳
+            <span id="jumpMyBest" class="ml-auto text-sm font-normal text-gray-400">最高分 —</span>
         </h2>
-        <div class="grid grid-cols-2 gap-4 max-w-md mx-auto">
-            <div class="text-center">
-                <p class="text-sm text-love font-bold mb-2" id="myNameLabel">我</p>
-                <div id="myChoice" class="text-6xl mb-2">✊</div>
-                <div id="myScore" class="text-2xl font-bold text-love">0</div>
-            </div>
-            <div class="text-center">
-                <p class="text-sm text-love font-bold mb-2" id="partnerNameLabel">TA</p>
-                <div id="partnerChoice" class="text-6xl mb-2 opacity-30">❓</div>
-                <div id="partnerScore" class="text-2xl font-bold text-gray-400">0</div>
-            </div>
+        <div id="jumpPlayArea" class="hidden mb-4 rounded-2xl overflow-hidden border border-rose-100">
+            <iframe id="jumpFrame" src="about:blank" class="w-full h-[520px] block" allow="autoplay; fullscreen"></iframe>
         </div>
-        <div id="gameStatus" class="text-center text-gray-500 my-3 min-h-[24px]">选择你的出招！</div>
-        <div class="flex justify-center gap-4">
-            <button onclick="rpsPick('rock')" class="text-5xl hover:scale-125 transition-transform">✊</button>
-            <button onclick="rpsPick('paper')" class="text-5xl hover:scale-125 transition-transform">✋</button>
-            <button onclick="rpsPick('scissors')" class="text-5xl hover:scale-125 transition-transform">✌️</button>
+        <div class="flex justify-center">
+            <button id="jumpStartBtn" onclick="jumpTogglePlay()" class="bg-love hover:bg-loveDark text-white px-8 py-2.5 rounded-full transition-all font-bold">
+                <i class="fa fa-play mr-1"></i>开始游戏
+            </button>
         </div>
-        <div class="text-center mt-3">
-            <button onclick="rpsReset()" class="text-sm text-gray-400 hover:text-love">重置比分</button>
+        <div class="mt-5">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="font-bold text-love"><i class="fa fa-trophy mr-1 text-yellow-500"></i>情侣排行榜</h3>
+                <button onclick="loadJumpLeaderboard()" class="text-xs text-gray-400 hover:text-love"><i class="fa fa-refresh"></i> 刷新</button>
+            </div>
+            <div id="jumpBoard" class="space-y-2">
+                <div class="text-center text-gray-400 py-4 text-sm">加载中...</div>
+            </div>
         </div>
     </div>
 

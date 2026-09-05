@@ -92,6 +92,8 @@
         if (map.emailjs_service_id) { EMAILJS_SERVICE_ID = map.emailjs_service_id; window.EMAILJS_SERVICE_ID = map.emailjs_service_id; }
         if (map.emailjs_template_id) { EMAILJS_TEMPLATE_ID = map.emailjs_template_id; window.EMAILJS_TEMPLATE_ID = map.emailjs_template_id; }
         if (map.emailjs_public_key) { EMAILJS_PUBLIC_KEY = map.emailjs_public_key; window.EMAILJS_PUBLIC_KEY = map.emailjs_public_key; }
+        // 邮件通知开关（localStorage 本地记忆，无记录默认开启）
+        window._notifyEmailEnabled = localStorage.getItem('notify_email_enabled') !== '0';
         // AI 聊天配置（供 ai_chat.js 使用）
         if (map.zhipu_api_key) window._aiApiKey = map.zhipu_api_key;
         if (map.zhipu_model) window._aiModel = map.zhipu_model;
@@ -208,7 +210,7 @@
     function initGamePage() {
         if (_pageInited.game) return;
         _pageInited.game = true;
-        window.initRpsGame();
+        window.initJumpGame();
         window.syncLbBgmBtn();
     }
 
@@ -224,9 +226,9 @@
             const keys = [
                 // 腾讯 COS（4 key）
                 'cos_secret_id', 'cos_secret_key', 'cos_bucket', 'cos_region',
-                // OpenList 百度网盘（5 key）
+                // OpenList 百度网盘（6 key）
                 'openlist_base_url', 'openlist_username', 'openlist_password',
-                'openlist_mount_path', 'openlist_as_task'
+                'openlist_mount_path', 'openlist_mount_paths', 'openlist_as_task'
             ];
             if (!window.sb) { console.warn('[Storage] sb 未就绪，跳过加载'); return; }
             const { data, error } = await window.sb
@@ -244,6 +246,7 @@
             window._openlistUsername = map.openlist_username || '';
             window._openlistPassword = map.openlist_password || '';
             window._openlistMountPath= map.openlist_mount_path|| '';
+            window._openlistMountPaths = map.openlist_mount_paths || map.openlist_mount_path || '';
             window._openlistAsTask   = map.openlist_as_task === '1';
             _storageGlobalsLoaded = true;
         } catch (e) {
@@ -257,6 +260,8 @@
         if (_pageInited.config) return;
         _pageInited.config = true;
         window.loadCharacterQuotes();
+        // 加载邮件通知开关状态
+        if (window.loadNotifyEmailSetting) window.loadNotifyEmailSetting();
         // 先拿最新的全局值（确保即使设置页无表单也能填到 window.*）
         initStorageGlobals({ force: true }).then(() => {
             // 再让旧 loader 把值填到表单里（如果表单存在）

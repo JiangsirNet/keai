@@ -48,6 +48,21 @@
         </div>
     </div>
 
+    <!-- 通知设置 -->
+    <div class="bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow mt-6">
+        <h2 class="text-xl font-bold text-love flex items-center mb-2">
+            <i class="fa fa-bell mr-2"></i>通知设置
+        </h2>
+        <p class="text-sm text-gray-500 mb-4">控制发送通知时是否同时给对方发送邮件</p>
+        <div class="space-y-2">
+            <div class="display-toggle">
+                <span class="toggle-label"><i class="fa fa-envelope text-rose-400"></i>通知同时发送邮件</span>
+                <div class="toggle-switch on" id="toggleNotifyEmail" onclick="toggleNotifyEmail()"></div>
+            </div>
+        </div>
+        <p id="notifyEmailHint" class="text-xs text-gray-400 mt-3">开启后，留言/日志/照片等通知会通过 EmailJS 发送邮件提醒对方。</p>
+    </div>
+
     <!-- 背景设置 -->
     <div class="bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow mt-6">
         <h2 class="text-xl font-bold text-love flex items-center mb-2">

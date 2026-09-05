@@ -451,10 +451,10 @@
                     </div>
                     <div>
                         <label class="block text-sm text-vsgray mb-1">
-                            百度网盘挂载路径
-                            <span class="text-[10px] text-vsgray">（你在 OpenList 中添加百度网盘时填的挂载根路径）</span>
+                            网盘挂载路径（支持多个）
+                            <span class="text-[10px] text-vsgray">（每行一个，或用逗号分隔；第一个为默认挂载）</span>
                         </label>
-                        <input id="openlistMountPathInput" placeholder="如 /baidu 或 /我的网盘" class="w-full border border-vsborder rounded-lg p-2 outline-none focus:border-love">
+                        <textarea id="openlistMountPathInput" rows="3" placeholder="如：&#10;/baidu&#10;/quark&#10;/115" class="w-full border border-vsborder rounded-lg p-2 outline-none focus:border-love font-mono text-sm"></textarea>
                     </div>
                     <div class="flex items-center gap-2 text-xs text-vsgray">
                         <input type="checkbox" id="openlistAsTaskInput" class="w-4 h-4 accent-love">
@@ -907,28 +907,38 @@ CREATE POLICY "allow_write_music" ON music FOR ALL TO authenticated USING (true)
         }
 
         // —— OpenList 百度网盘 ——
+        // 解析挂载路径列表：换行/逗号/分号分隔，去重，统一以 / 开头
+        function parseMountPathList(raw) {
+            return String(raw || '').split(/[\n\r,，;；]+/).map(s => s.trim()).filter(Boolean)
+                .map(s => s.startsWith('/') ? s : '/' + s)
+                .filter((v, i, a) => a.indexOf(v) === i);
+        }
+
         const OPENLIST_CONFIG_KEYS = [
-            { key: 'openlist_base_url',   var: '_openlistBaseUrl' },
-            { key: 'openlist_username',   var: '_openlistUsername' },
-            { key: 'openlist_password',   var: '_openlistPassword' },
-            { key: 'openlist_mount_path', var: '_openlistMountPath' },
-            { key: 'openlist_as_task',    var: '_openlistAsTask' }
+            { key: 'openlist_base_url',    var: '_openlistBaseUrl' },
+            { key: 'openlist_username',    var: '_openlistUsername' },
+            { key: 'openlist_password',    var: '_openlistPassword' },
+            { key: 'openlist_mount_path',  var: '_openlistMountPath' },
+            { key: 'openlist_mount_paths', var: '_openlistMountPaths' },
+            { key: 'openlist_as_task',     var: '_openlistAsTask' }
         ];
 
         async function saveOpenListConfig() {
             if (!requireAuth()) return; // 登录校验
-            const baseUrl   = document.getElementById('openlistBaseUrlInput').value.trim();
-            const username  = document.getElementById('openlistUserInput').value.trim();
-            const password  = document.getElementById('openlistPassInput').value;
-            const mountPath = document.getElementById('openlistMountPathInput').value.trim();
-            const asTask    = document.getElementById('openlistAsTaskInput').checked;
+            const baseUrl    = document.getElementById('openlistBaseUrlInput').value.trim();
+            const username   = document.getElementById('openlistUserInput').value.trim();
+            const password   = document.getElementById('openlistPassInput').value;
+            const mountPaths = parseMountPathList(document.getElementById('openlistMountPathInput').value);
+            const mountPath  = mountPaths[0] || '';
+            const asTask     = document.getElementById('openlistAsTaskInput').checked;
             if (!baseUrl || !username) { alert('请至少填写 OpenList 服务地址和用户名'); return; }
             const configs = [
-                { key: 'openlist_base_url',   value: baseUrl },
-                { key: 'openlist_username',   value: username },
-                { key: 'openlist_password',   value: password },
-                { key: 'openlist_mount_path', value: mountPath },
-                { key: 'openlist_as_task',    value: asTask ? '1' : '0' }
+                { key: 'openlist_base_url',    value: baseUrl },
+                { key: 'openlist_username',    value: username },
+                { key: 'openlist_password',    value: password },
+                { key: 'openlist_mount_path',  value: mountPath },
+                { key: 'openlist_mount_paths', value: mountPaths.join('\n') },
+                { key: 'openlist_as_task',     value: asTask ? '1' : '0' }
             ];
             try {
                 for (const c of configs) {
@@ -936,12 +946,13 @@ CREATE POLICY "allow_write_music" ON music FOR ALL TO authenticated USING (true)
                         .upsert({ config_key: c.key, config_value: c.value }, { onConflict: 'config_key' });
                     if (error) throw new Error(`保存 ${c.key} 失败：${error.message}`);
                 }
-                window._openlistBaseUrl   = baseUrl;
+                window._openlistBaseUrl    = baseUrl;
                 window._openlistUsername   = username;
                 window._openlistPassword   = password;
                 window._openlistMountPath  = mountPath;
+                window._openlistMountPaths = mountPaths.join('\n');
                 window._openlistAsTask     = asTask;
-                alert('✅ OpenList 配置已保存');
+                alert(`✅ OpenList 配置已保存（共 ${mountPaths.length} 个挂载路径）`);
             } catch (e) { alert('保存 OpenList 失败：' + e.message); }
         }
 
@@ -953,15 +964,16 @@ CREATE POLICY "allow_write_music" ON music FOR ALL TO authenticated USING (true)
                 if (error) throw error;
                 const map = {};
                 (data || []).forEach(r => map[r.config_key] = r.config_value);
-                window._openlistBaseUrl   = map.openlist_base_url   || '';
+                window._openlistBaseUrl    = map.openlist_base_url    || '';
                 window._openlistUsername   = map.openlist_username   || '';
                 window._openlistPassword   = map.openlist_password   || '';
                 window._openlistMountPath  = map.openlist_mount_path || '';
+                window._openlistMountPaths = map.openlist_mount_paths || map.openlist_mount_path || '';
                 window._openlistAsTask     = map.openlist_as_task === '1';
-                document.getElementById('openlistBaseUrlInput').value   = window._openlistBaseUrl;
+                document.getElementById('openlistBaseUrlInput').value    = window._openlistBaseUrl;
                 document.getElementById('openlistUserInput').value      = window._openlistUsername;
                 document.getElementById('openlistPassInput').value      = window._openlistPassword;
-                document.getElementById('openlistMountPathInput').value = window._openlistMountPath;
+                document.getElementById('openlistMountPathInput').value = window._openlistMountPaths;
                 document.getElementById('openlistAsTaskInput').checked  = window._openlistAsTask;
             } catch (e) { console.warn('[Storage] 加载 OpenList 配置失败:', e); }
         }
@@ -976,7 +988,7 @@ CREATE POLICY "allow_write_music" ON music FOR ALL TO authenticated USING (true)
             const baseUrl   = document.getElementById('openlistBaseUrlInput').value.trim().replace(/\/$/, '');
             const username  = document.getElementById('openlistUserInput').value.trim();
             const password  = document.getElementById('openlistPassInput').value;
-            const mountPath = document.getElementById('openlistMountPathInput').value.trim() || '/';
+            const mountPath = parseMountPathList(document.getElementById('openlistMountPathInput').value)[0] || '/';
             if (!baseUrl || !username) {
                 resultEl.style.background = '#fef2f2';
                 resultEl.style.color = '#dc2626';

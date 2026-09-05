@@ -657,10 +657,13 @@ module.exports = {
                         <i class="fa fa-refresh"></i>
                     </button>
                     <button onclick="cloudToggleUpload()" id="cloudUploadBtn" class="bg-love hover:bg-loveDark text-white px-4 py-1.5 rounded-lg transition text-sm flex items-center gap-1">
-                        <i class="fa fa-upload"></i> 上传视频
+                        <i class="fa fa-upload"></i> 上传文件
                     </button>
                 </div>
             </div>
+
+            <!-- 多挂载切换（配置了多个挂载路径时显示） -->
+            <div id="cloudMountChips" class="flex items-center gap-1.5 flex-wrap mb-2"></div>
 
             <!-- 面包屑导航 -->
             <div id="cloudBreadcrumb" class="flex items-center gap-1 flex-wrap text-sm mb-2">
@@ -669,14 +672,19 @@ module.exports = {
 
             <!-- 上传区域（默认隐藏） -->
             <div id="cloudUploadArea" class="hidden mt-3 border-2 border-dashed border-rose-200 rounded-xl p-4 bg-rose-50/50">
-                <input type="file" id="cloudFileInput" accept="video/*" class="hidden">
+                <input type="file" id="cloudFileInput" multiple class="hidden">
                 <div class="flex flex-col sm:flex-row items-center gap-3">
                     <button onclick="document.getElementById('cloudFileInput').click()" class="bg-love hover:bg-loveDark text-white px-5 py-2 rounded-lg transition text-sm whitespace-nowrap">
-                        <i class="fa fa-plus"></i> 选择视频文件
+                        <i class="fa fa-plus"></i> 选择文件
                     </button>
                     <div id="cloudFileHint" class="text-xs text-gray-500 flex-1">
-                        支持 mp4、webm、mov 等视频格式，文件大小取决于百度网盘会员权限
+                        支持任意类型文件，可多选；单文件大小取决于网盘会员权限
                     </div>
+                </div>
+                <!-- 目标挂载选择（多挂载时可切换上传位置） -->
+                <div id="cloudUploadMountRow" class="flex items-center gap-2 mt-3">
+                    <label class="text-xs text-gray-500 whitespace-nowrap">上传到挂载</label>
+                    <select id="cloudUploadMountSelect" class="flex-1 border border-rose-200 rounded-lg px-2 py-1.5 text-xs bg-white outline-none focus:border-love"></select>
                 </div>
                 <!-- 上传进度 -->
                 <div id="cloudUploadProgress" class="hidden mt-3">
@@ -701,8 +709,8 @@ module.exports = {
             </div>
             <div id="cloudEmptyTip" class="text-center text-gray-400 py-10 hidden">
                 <i class="fa fa-folder-open text-4xl mb-2 block opacity-50"></i>
-                <p>暂无视频文件</p>
-                <p class="text-xs mt-1">点击右上角「上传视频」上传第一个视频吧</p>
+                <p>暂无文件</p>
+                <p class="text-xs mt-1">点击右上角「上传文件」上传第一个文件吧</p>
             </div>
         </div>
 
@@ -712,10 +720,37 @@ module.exports = {
                 <button onclick="cloudCloseVideo()" class="absolute -top-10 right-0 text-white text-2xl hover:text-love transition">
                     <i class="fa fa-times-circle"></i>
                 </button>
-                <video id="cloudVideoPlayer" controls class="w-full rounded-xl bg-black" playsinline>
+                <video id="cloudVideoPlayer" controls preload="metadata" class="w-full rounded-xl bg-black" playsinline>
                     您的浏览器不支持视频播放
                 </video>
                 <div id="cloudVideoTitle" class="text-white text-sm mt-2 text-center truncate"></div>
+            </div>
+        </div>
+
+        <!-- 图片预览弹窗 -->
+        <div id="cloudImageModal" class="fixed inset-0 bg-black/80 z-50 hidden items-center justify-center p-4" onclick="cloudCloseImage(event)">
+            <div class="relative w-full max-w-4xl" onclick="event.stopPropagation()">
+                <button onclick="cloudCloseImage()" class="absolute -top-10 right-0 text-white text-2xl hover:text-love transition">
+                    <i class="fa fa-times-circle"></i>
+                </button>
+                <img id="cloudImagePreview" src="" alt="" class="w-full max-h-[80vh] object-contain rounded-xl bg-black">
+                <div id="cloudImageTitle" class="text-white text-sm mt-2 text-center truncate"></div>
+            </div>
+        </div>
+
+        <!-- 音频播放弹窗 -->
+        <div id="cloudAudioModal" class="fixed inset-0 bg-black/70 z-50 hidden items-center justify-center p-4" onclick="cloudCloseAudio(event)">
+            <div class="relative w-full max-w-md" onclick="event.stopPropagation()">
+                <button onclick="cloudCloseAudio()" class="absolute -top-10 right-0 text-white text-2xl hover:text-love transition">
+                    <i class="fa fa-times-circle"></i>
+                </button>
+                <div class="bg-white/95 backdrop-blur rounded-3xl p-6 text-center">
+                    <div class="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-rose-400 to-pink-500 flex items-center justify-center mb-4 shadow-lg">
+                        <i class="fa fa-music text-white text-3xl"></i>
+                    </div>
+                    <div id="cloudAudioTitle" class="text-sm font-medium text-gray-800 truncate mb-4"></div>
+                    <audio id="cloudAudioPlayer" controls class="w-full"></audio>
+                </div>
             </div>
         </div>
     </div>

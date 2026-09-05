@@ -98,22 +98,31 @@ window.addQuote = addQuote;
 window.deleteQuote = deleteQuote;
 
 // =====================================================
-// OpenList / 百度网盘配置
+// OpenList / 百度网盘配置（支持多挂载路径）
 // =====================================================
 
+// 解析挂载路径列表：换行/逗号/分号分隔，去重，统一以 / 开头
+function parseMountPathList(raw) {
+    return String(raw || '').split(/[\n\r,，;；]+/).map(s => s.trim()).filter(Boolean)
+        .map(s => s.startsWith('/') ? s : '/' + s)
+        .filter((v, i, a) => a.indexOf(v) === i);
+}
+
 const OPENLIST_CONFIG_KEYS = [
-    { key: 'openlist_base_url',   var: '_openlistBaseUrl' },
-    { key: 'openlist_username',   var: '_openlistUsername' },
-    { key: 'openlist_password',   var: '_openlistPassword' },
-    { key: 'openlist_mount_path', var: '_openlistMountPath' },
-    { key: 'openlist_as_task',    var: '_openlistAsTask' }
+    { key: 'openlist_base_url',    var: '_openlistBaseUrl' },
+    { key: 'openlist_username',    var: '_openlistUsername' },
+    { key: 'openlist_password',    var: '_openlistPassword' },
+    { key: 'openlist_mount_path',  var: '_openlistMountPath' },
+    { key: 'openlist_mount_paths', var: '_openlistMountPaths' },
+    { key: 'openlist_as_task',     var: '_openlistAsTask' }
 ];
 
 async function saveOpenListConfig() {
     const baseUrl = document.getElementById('openlistBaseUrlInput').value.trim();
     const username = document.getElementById('openlistUserInput').value.trim();
     const password = document.getElementById('openlistPassInput').value;
-    const mountPath = document.getElementById('openlistMountPathInput').value.trim();
+    const mountPaths = parseMountPathList(document.getElementById('openlistMountPathInput').value);
+    const mountPath = mountPaths[0] || '';
     const asTask = document.getElementById('openlistAsTaskInput').checked;
 
     if (!baseUrl || !username) {
@@ -122,11 +131,12 @@ async function saveOpenListConfig() {
     }
 
     const configs = [
-        { key: 'openlist_base_url',   value: baseUrl },
-        { key: 'openlist_username',   value: username },
-        { key: 'openlist_password',   value: password },
-        { key: 'openlist_mount_path', value: mountPath },
-        { key: 'openlist_as_task',    value: asTask ? '1' : '0' }
+        { key: 'openlist_base_url',    value: baseUrl },
+        { key: 'openlist_username',    value: username },
+        { key: 'openlist_password',    value: password },
+        { key: 'openlist_mount_path',  value: mountPath },
+        { key: 'openlist_mount_paths', value: mountPaths.join('\n') },
+        { key: 'openlist_as_task',     value: asTask ? '1' : '0' }
     ];
 
     try {
@@ -141,9 +151,10 @@ async function saveOpenListConfig() {
         window._openlistUsername = username;
         window._openlistPassword = password;
         window._openlistMountPath = mountPath;
+        window._openlistMountPaths = mountPaths.join('\n');
         window._openlistAsTask = asTask;
 
-        alert('✅ OpenList 配置已保存');
+        alert(`✅ OpenList 配置已保存（共 ${mountPaths.length} 个挂载路径）`);
     } catch (e) {
         alert('保存失败：' + e.message);
     }
@@ -165,6 +176,7 @@ async function loadOpenListConfigForm() {
         window._openlistUsername = map.openlist_username || '';
         window._openlistPassword = map.openlist_password || '';
         window._openlistMountPath = map.openlist_mount_path || '';
+        window._openlistMountPaths = map.openlist_mount_paths || map.openlist_mount_path || '';
         window._openlistAsTask = map.openlist_as_task === '1';
 
         // 填充表单
@@ -175,7 +187,7 @@ async function loadOpenListConfigForm() {
         if (document.getElementById('openlistPassInput'))
             document.getElementById('openlistPassInput').value = window._openlistPassword;
         if (document.getElementById('openlistMountPathInput'))
-            document.getElementById('openlistMountPathInput').value = window._openlistMountPath;
+            document.getElementById('openlistMountPathInput').value = window._openlistMountPaths;
         if (document.getElementById('openlistAsTaskInput'))
             document.getElementById('openlistAsTaskInput').checked = window._openlistAsTask;
     } catch (e) {
@@ -194,7 +206,7 @@ async function testOpenListConnection() {
     const baseUrl = document.getElementById('openlistBaseUrlInput').value.trim().replace(/\/$/, '');
     const username = document.getElementById('openlistUserInput').value.trim();
     const password = document.getElementById('openlistPassInput').value;
-    const mountPath = document.getElementById('openlistMountPathInput').value.trim() || '/';
+    const mountPath = parseMountPathList(document.getElementById('openlistMountPathInput').value)[0] || '/';
 
     if (!baseUrl || !username) {
         resultEl.style.background = '#fef2f2';
@@ -242,3 +254,33 @@ async function testOpenListConnection() {
 window.saveOpenListConfig = saveOpenListConfig;
 window.loadOpenListConfigForm = loadOpenListConfigForm;
 window.testOpenListConnection = testOpenListConnection;
+
+// =====================================================
+// 通知设置：是否发送通知时同时发送邮件（localStorage 本地记忆）
+// =====================================================
+
+function applyNotifyEmailUI(on) {
+    const toggle = document.getElementById('toggleNotifyEmail');
+    if (toggle) toggle.classList.toggle('on', on);
+    const hint = document.getElementById('notifyEmailHint');
+    if (hint) hint.textContent = on
+        ? '开启后，留言/日志/照片等通知会通过 EmailJS 发送邮件提醒对方。'
+        : '已关闭：通知只出现在站内铃铛，不再发送邮件。';
+}
+
+// 读取设置（无记录默认开启），并同步全局变量供 notifications.js 判断
+function loadNotifyEmailSetting() {
+    window._notifyEmailEnabled = localStorage.getItem('notify_email_enabled') !== '0';
+    applyNotifyEmailUI(window._notifyEmailEnabled);
+}
+
+// 切换开关并保存到 localStorage
+function toggleNotifyEmail() {
+    const next = !(window._notifyEmailEnabled !== false);
+    window._notifyEmailEnabled = next;
+    localStorage.setItem('notify_email_enabled', next ? '1' : '0');
+    applyNotifyEmailUI(next);
+}
+
+window.loadNotifyEmailSetting = loadNotifyEmailSetting;
+window.toggleNotifyEmail = toggleNotifyEmail;

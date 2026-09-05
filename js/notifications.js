@@ -56,7 +56,7 @@ async function loadNotifications() {
     renderBellList();
 }
 
-async function sendNotification(type, content) {
+async function sendNotification(type, content, sendEmail = true) {
     try {
         const { data: { user } } = await window.sb.auth.getUser();
         if (!user) return;
@@ -95,7 +95,8 @@ async function sendNotification(type, content) {
             type, content: fullContent, from_email: fromEmail, to_email: toEmail, is_read: false
         });
         // 发送邮件通知对方；其它类型只写铃铛通知，不发邮件
-        if (window.EMAILJS_SERVICE_ID && window.EMAILJS_TEMPLATE_ID && window.emailjs) {
+        // 设置页「通知同时发送邮件」开关关闭时（window._notifyEmailEnabled === false）跳过邮件
+        if (sendEmail && window._notifyEmailEnabled !== false && window.EMAILJS_SERVICE_ID && window.EMAILJS_TEMPLATE_ID && window.emailjs) {
             try {
                 await window.emailjs.send(window.EMAILJS_SERVICE_ID, window.EMAILJS_TEMPLATE_ID, {
                     to_email: toEmail,

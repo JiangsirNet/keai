@@ -1,153 +1,132 @@
 /**
- * 猜拳对战
- * 石头剪刀布实时对战（Supabase Realtime）、分数记录
+ * 跳一跳游戏
+ * iframe 加载 Jump-master（three.js），游戏结束时游戏内 postMessage 上报分数，
+ * 分数写入 Supabase game_scores 表，游戏页展示情侣排行榜（每人取最高分）。
+ * 同时负责初始化骗子酒馆（game_liar.js 的 lbInit 依赖 window.myRpsEmail）。
  */
 
 (function() {
 const sb = window.sb;
 const CONFIG = window.CONFIG;
-const sfxPlay = window.sfxPlay || function(){};
-const sfxWaterHit = window.sfxWaterHit || function(){};
-const sfxEmptyClick = window.sfxEmptyClick || function(){};
-const toggleBgm = window.toggleBgm || function(){};
 
-// ==================== 石头剪刀布对战 ====================
-let rpsChannel = null;
-let myRpsPick = null;
-let partnerRpsPick = null;
-let myRpsScore = 0;
-let partnerRpsScore = 0;
-const rpsEmoji = { rock: "✊", paper: "✋", scissors: "✌️" };
-const rpsBeats = { rock: "scissors", paper: "rock", scissors: "paper" };
+let myUserId = "";
+let myEmail = "";
+let myNickname = "我";
 
-let myRpsEmail = "";
+function initJumpGame() {
+    // 监听 iframe 内跳一跳上报的分数
+    window.addEventListener("message", onJumpMessage);
 
-function initRpsGame() {
     sb.auth.getUser().then(({ data: { user } }) => {
-        myRpsEmail = (user?.email || "").toLowerCase();
-        window.myRpsEmail = myRpsEmail;
-        const boyEmail = (CONFIG.boyEmail || "").toLowerCase();
-        const girlEmail = (CONFIG.girlEmail || "").toLowerCase();
-        const isBoy = myRpsEmail && myRpsEmail === boyEmail;
-        const isGirl = myRpsEmail && myRpsEmail === girlEmail;
-        const myName = isGirl ? CONFIG.girlName : CONFIG.boyName;
-        const partnerName = isGirl ? CONFIG.boyName : CONFIG.girlName;
-        document.getElementById("myNameLabel").textContent = myName;
-        document.getElementById("partnerNameLabel").textContent = partnerName;
-
-        const saved = JSON.parse(localStorage.getItem("rpsScore") || "{}");
-        myRpsScore = saved.my || 0;
-        partnerRpsScore = saved.partner || 0;
-        updateRpsScore();
-
-        rpsChannel = sb.channel("rps-game");
-
-        rpsChannel
-            .on("broadcast", { event: "pick" }, ({ payload }) => {
-                partnerRpsPick = payload.pick;
-                checkRpsResult();
-            })
-            .on("broadcast", { event: "reset" }, () => {
-                myRpsScore = 0; partnerRpsScore = 0;
-                saveRpsScore(); updateRpsScore();
-                document.getElementById("gameStatus").textContent = "比分已重置！";
-            })
-            .on("presence", { event: "sync" }, () => {
-                const state = rpsChannel.presenceState();
-                const el = document.getElementById("partnerOnline");
-                const partnerOnline = Object.values(state).some(
-                    arr => arr.some(p => p.user && p.user.toLowerCase() !== myRpsEmail)
-                );
-                if (partnerOnline) {
-                    el.textContent = "对方在线";
-                    el.className = "ml-auto text-sm font-normal text-green-500";
-                } else {
-                    el.textContent = "对方离线";
-                    el.className = "ml-auto text-sm font-normal text-gray-400";
-                }
-            })
-            .subscribe(async (status) => {
-                if (status === "SUBSCRIBED") {
-                    await rpsChannel.track({ user: myRpsEmail });
-                } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-                    console.error("RPS频道连接失败:", status);
-                }
-            });
+        myUserId = user?.id || "";
+        myEmail = (user?.email || "").toLowerCase();
+        window.myRpsEmail = myEmail; // 骗子酒馆依赖
+        const isGirl = myEmail === (CONFIG.girlEmail || "").toLowerCase();
+        myNickname = isGirl ? CONFIG.girlName : CONFIG.boyName;
         window.lbInit();
+        loadJumpLeaderboard();
     });
 }
 
-function rpsPick(pick) {
-    if (myRpsPick) return;
-    myRpsPick = pick;
-    document.getElementById("myChoice").textContent = rpsEmoji[pick];
-    document.getElementById("myChoice").classList.remove("opacity-30");
-    document.getElementById("gameStatus").textContent = "已出招，等待对方...";
-    rpsChannel.send({ type: "broadcast", event: "pick", payload: { pick } });
-    checkRpsResult();
+function onJumpMessage(e) {
+    const d = e.data;
+    if (!d || d.type !== "jump_score") return;
+    const score = parseInt(d.score, 10) || 0;
+    if (score > 0) saveJumpScore(score);
 }
 
-function checkRpsResult() {
-    if (!myRpsPick || !partnerRpsPick) return;
-    document.getElementById("partnerChoice").textContent = rpsEmoji[partnerRpsPick];
-    document.getElementById("partnerChoice").classList.remove("opacity-30");
-
-    let result;
-    if (myRpsPick === partnerRpsPick) {
-        result = "平局！";
-    } else if (rpsBeats[myRpsPick] === partnerRpsPick) {
-        result = "你赢了！🎉";
-        myRpsScore++;
-    } else {
-        result = "你输了 💔";
-        partnerRpsScore++;
+async function saveJumpScore(score) {
+    if (!myUserId) return;
+    try {
+        const { error } = await sb.from("game_scores")
+            .insert({ game: "jump", user_id: myUserId, nickname: myNickname, score: score });
+        if (error) throw error;
+        if (window.sendNotification) window.sendNotification("game", `🐸 跳一跳得分：${score}`);
+        loadJumpLeaderboard();
+    } catch (e) {
+        console.warn("[Jump] 分数保存失败:", e);
     }
-    saveRpsScore();
-    updateRpsScore();
-    document.getElementById("gameStatus").textContent = result;
-
-    setTimeout(() => {
-        myRpsPick = null;
-        partnerRpsPick = null;
-        document.getElementById("myChoice").textContent = "✊";
-        document.getElementById("myChoice").classList.add("opacity-30");
-        document.getElementById("partnerChoice").textContent = "❓";
-        document.getElementById("partnerChoice").classList.add("opacity-30");
-        document.getElementById("gameStatus").textContent = "继续出招！";
-    }, 2500);
 }
 
-function updateRpsScore() {
-    document.getElementById("myScore").textContent = myRpsScore;
-    document.getElementById("partnerScore").textContent = partnerRpsScore;
+function jumpTogglePlay() {
+    const area = document.getElementById("jumpPlayArea");
+    const frame = document.getElementById("jumpFrame");
+    const btn = document.getElementById("jumpStartBtn");
+    if (!area || !frame || !btn) return;
+    const isOpen = !area.classList.contains("hidden");
+    if (isOpen) {
+        area.classList.add("hidden");
+        frame.src = "about:blank"; // 收起时卸载游戏，停掉渲染和音乐
+        btn.innerHTML = '<i class="fa fa-play mr-1"></i>开始游戏';
+    } else {
+        frame.src = "Jump-master/index.html";
+        area.classList.remove("hidden");
+        btn.innerHTML = '<i class="fa fa-stop mr-1"></i>收起游戏';
+        area.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
 }
 
-function saveRpsScore() {
-    localStorage.setItem("rpsScore", JSON.stringify({ my: myRpsScore, partner: partnerRpsScore }));
+function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
 }
 
-function rpsReset() {
-    myRpsScore = 0; partnerRpsScore = 0;
-    saveRpsScore(); updateRpsScore();
-    if (rpsChannel) rpsChannel.send({ type: "broadcast", event: "reset", payload: {} });
-    document.getElementById("gameStatus").textContent = "比分已重置！";
+function formatJumpDate(s) {
+    if (!s) return "";
+    const d = new Date(s);
+    const p = n => String(n).padStart(2, "0");
+    return `${d.getMonth() + 1}-${p(d.getDate())}`;
 }
 
-window.myRpsEmail = myRpsEmail;
+async function loadJumpLeaderboard() {
+    const boardEl = document.getElementById("jumpBoard");
+    if (!boardEl) return;
+    try {
+        const { data, error } = await sb.from("game_scores")
+            .select("user_id, nickname, score, created_at")
+            .eq("game", "jump")
+            .order("score", { ascending: false })
+            .limit(100);
+        if (error) throw error;
 
-window.rpsChannel = rpsChannel;
-window.myRpsPick = myRpsPick;
-window.partnerRpsPick = partnerRpsPick;
-window.myRpsScore = myRpsScore;
-window.partnerRpsScore = partnerRpsScore;
-window.rpsEmoji = rpsEmoji;
-window.rpsBeats = rpsBeats;
+        // 每人取最高分（数据已按分数降序，首次出现即最高）
+        const best = new Map();
+        (data || []).forEach(r => {
+            if (r.user_id && !best.has(r.user_id)) best.set(r.user_id, r);
+        });
+        const rows = Array.from(best.values());
 
-window.initRpsGame = initRpsGame;
-window.rpsPick = rpsPick;
-window.checkRpsResult = checkRpsResult;
-window.updateRpsScore = updateRpsScore;
-window.saveRpsScore = saveRpsScore;
-window.rpsReset = rpsReset;
+        // 标题栏显示我的最高分
+        const mine = rows.find(r => r.user_id === myUserId);
+        const mineEl = document.getElementById("jumpMyBest");
+        if (mineEl) mineEl.textContent = mine ? `最高分 ${mine.score}` : "最高分 —";
+
+        if (!rows.length) {
+            boardEl.innerHTML = '<div class="text-center text-gray-400 py-4 text-sm">还没有记录，玩一局吧！</div>';
+            return;
+        }
+        const medals = ["🥇", "🥈", "🥉"];
+        boardEl.innerHTML = rows.map((r, i) => `
+            <div class="flex items-center justify-between rounded-xl px-4 py-2.5 ${r.user_id === myUserId ? "bg-rose-50 border border-rose-200" : "bg-white/60 border border-gray-100"}">
+                <div class="flex items-center gap-3">
+                    <span class="text-lg w-7 text-center">${medals[i] || `<span class="text-gray-400 text-sm">${i + 1}</span>`}</span>
+                    <span class="font-medium text-gray-700 text-sm">${escapeHtml(r.nickname || "神秘玩家")}</span>
+                </div>
+                <div class="text-right">
+                    <span class="font-bold text-love">${r.score}</span>
+                    <span class="text-[10px] text-gray-400 ml-2">${formatJumpDate(r.created_at)}</span>
+                </div>
+            </div>
+        `).join("");
+    } catch (e) {
+        console.warn("[Jump] 排行榜加载失败:", e);
+        boardEl.innerHTML = '<div class="text-center text-gray-400 py-4 text-sm">排行榜加载失败，请确认已创建 game_scores 表</div>';
+    }
+}
+
+window.initJumpGame = initJumpGame;
+window.jumpTogglePlay = jumpTogglePlay;
+window.loadJumpLeaderboard = loadJumpLeaderboard;
 
 })();

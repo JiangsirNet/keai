@@ -3,9 +3,12 @@
 
     // ========== 状态 ==========
     const VIDEO_EXTS = ['mp4', 'webm', 'mov', 'avi', 'mkv', 'flv', 'wmv', 'm4v', 'mpg', 'mpeg', '3gp', 'ts'];
+    const IMAGE_EXTS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'ico', 'heic', 'heif', 'avif'];
+    const AUDIO_EXTS = ['mp3', 'wav', 'flac', 'm4a', 'aac', 'ogg', 'oga', 'wma', 'opus', 'ape'];
     let cloudToken = null;          // JWT token
     let cloudBaseUrl = '';          // OpenList 服务地址，如 http://localhost:5244
-    let cloudMountPath = '';        // 百度网盘挂载路径，如 /baidu
+    let cloudMounts = [];           // 所有挂载路径，如 ['/baidu', '/quark']
+    let cloudMountPath = '';        // 当前挂载路径，如 /baidu
     let currentPath = '';           // 当前浏览路径（绝对路径，含 mountPath）
     let pathStack = [];             // 路径历史，用于面包屑导航 {name, path}
     let currentFileList = [];       // 当前目录文件列表
@@ -14,6 +17,16 @@
     function isVideoFile(name) {
         const ext = (name.split('.').pop() || '').toLowerCase();
         return VIDEO_EXTS.includes(ext);
+    }
+
+    function isImageFile(name) {
+        const ext = (name.split('.').pop() || '').toLowerCase();
+        return IMAGE_EXTS.includes(ext);
+    }
+
+    function isAudioFile(name) {
+        const ext = (name.split('.').pop() || '').toLowerCase();
+        return AUDIO_EXTS.includes(ext);
     }
 
     function formatSize(bytes) {
@@ -54,11 +67,28 @@
     }
 
     // ========== 配置加载 ==========
+    // 解析挂载路径列表：支持换行 / 逗号 / 分号分隔，去重，统一以 / 开头（根挂载统一为 ''）
+    function parseMountPaths(raw) {
+        return String(raw || '')
+            .split(/[\n\r,，;；]+/)
+            .map(s => s.trim())
+            .filter(Boolean)
+            .map(s => s.startsWith('/') ? s : '/' + s)
+            .map(s => s === '/' ? '' : s)
+            .filter((v, i, arr) => arr.indexOf(v) === i);
+    }
+
     function loadCloudConfig() {
         cloudBaseUrl = (window._openlistBaseUrl || '').trim().replace(/\/$/, '');
-        cloudMountPath = (window._openlistMountPath || '').trim();
-        if (!cloudMountPath.startsWith('/')) cloudMountPath = '/' + cloudMountPath;
-        if (cloudMountPath === '/') cloudMountPath = '';
+        // 多挂载：优先读 openlist_mount_paths，兼容旧的单挂载 openlist_mount_path
+        cloudMounts = parseMountPaths(window._openlistMountPaths);
+        parseMountPaths(window._openlistMountPath).forEach(p => {
+            if (!cloudMounts.includes(p)) cloudMounts.push(p);
+        });
+        // 当前挂载：已选中的仍有效则保留，否则取第一个
+        if (!cloudMounts.includes(cloudMountPath)) {
+            cloudMountPath = cloudMounts[0] || '';
+        }
     }
 
     function hasCloudConfig() {
@@ -148,6 +178,33 @@
         el.innerHTML = `<span class="w-2 h-2 rounded-full ${ok ? 'bg-green-500' : 'bg-gray-400'}"></span> ${text || ''}`;
     }
 
+    // ========== 多挂载切换 ==========
+    function renderMountChips() {
+        const el = document.getElementById('cloudMountChips');
+        if (!el) return;
+        el.innerHTML = cloudMounts.map(m => {
+            const val = m || '';
+            const active = val === (cloudMountPath || '');
+            return `<button onclick="cloudSwitchMount('${val.replace(/'/g, "\\'")}')" class="px-3 py-1 rounded-full text-xs transition ${active ? 'bg-love text-white font-semibold shadow' : 'bg-rose-50 text-gray-600 border border-rose-100 hover:bg-rose-100'}">☁️ ${escapeHtml(val || '/')}</button>`;
+        }).join('');
+    }
+
+    function syncUploadMountSelect() {
+        const sel = document.getElementById('cloudUploadMountSelect');
+        if (!sel) return;
+        const list = cloudMounts.length ? cloudMounts : [''];
+        sel.innerHTML = list.map(m =>
+            `<option value="${escapeHtml(m || '')}">${escapeHtml(m || '/')}</option>`).join('');
+        sel.value = cloudMountPath || '';
+    }
+
+    async function cloudSwitchMount(m) {
+        cloudMountPath = m || '';
+        renderMountChips();
+        syncUploadMountSelect();
+        cloudListDir(cloudMountPath || '/');
+    }
+
     // ========== 浏览文件 ==========
     async function cloudListDir(absPath) {
         const loading = document.getElementById('cloudListLoading');
@@ -187,8 +244,8 @@
             return (a.name || '').localeCompare(b.name || '');
         });
 
-        // 过滤：只保留文件夹 + 视频文件
-        const filtered = content.filter(f => f.is_dir || isVideoFile(f.name));
+        // 展示全部文件（文件夹已在前面排序）
+        const filtered = content;
 
         if (filtered.length === 0) {
             emptyEl.classList.remove('hidden');
@@ -201,27 +258,39 @@
     function renderFileCard(f, parentPath) {
         const fullPath = parentPath === '/' ? `/${f.name}` : `${parentPath}/${f.name}`;
         const thumb = f.thumbnail || '';
+        const isVid = !f.is_dir && isVideoFile(f.name);
+        const isImg = !f.is_dir && isImageFile(f.name);
+        const isAud = !f.is_dir && isAudioFile(f.name);
+        const ext = (f.name.split('.').pop() || '').toUpperCase().slice(0, 5);
         const meta = f.is_dir
             ? `${(f.content && f.content.length) ? f.content.length : '—'} 项`
             : formatSize(f.size);
         const date = formatDate(f.modified);
+        const escName = escapeHtml(f.name);
+        const escPath = fullPath.replace(/'/g, "\\'");
         const onClick = f.is_dir
-            ? `cloudEnterDir('${fullPath.replace(/'/g, "\\'")}')`
-            : `cloudPlayVideo('${escapeHtml(f.name)}', '${fullPath.replace(/'/g, "\\'")}')`;
+            ? `cloudEnterDir('${escPath}')`
+            : (isVid
+                    ? `cloudPlayVideo('${escName}', '${escPath}', '${thumb ? escapeHtml(thumb) : ''}')`
+                : (isImg
+                    ? `cloudPreviewImage('${escName}', '${escPath}')`
+                    : (isAud
+                        ? `cloudPlayAudio('${escName}', '${escPath}')`
+                        : `cloudOpenFile('${escName}', '${escPath}')`)));
         const delBtn = !f.is_dir
-            ? `<i class="fa fa-trash cloud-del-icon" title="删除" onclick="event.stopPropagation(); window.cloudDeleteFile('${f.name.replace(/'/g, "\\'")}', '${fullPath.replace(/'/g, "\\'")}')"></i>`
+            ? `<i class="fa fa-trash cloud-del-icon" title="删除" onclick="event.stopPropagation(); window.cloudDeleteFile('${f.name.replace(/'/g, "\\'")}', '${escPath}')"></i>`
             : '';
 
         return `
             <div class="cloud-file-card rounded-xl overflow-hidden bg-gradient-to-br from-rose-50 to-white border border-rose-100 hover:shadow-lg hover:-translate-y-0.5 transition cursor-pointer"
                  onclick="${onClick}">
                 <div class="aspect-video bg-rose-100/60 flex items-center justify-center relative overflow-hidden">
-                    ${thumb && f.type === 3 ? `<img src="${thumb}" class="w-full h-full object-cover" loading="lazy">` :
-                      `<span class="text-5xl">${getFileIcon(f.name, f.is_dir)}</span>`}
-                    ${!f.is_dir ? `<div class="absolute inset-0 bg-black/0 hover:bg-black/10 transition flex items-center justify-center">
+                    ${thumb && (f.type === 3 || f.type === 2) ? `<img src="${thumb}" class="w-full h-full object-cover" loading="lazy">` :
+                `<span class="text-5xl">${getFileIcon(f.name, f.is_dir)}</span>`}
+                    ${(isVid || isAud) ? `<div class="absolute inset-0 bg-black/0 hover:bg-black/10 transition flex items-center justify-center">
                         <i class="fa fa-play-circle text-white text-4xl opacity-0 hover:opacity-90 transition drop-shadow-lg"></i>
                     </div>` : ''}
-                    ${!f.is_dir ? `<span class="absolute bottom-1 right-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded">视频</span>` : ''}
+                    ${!f.is_dir ? `<span class="absolute bottom-1 right-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded">${escapeHtml(ext)}</span>` : ''}
                 </div>
                 <div class="p-2">
                     <div class="text-xs text-gray-800 truncate font-medium" title="${escapeHtml(f.name)}">${escapeHtml(f.name)}</div>
@@ -286,41 +355,81 @@
     function cloudToggleUpload() {
         const area = document.getElementById('cloudUploadArea');
         area.classList.toggle('hidden');
+        if (!area.classList.contains('hidden')) syncUploadMountSelect();
+    }
+
+    // 从文件名中剥离扩展名，返回 [主名, 扩展名]（ext 不含点，可能为空字符串）
+    function splitFileName(name) {
+        const idx = name.lastIndexOf('.');
+        if (idx <= 0) return [name, ''];
+        return [name.slice(0, idx), name.slice(idx + 1)];
+    }
+
+    // 日期戳，如 20260905
+    function dateStamp() {
+        const d = new Date();
+        const p = n => String(n).padStart(2, '0');
+        return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}`;
     }
 
     async function cloudHandleFileSelect(input) {
-        const file = input.files[0];
+        const files = Array.from(input.files || []);
         input.value = '';
-        if (!file) return;
+        if (!files.length) return;
 
         if (!cloudToken) {
             const ok = await cloudLogin();
             if (!ok) return;
         }
 
-        // 检查视频
-        if (!file.type.startsWith('video/') && !isVideoFile(file.name)) {
-            alert('请选择视频文件');
-            return;
+        // 统一填写一个名称，扩展名自动保留原文件的
+        const defaultName = files.length === 1 ? files[0].name : splitFileName(files[0].name)[0];
+        const baseInput = prompt(
+            files.length > 1 ? '请输入文件名称（自动加日期和序号，不改扩展名）:' : '请输入文件名（不改扩展名）:',
+            defaultName
+        );
+        if (!baseInput) return;
+        const base = splitFileName(baseInput.trim())[0] || 'file';
+
+        let okCount = 0;
+        for (let i = 0; i < files.length; i++) {
+            const f = files[i];
+            const ext = splitFileName(f.name)[1];
+            let name;
+            if (files.length === 1) {
+                name = ext ? `${base}.${ext}` : base;
+            } else {
+                name = ext ? `${base}_${dateStamp()}_${i + 1}.${ext}` : `${base}_${dateStamp()}_${i + 1}`;
+            }
+            const ok = await cloudUploadFile(f, name, files.length, i + 1);
+            if (ok) okCount++;
         }
 
-        await cloudUploadFile(file);
+        if (okCount > 0 && window.sendNotification) {
+            window.sendNotification('cloud', `☁️ 已上传 ${okCount}/${files.length} 个文件到网盘`);
+        }
     }
 
-    async function cloudUploadFile(file) {
+    async function cloudUploadFile(file, fileName, total, index) {
+        const uploadName = fileName || file.name;
         const progressWrap = document.getElementById('cloudUploadProgress');
         const progressBar = document.getElementById('cloudUploadProgressBar');
         const progressText = document.getElementById('cloudUploadProgressText');
         const fileNameEl = document.getElementById('cloudUploadFileName');
 
         progressWrap.classList.remove('hidden');
-        fileNameEl.textContent = `上传：${file.name}`;
+        fileNameEl.textContent = total > 1 ? `上传（${index}/${total}）：${uploadName}` : `上传：${uploadName}`;
         progressBar.style.width = '0%';
         progressText.textContent = '0%';
 
-        // 目标路径
-        const targetDir = currentPath || cloudMountPath || '/';
-        const remotePath = targetDir === '/' ? `/${file.name}` : `${targetDir}/${file.name}`;
+        // 目标路径：优先用上传区选中的挂载；当前浏览目录位于所选挂载下则传到当前目录，否则传到挂载根目录
+        let targetMount = cloudMountPath || '';
+        const sel = document.getElementById('cloudUploadMountSelect');
+        if (sel && sel.options.length > 0) targetMount = sel.value;
+        const underSelected = !!currentPath &&
+            (targetMount === '' || currentPath === targetMount || currentPath.startsWith(targetMount + '/'));
+        const targetDir = underSelected ? currentPath : (targetMount || '/');
+        const remotePath = targetDir === '/' ? `/${uploadName}` : `${targetDir}/${uploadName}`;
 
         try {
             await new Promise((resolve, reject) => {
@@ -359,21 +468,22 @@
             });
 
             progressText.textContent = '✅ 完成';
-            if (window.sendNotification) window.sendNotification('cloud', `☁️ 视频已上传到百度网盘：${file.name}`);
             // 延迟刷新网盘列表：异步任务模式下 OpenList 需要时间把文件落到网盘
             setTimeout(() => {
                 progressWrap.classList.add('hidden');
                 cloudListDir(currentPath);
             }, 3000);
+            return true;
         } catch (e) {
             console.error('[Cloud] 上传失败:', e);
-            alert('上传失败：' + (e.message || e));
+            alert(`上传失败（${uploadName}）：` + (e.message || e));
             progressWrap.classList.add('hidden');
+            return false;
         }
     }
 
     // ========== 播放视频 ==========
-    async function cloudPlayVideo(name, absPath) {
+    async function cloudPlayVideo(name, absPath, thumb) {
         const modal = document.getElementById('cloudVideoModal');
         const player = document.getElementById('cloudVideoPlayer');
         const titleEl = document.getElementById('cloudVideoTitle');
@@ -381,6 +491,8 @@
         titleEl.textContent = name;
         modal.classList.remove('hidden');
         modal.classList.add('flex');
+        // 用列表缩略图作封面，起播前有画面、感知更快
+        player.poster = thumb || '';
         player.src = '';
         player.load();
 
@@ -399,6 +511,92 @@
         } catch (e) {
             alert('视频加载失败：' + (e.message || e));
             cloudCloseVideo();
+        }
+    }
+
+    // ========== 图片预览 ==========
+    async function cloudPreviewImage(name, absPath) {
+        const modal = document.getElementById('cloudImageModal');
+        const img = document.getElementById('cloudImagePreview');
+        const titleEl = document.getElementById('cloudImageTitle');
+
+        titleEl.textContent = name;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        img.src = '';
+
+        try {
+            const resp = await apiRequest('GET', `/fs/get?path=${encodeURIComponent(absPath)}`);
+            if (resp.code === 200 && resp.data) {
+                const url = resp.data.raw_url || resp.data.url;
+                if (url) { img.src = url; return; }
+            }
+            throw new Error(resp.message || '无法获取图片链接');
+        } catch (e) {
+            alert('图片加载失败：' + (e.message || e));
+            cloudCloseImage();
+        }
+    }
+
+    function cloudCloseImage(e) {
+        if (e && e.target && e.target.tagName === 'IMG') return;
+        const modal = document.getElementById('cloudImageModal');
+        document.getElementById('cloudImagePreview').src = '';
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    // ========== 播放音频 ==========
+    async function cloudPlayAudio(name, absPath) {
+        const modal = document.getElementById('cloudAudioModal');
+        const player = document.getElementById('cloudAudioPlayer');
+        const titleEl = document.getElementById('cloudAudioTitle');
+
+        titleEl.textContent = name;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        player.src = '';
+        player.load();
+
+        try {
+            const resp = await apiRequest('GET', `/fs/get?path=${encodeURIComponent(absPath)}`);
+            if (resp.code === 200 && resp.data) {
+                const url = resp.data.raw_url || resp.data.url;
+                if (url) {
+                    player.src = url;
+                    player.play().catch(() => console.warn('自动播放被拦截，需手动播放'));
+                    return;
+                }
+            }
+            throw new Error(resp.message || '无法获取音频链接');
+        } catch (e) {
+            alert('音频加载失败：' + (e.message || e));
+            cloudCloseAudio();
+        }
+    }
+
+    function cloudCloseAudio(e) {
+        if (e && e.target && e.target.tagName === 'AUDIO') return;
+        const modal = document.getElementById('cloudAudioModal');
+        const player = document.getElementById('cloudAudioPlayer');
+        player.pause();
+        player.src = '';
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    // ========== 打开非视频文件 ==========
+    // 获取直链后新窗口打开（浏览器自行决定预览或下载）
+    async function cloudOpenFile(name, absPath) {
+        try {
+            const resp = await apiRequest('GET', `/fs/get?path=${encodeURIComponent(absPath)}`);
+            if (resp.code === 200 && resp.data) {
+                const url = resp.data.raw_url || resp.data.url;
+                if (url) { window.open(url, '_blank'); return; }
+            }
+            throw new Error(resp.message || '无法获取文件链接');
+        } catch (e) {
+            alert('打开文件失败：' + (e.message || e));
         }
     }
 
@@ -433,6 +631,7 @@
         const player = document.getElementById('cloudVideoPlayer');
         player.pause();
         player.src = '';
+        player.poster = '';
         modal.classList.add('hidden');
         modal.classList.remove('flex');
     }
@@ -470,6 +669,8 @@
         // 登录并加载
         cloudLogin().then(ok => {
             if (ok) {
+                renderMountChips();
+                syncUploadMountSelect();
                 cloudListDir(cloudMountPath || '/');
             } else {
                 document.getElementById('cloudListLoading').classList.add('hidden');
@@ -483,8 +684,14 @@
     window.cloudRefresh = cloudRefresh;
     window.cloudToggleUpload = cloudToggleUpload;
     window.cloudEnterDir = cloudEnterDir;
+    window.cloudSwitchMount = cloudSwitchMount;
     window.cloudGoHome = cloudGoHome;
     window.cloudPlayVideo = cloudPlayVideo;
+    window.cloudPreviewImage = cloudPreviewImage;
+    window.cloudCloseImage = cloudCloseImage;
+    window.cloudPlayAudio = cloudPlayAudio;
+    window.cloudCloseAudio = cloudCloseAudio;
+    window.cloudOpenFile = cloudOpenFile;
     window.cloudDeleteFile = cloudDeleteFile;
     window.cloudCloseVideo = cloudCloseVideo;
     window._cloudGetToken = () => cloudToken;
