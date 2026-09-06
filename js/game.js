@@ -1,7 +1,7 @@
 /**
- * 跳一跳游戏
- * iframe 加载 Jump-master（three.js），游戏结束时游戏内 postMessage 上报分数，
- * 分数写入 Supabase game_scores 表，游戏页展示情侣排行榜（每人取最高分）。
+ * 游戏模块（跳一跳 + 飞机大战）
+ * 跳一跳：iframe 加载 Jump-master，postMessage 收分数入库 game_scores(game='jump')，展示情侣排行榜。
+ * 飞机大战：iframe 加载 plane-master，postMessage 收分数入库 game_scores(game='plane')，展示情侣排行榜。
  * 同时负责初始化骗子酒馆（game_liar.js 的 lbInit 依赖 window.myRpsEmail）。
  */
 
@@ -25,14 +25,20 @@ function initJumpGame() {
         myNickname = isGirl ? CONFIG.girlName : CONFIG.boyName;
         window.lbInit();
         loadJumpLeaderboard();
+        loadPlaneLeaderboard();
     });
 }
 
 function onJumpMessage(e) {
     const d = e.data;
-    if (!d || d.type !== "jump_score") return;
-    const score = parseInt(d.score, 10) || 0;
-    if (score > 0) saveJumpScore(score);
+    if (!d) return;
+    if (d.type === "jump_score") {
+        const score = parseInt(d.score, 10) || 0;
+        if (score > 0) saveJumpScore(score);
+    } else if (d.type === "plane_score") {
+        const score = parseInt(d.score, 10) || 0;
+        if (score > 0) savePlaneScore(score);
+    }
 }
 
 async function saveJumpScore(score) {
@@ -193,9 +199,140 @@ async function loadJumpLeaderboard() {
     }
 }
 
+// 飞机大战：展开/收起
+function planeTogglePlay() {
+    const area = document.getElementById("planePlayArea");
+    const frame = document.getElementById("planeFrame");
+    const btn = document.getElementById("planeStartBtn");
+    if (!area || !frame || !btn) return;
+    const isOpen = !area.classList.contains("hidden");
+    if (isOpen) {
+        area.classList.add("hidden");
+        frame.src = "about:blank";
+        btn.innerHTML = '<i class="fa fa-play mr-1"></i>开始游戏';
+    } else {
+        frame.src = "plane-master/index.html";
+        area.classList.remove("hidden");
+        btn.innerHTML = '<i class="fa fa-stop mr-1"></i>收起游戏';
+        area.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+}
+
+// 飞机大战：全屏切换
+function planeToggleFullscreen() {
+    const area = document.getElementById("planePlayArea");
+    const frame = document.getElementById("planeFrame");
+    const btn = document.getElementById("planeFullscreenBtn");
+    if (!area || !frame || !btn) return;
+    if (!document.fullscreenElement) {
+        if (area.classList.contains("hidden")) {
+            frame.src = "plane-master/index.html";
+            area.classList.remove("hidden");
+            const startBtn = document.getElementById("planeStartBtn");
+            if (startBtn) startBtn.innerHTML = '<i class="fa fa-stop mr-1"></i>收起游戏';
+        }
+        area.classList.add("jump-fullscreen");
+        frame.style.height = "100%";
+        area.requestFullscreen().then(() => {
+            btn.innerHTML = '<i class="fa fa-compress"></i>';
+            btn.title = "退出全屏";
+        }).catch(() => {
+            frame.style.height = "85vh";
+            btn.innerHTML = '<i class="fa fa-compress"></i>';
+            btn.title = "还原高度";
+        });
+    } else {
+        document.exitFullscreen().then(() => {
+            btn.innerHTML = '<i class="fa fa-expand"></i>';
+            btn.title = "全屏";
+            frame.style.height = "";
+            area.classList.remove("jump-fullscreen");
+        });
+    }
+}
+
+// 飞机大战：保存分数
+async function savePlaneScore(score) {
+    if (!myUserId) return;
+    try {
+        const { data: rows, error: qErr } = await sb.from("game_scores")
+            .select("user_id, score")
+            .eq("game", "plane")
+            .order("score", { ascending: false })
+            .limit(100);
+        if (qErr) throw qErr;
+        let partnerBest = 0;
+        (rows || []).forEach(r => {
+            if (r.user_id !== myUserId && r.score > partnerBest) partnerBest = r.score;
+        });
+        const beatPartner = partnerBest > 0 && score > partnerBest;
+
+        const { error } = await sb.from("game_scores")
+            .insert({ game: "plane", user_id: myUserId, nickname: myNickname, score: score });
+        if (error) throw error;
+        if (window.sendNotification) {
+            const content = beatPartner
+                ? `✈️ 飞机大战：${score} 分，超越 TA 的最高纪录 ${partnerBest}！`
+                : `✈️ 飞机大战得分：${score}`;
+            window.sendNotification("game", content, beatPartner);
+        }
+        loadPlaneLeaderboard();
+    } catch (e) {
+        console.warn("[Plane] 分数保存失败:", e);
+    }
+}
+
+// 飞机大战：加载排行榜
+async function loadPlaneLeaderboard() {
+    const boardEl = document.getElementById("planeBoard");
+    if (!boardEl) return;
+    try {
+        const { data, error } = await sb.from("game_scores")
+            .select("user_id, nickname, score, created_at")
+            .eq("game", "plane")
+            .order("score", { ascending: false })
+            .limit(100);
+        if (error) throw error;
+
+        const best = new Map();
+        (data || []).forEach(r => {
+            if (r.user_id && !best.has(r.user_id)) best.set(r.user_id, r);
+        });
+        const rows = Array.from(best.values());
+
+        const mine = rows.find(r => r.user_id === myUserId);
+        const mineEl = document.getElementById("planeMyBest");
+        if (mineEl) mineEl.textContent = mine ? `最高分 ${mine.score}` : "最高分 —";
+
+        if (!rows.length) {
+            boardEl.innerHTML = '<div class="text-center text-gray-400 py-4 text-sm">还没有记录，玩一局吧！</div>';
+            return;
+        }
+        const medals = ["🥇", "🥈", "🥉"];
+        boardEl.innerHTML = rows.map((r, i) => `
+            <div class="flex items-center justify-between rounded-xl px-4 py-2.5 ${r.user_id === myUserId ? "bg-rose-50 border border-rose-200" : "bg-white/60 border border-gray-100"}">
+                <div class="flex items-center gap-3">
+                    <span class="text-lg w-7 text-center">${medals[i] || `<span class="text-gray-400 text-sm">${i + 1}</span>`}</span>
+                    <span class="font-medium text-gray-700 text-sm">${escapeHtml(r.nickname || "神秘玩家")}</span>
+                </div>
+                <div class="text-right">
+                    <span class="font-bold text-love">${r.score}</span>
+                    <span class="text-[10px] text-gray-400 ml-2">${formatJumpDate(r.created_at)}</span>
+                </div>
+            </div>
+        `).join("");
+    } catch (e) {
+        console.warn("[Plane] 排行榜加载失败:", e);
+        boardEl.innerHTML = '<div class="text-center text-gray-400 py-4 text-sm">排行榜加载失败</div>';
+    }
+}
+
 window.initJumpGame = initJumpGame;
 window.jumpTogglePlay = jumpTogglePlay;
 window.jumpToggleFullscreen = jumpToggleFullscreen;
 window.loadJumpLeaderboard = loadJumpLeaderboard;
+window.planeTogglePlay = planeTogglePlay;
+window.planeToggleFullscreen = planeToggleFullscreen;
+window.loadPlaneLeaderboard = loadPlaneLeaderboard;
 
 })();

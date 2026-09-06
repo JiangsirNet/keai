@@ -1,0 +1,84 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <meta http-equiv="content" content="text/html" charset="utf-8"/>
+    <meta name="viewport" content="initial-scale=1.0,maximum-scale=1,user-scalable=no" />
+    <title>小灰灰战机</title>
+    <link rel="stylesheet" type="text/css" href="css/main.css"/>
+</head>
+<body>
+<audio src="music/bg.mp3" loop="true" autoplay="autoplay"></audio>
+<div id="contentdiv">
+    <div id="startdiv">
+        <h1 class="gameTit">雷霆灰机</h1>
+        <section class="stage">
+            <figure class="ball">
+              <span class="shadow"></span>
+              <span class="iris"></span>
+            </figure>
+        </section>
+        <div class="loading">
+            资源加载中...
+        </div>
+        <div class="btn-box">
+            <button class="begin" onclick="begin()">开始游戏</button>
+            <button class="tips" onclick="tips()">游戏说明</button>
+        </div>
+        <div class="copyright">Copyright © 2019 Fanghui</div>
+    </div>
+    <div id="maindiv">
+        <div id="scorediv">
+            <div style="height: 30px">
+                <div class="fl"><label>分数：</label><label id="score" class="f16 c-green">0</label></div>
+                <div class="fr"><label>历史最高分：</label><label id="highscore">0</label></div>
+            </div>
+            <div style="height: 30px">
+                <div class="fl"><label>生命值：</label><label id="life" class="lifebar"></label></div>
+                <div class="fr"><label>最高评分：</label><label id="highgrade">DDD</label></div>
+            </div>
+            
+        </div>
+        <div id="suspenddiv">
+            <button>继续</button><br/>
+            <button>重新开始</button><br/>
+            <button>回到主页</button>
+        </div>
+        <div id="enddiv" class="enddiv">
+            <p class="plantext">SCORE</p>
+            <p id="planscore">0</p>
+            <div><button class="endbtn" onclick="next()">下一步</button></div>
+        </div>
+        <div id="gradingBox" class="grading-box">
+            <p class="missionstatus">Mission <span id="missionstatus">success</span></p>
+            <p class="f12">您的评分：</p>
+            <div id="grading" class="grading">SSS</div>
+            <div class="detail f12">
+                <div class="item">
+                   <p>摧毁敌军飞机</p>
+                   <p><span id="destroyedEnemys" class="num">50</span>架</p>
+                </div>
+                <div class="item">
+                    <p>未击中敌军飞机</p>
+                   <p><span id="missedEnemys" class="num">12</span>架</p>
+                </div>
+            </div>
+            <div class="tac"><button class="endbtn" onclick="end()">结束</button></div>
+        </div>
+    </div>
+</div>
+<script>
+    // 阻止浏览器的默认上下左右滑动的行为
+    document.querySelector('body').addEventListener('touchmove', function (ev) {
+        ev.preventDefault();
+    },{passive:false});
+    function tips(){
+        window.location.href="./tips.html"
+    }
+    window.onload = function(){
+        document.querySelector('.loading').style.display = 'none';
+        document.querySelector('.btn-box').style.display = 'block';
+    }
+</script>
+<script type="text/javascript" src="js/main.js"></script>
+</body>
+</html>

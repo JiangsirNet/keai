@@ -1,10 +1,25 @@
 <!-- 游戏页 -->
 <div id="page-game" class="page-content hidden">
+    <!-- 情侣排行榜（共用） -->
+    <div class="bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow mb-6">
+        <div class="flex items-center justify-between mb-3">
+            <h3 class="font-bold text-love"><i class="fa fa-trophy mr-1 text-yellow-500"></i>情侣排行榜</h3>
+            <button id="boardRefreshBtn" onclick="refreshCurrentBoard()" class="text-xs text-gray-400 hover:text-love"><i class="fa fa-refresh"></i> 刷新</button>
+        </div>
+        <div class="flex gap-2 mb-4">
+            <button class="board-tab active px-4 py-1.5 rounded-full text-sm font-medium transition-all" data-game="jump" onclick="switchBoardTab('jump')">🐸 跳一跳</button>
+            <button class="board-tab px-4 py-1.5 rounded-full text-sm font-medium transition-all" data-game="plane" onclick="switchBoardTab('plane')">✈️ 飞机大战</button>
+        </div>
+        <div id="boardMyBest" class="text-right text-sm text-gray-400 mb-2">最高分 —</div>
+        <div id="boardList" class="space-y-2">
+            <div class="text-center text-gray-400 py-4 text-sm">加载中...</div>
+        </div>
+    </div>
+
     <!-- 跳一跳 -->
     <div class="bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow mb-6">
         <h2 class="text-xl font-bold text-love flex items-center mb-4">
             <i class="fa fa-frog mr-2"></i>跳一跳
-            <span id="jumpMyBest" class="ml-auto text-sm font-normal text-gray-400">最高分 —</span>
             <button id="jumpFullscreenBtn" onclick="jumpToggleFullscreen()" class="ml-2 w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:bg-rose-50 hover:text-love transition" title="全屏">
                 <i class="fa fa-expand"></i>
             </button>
@@ -16,15 +31,6 @@
             <button id="jumpStartBtn" onclick="jumpTogglePlay()" class="bg-love hover:bg-loveDark text-white px-8 py-2.5 rounded-full transition-all font-bold">
                 <i class="fa fa-play mr-1"></i>开始游戏
             </button>
-        </div>
-        <div class="mt-5">
-            <div class="flex items-center justify-between mb-3">
-                <h3 class="font-bold text-love"><i class="fa fa-trophy mr-1 text-yellow-500"></i>情侣排行榜</h3>
-                <button onclick="loadJumpLeaderboard()" class="text-xs text-gray-400 hover:text-love"><i class="fa fa-refresh"></i> 刷新</button>
-            </div>
-            <div id="jumpBoard" class="space-y-2">
-                <div class="text-center text-gray-400 py-4 text-sm">加载中...</div>
-            </div>
         </div>
     </div>
 
@@ -56,6 +62,24 @@
             <button onclick="lbStart()" id="lbStartBtn" class="bg-love hover:bg-loveDark text-white px-6 py-2 rounded-full transition-all">邀请对方开始</button>
         </div>
         <div id="lbMessage" class="text-center text-gray-500 mt-3 min-h-[24px] text-sm"></div>
+    </div>
+
+    <!-- 飞机大战 -->
+    <div class="bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow mb-6">
+        <h2 class="text-xl font-bold text-love flex items-center mb-4">
+            <i class="fa fa-fighter-jet mr-2"></i>飞机大战
+            <button id="planeFullscreenBtn" onclick="planeToggleFullscreen()" class="ml-2 w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:bg-rose-50 hover:text-love transition" title="全屏">
+                <i class="fa fa-expand"></i>
+            </button>
+        </h2>
+        <div id="planePlayArea" class="hidden mb-4 rounded-2xl overflow-hidden border border-rose-100">
+            <iframe id="planeFrame" src="about:blank" class="w-full h-[520px] block" allow="autoplay; fullscreen"></iframe>
+        </div>
+        <div class="flex justify-center">
+            <button id="planeStartBtn" onclick="planeTogglePlay()" class="bg-love hover:bg-loveDark text-white px-8 py-2.5 rounded-full transition-all font-bold">
+                <i class="fa fa-play mr-1"></i>开始游戏
+            </button>
+        </div>
     </div>
 
     <a href="./GameHub-main/index.html" class="mt-6 bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow flex items-center justify-between hover:bg-rose-50 transition group">

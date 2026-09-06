@@ -272,10 +272,8 @@
 
     // ==================== 显示设置（localStorage 记忆）====================
     const displayMap = {
-        // boy: { id: 'boyPet', toggleId: 'toggleBoy' },  // 已移除，boy 是 Live2D 人物而非 GIF 宠物
-        // girl: { id: 'girlPet', toggleId: 'toggleGirl' }, // 已移除，girl 是 Live2D 人物而非 GIF 宠物
-        // husky: { id: 'huskyPet', toggleId: 'toggleHusky' }, // 已移除，不使用 GIF 动画
-        // cat: { id: 'catPet', toggleId: 'toggleCat' }, // 已移除，不使用 GIF 动画
+        boy: { id: 'boyPet', toggleId: 'toggleBoy' },
+        girl: { id: 'girlPet', toggleId: 'toggleGirl' },
         mao: { id: 'maoPet', toggleId: 'toggleMao' }, // 猫猫 GIF 宠物
         dog: { id: 'dogPet', toggleId: 'toggleDog' } // 狗狗 GIF 宠物
     };
