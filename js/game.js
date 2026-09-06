@@ -85,6 +85,47 @@ function jumpTogglePlay() {
     }
 }
 
+// 跳一跳全屏切换
+function jumpToggleFullscreen() {
+    const area = document.getElementById("jumpPlayArea");
+    const frame = document.getElementById("jumpFrame");
+    const btn = document.getElementById("jumpFullscreenBtn");
+    if (!area || !frame || !btn) return;
+    if (!document.fullscreenElement) {
+        // 进入全屏：先确保游戏已打开
+        if (area.classList.contains("hidden")) {
+            frame.src = "Jump-master/index.html";
+            area.classList.remove("hidden");
+            const startBtn = document.getElementById("jumpStartBtn");
+            if (startBtn) startBtn.innerHTML = '<i class="fa fa-stop mr-1"></i>收起游戏';
+        }
+        area.requestFullscreen().then(() => {
+            btn.innerHTML = '<i class="fa fa-compress"></i>';
+            btn.title = "退出全屏";
+        }).catch(() => {
+            // 全屏失败（如 iframe 权限限制），回退为放大 iframe 高度
+            frame.style.height = "85vh";
+            btn.innerHTML = '<i class="fa fa-compress"></i>';
+            btn.title = "还原高度";
+        });
+    } else {
+        document.exitFullscreen().then(() => {
+            btn.innerHTML = '<i class="fa fa-expand"></i>';
+            btn.title = "全屏";
+            frame.style.height = "";
+        });
+    }
+}
+
+// 监听全屏退出（ESC 键等）
+document.addEventListener("fullscreenchange", () => {
+    const btn = document.getElementById("jumpFullscreenBtn");
+    if (btn && !document.fullscreenElement) {
+        btn.innerHTML = '<i class="fa fa-expand"></i>';
+        btn.title = "全屏";
+    }
+});
+
 function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, c => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -146,6 +187,7 @@ async function loadJumpLeaderboard() {
 
 window.initJumpGame = initJumpGame;
 window.jumpTogglePlay = jumpTogglePlay;
+window.jumpToggleFullscreen = jumpToggleFullscreen;
 window.loadJumpLeaderboard = loadJumpLeaderboard;
 
 })();

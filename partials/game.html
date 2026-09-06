@@ -5,6 +5,9 @@
         <h2 class="text-xl font-bold text-love flex items-center mb-4">
             <i class="fa fa-frog mr-2"></i>跳一跳
             <span id="jumpMyBest" class="ml-auto text-sm font-normal text-gray-400">最高分 —</span>
+            <button id="jumpFullscreenBtn" onclick="jumpToggleFullscreen()" class="ml-2 w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:bg-rose-50 hover:text-love transition" title="全屏">
+                <i class="fa fa-expand"></i>
+            </button>
         </h2>
         <div id="jumpPlayArea" class="hidden mb-4 rounded-2xl overflow-hidden border border-rose-100">
             <iframe id="jumpFrame" src="about:blank" class="w-full h-[520px] block" allow="autoplay; fullscreen"></iframe>

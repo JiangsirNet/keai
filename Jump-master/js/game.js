@@ -2,7 +2,7 @@ class Game {
 	constructor() {
 		//基础信息 属性
 		this.config = {
-			background: 0x282828,
+			background: 0x4a6741, //苔藓绿背景（自然柔和，绿色明显）
 			ground: -1, //地面负一	 
 			cubeColor: 0xbebebe,
 			cubeWidth: 4, //宽	 
@@ -48,12 +48,14 @@ class Game {
 			end: false,
 			speed: 0.2
 		}
+		this.galleryTextures = []; //相册照片纹理缓存（从 localStorage 读取）
 	}
 
 	init() {
 		this._setCamera(); //设置相机位置
 		this._setRenderer();
 		this._setLight(); //设置灯光
+		this._loadGalleryTextures(); //预加载相册照片纹理
 		this._createCube(); //块
 		this._createCube();
 		this._createJumper();
@@ -102,33 +104,40 @@ class Game {
 		this.renderer.setSize(this.size.width, this.size.height);
 		this._render();
 	};
-	//鼠标按下状态
+	//鼠标按下状态（基于时间蓄力，统一手机/电脑帧率差异）
 	_handleMouseDown() {
-		if (!this.jumperStat.ready && this.jumper.scale.y > 0.02) {
-			this.jumper.scale.y -= 0.01;//压缩块
-			this.jumperStat.xSpeed += 0.004;
-			this.jumperStat.ySpeed += 0.008;
+		// 最大蓄力限制：xSpeed 上限 0.65（约 1.3 秒），防止蓄力过久跳太远
+		if (!this.jumperStat.ready && this.jumper.scale.y > 0.02 && this.jumperStat.xSpeed < 0.65) {
+			const now = performance.now();
+			const delta = this._lastChargeTime ? Math.min((now - this._lastChargeTime) / 1000, 0.1) : 1 / 60;
+			this._lastChargeTime = now;
+			this.jumper.scale.y -= 0.02 * (delta * 60); //压缩速度与帧率无关
+			this.jumperStat.xSpeed += 0.5 * delta; //每秒蓄力 0.5（跳 4~7 需 0.45~0.6 秒）
+			this.jumperStat.ySpeed += 0.5 * delta; //每秒蓄力 0.5
 			this._render();
 			requestAnimationFrame(() => {
 				this._handleMouseDown()
 			})
 		}
 	};
-	//鼠标松开谈起状态
+	//鼠标松开谈起状态（基于时间跳跃，统一手机/电脑帧率差异）
 	_handleMouseUp() {
 		this.jumperStat.ready = true;
 		if (this.jumper.position.y >= 1) {
+			const now = performance.now();
+			const delta = this._lastJumpTime ? Math.min((now - this._lastJumpTime) / 1000, 0.1) : 1 / 60;
+			this._lastJumpTime = now;
 			if (this.jumper.scale.y < 1) {
 				this.jumper.scale.y += 0.1;//压缩状态小于1就+
 			}
 			if (this.cubeStat.nextDir == "left") {
 				//挑起盒子落在哪里
-				this.jumper.position.x -= this.jumperStat.xSpeed;
+				this.jumper.position.x -= this.jumperStat.xSpeed * delta * 60;
 			} else {
-				this.jumper.position.z -= this.jumperStat.xSpeed;
+				this.jumper.position.z -= this.jumperStat.xSpeed * delta * 60;
 			}
-			this.jumper.position.y += this.jumperStat.ySpeed;
-			this.jumperStat.ySpeed -= 0.01;//上升落下状态
+			this.jumper.position.y += this.jumperStat.ySpeed * delta * 60;
+			this.jumperStat.ySpeed -= 0.025 * delta * 60;//重力 1.5/秒，跳跃动画更舒缓
 			this._render();
 			requestAnimationFrame(() => {
 				//循环执行
@@ -139,6 +148,8 @@ class Game {
 			this.jumperStat.ready = false;
 			this.jumperStat.xSpeed = 0;
 			this.jumperStat.ySpeed = 0;
+			this._lastChargeTime = null;
+			this._lastJumpTime = null;
 			this.jumper.position.y = 1;
 			this.jumper.scale.y = 1;
 			this._checkInCube();//检测落在哪里
@@ -163,25 +174,30 @@ class Game {
 	_checkInCube() {
 		let distanceCur, distanceNext;
 		//当前盒子距离    下一个盒子距离
-		let should = (this.config.jumperWidth + this.config.cubeWidth) / 2;
+		let curCube = this.cubes[this.cubes.length - 2];
+		let nextCube = this.cubes[this.cubes.length - 1];
+		//跳跃方向上的实际尺寸（宽或深）
+		let curSize = this.cubeStat.nextDir == "left" ? curCube.userData.width : curCube.userData.deep;
+		let nextSize = this.cubeStat.nextDir == "left" ? nextCube.userData.width : nextCube.userData.deep;
+		let should = (this.config.jumperWidth + Math.max(curSize, nextSize)) / 2;
 		//
 		if (this.cubeStat.nextDir == "left") {
 			//往左走了
-			distanceCur = Math.abs(this.jumper.position.x - this.cubes[this.cubes.length - 2].position.x);
-			distanceNext = Math.abs(this.jumper.position.x - this.cubes[this.cubes.length - 1].position.x);
+			distanceCur = Math.abs(this.jumper.position.x - curCube.position.x);
+			distanceNext = Math.abs(this.jumper.position.x - nextCube.position.x);
 		} else {
 			//往右走了
-			distanceCur = Math.abs(this.jumper.position.z - this.cubes[this.cubes.length - 2].position.z);
-			distanceNext = Math.abs(this.jumper.position.z - this.cubes[this.cubes.length - 1].position.z);
+			distanceCur = Math.abs(this.jumper.position.z - curCube.position.z);
+			distanceNext = Math.abs(this.jumper.position.z - nextCube.position.z);
 		}
 		if (distanceCur < should) {
 			//落在当前块
 			this.falledStat.distance = distanceCur;
-			this.falledStat.location = distanceCur < this.config.cubeWidth / 2 ? -1 : -10;
+			this.falledStat.location = distanceCur < curSize / 2 ? -1 : -10;
 		} else if (distanceNext < should) {
 			//落在下一个块上
 			this.falledStat.distance = distanceNext;
-			this.falledStat.location = distanceNext < this.config.cubeWidth / 2 ? 1 : 10;
+			this.falledStat.location = distanceNext < nextSize / 2 ? 1 : 10;
 		} else {
 			//落在中间
 			this.falledStat.location = 0;
@@ -219,7 +235,12 @@ class Game {
 	};
 	//落下旋转
 	_fallingRotate(dir) {
-		let offset = this.falledStat.distance - this.config.cubeWidth / 2;//中间
+		//根据落点位置获取对应方块的实际尺寸（10/1=下一个块，-10/-1=当前块）
+		let cube = (this.falledStat.location == 10 || this.falledStat.location == 1)
+			? this.cubes[this.cubes.length - 1]
+			: this.cubes[this.cubes.length - 2];
+		let cubeSize = this.cubeStat.nextDir == "left" ? cube.userData.width : cube.userData.deep;
+		let offset = this.falledStat.distance - cubeSize / 2;//中间
 		let rotateAxis = dir.includes("left") ? 'z' : "x";//以什么轴转
 		let rotateAdd = this.jumper.rotation[rotateAxis] + 0.1;
 		let rotateTo = this.jumper.rotation[rotateAxis] < Math.PI / 2;
@@ -279,26 +300,97 @@ class Game {
 		let light = new THREE.AmbientLight(0xffffff, 0.3); //光的材质
 		this.scene.add(light) //把光添加到场景
 	};
+	//从 localStorage 读取相册照片缓存并预加载为纹理（canvas contain 自适应，不拉伸）
+	_loadGalleryTextures() {
+		try {
+			const raw = localStorage.getItem("ls_gallery_cache");
+			if (!raw) return;
+			const cache = JSON.parse(raw);
+			const urls = cache.urls || [];
+			if (!urls.length) return;
+			urls.forEach(url => {
+				const img = new Image();
+				img.crossOrigin = "anonymous";
+				img.onload = () => {
+					// 用 canvas 按 contain 方式绘制：保持原始比例居中，四周填充浅色，不拉伸
+					const size = 256;
+					const canvas = document.createElement("canvas");
+					canvas.width = size;
+					canvas.height = size;
+					const ctx = canvas.getContext("2d");
+					ctx.fillStyle = "#f0e6e8"; // 浅粉底色
+					ctx.fillRect(0, 0, size, size);
+					// 不旋转，保持照片原始方向（contain 自适应，不拉伸）
+					const scale = Math.min(size / img.width, size / img.height);
+					const w = img.width * scale;
+					const h = img.height * scale;
+					const x = (size - w) / 2;
+					const y = (size - h) / 2;
+					ctx.drawImage(img, x, y, w, h);
+					const tex = new THREE.CanvasTexture(canvas);
+					tex.minFilter = THREE.LinearFilter;
+					this.galleryTextures.push(tex);
+				};
+				img.onerror = () => {
+					// 单张照片加载失败忽略，继续用其他照片/颜色
+				};
+				img.src = url;
+			});
+		} catch (e) {
+			console.warn("[Jump] 读取相册缓存失败:", e);
+		}
+	}
 	//创建块
 	_createCube() {
-		let geometry = new THREE.CubeGeometry(this.config.cubeWidth, this.config.cubeHeight, this.config.cubeDeep);
+		// 随机方块尺寸：宽 2~4，深 2~4，高 2
+		let cubeW = Math.round(Math.random() * 2 + 2); // 2~4
+		let cubeD = Math.round(Math.random() * 2 + 2); // 2~4
+		let geometry = new THREE.CubeGeometry(cubeW, this.config.cubeHeight, cubeD);
 		//创建一个几何体对象 （宽，高，深度）
-		let material = new THREE.MeshLambertMaterial({
-			color: this.config.cubeColor
-		});
+		// 先确定方向（材质正面需要）
+		if (this.cubes.length) {
+			this.cubeStat.nextDir = Math.random() > 0.5 ? "left" : "right"; //要不左边要不右边
+		}
+		// 只有正方形（宽=深，即 3x3 或 4x4）才有 70% 概率使用照片纹理
+		let usePhoto = this.galleryTextures.length > 0 && cubeW === cubeD && Math.random() < 0.7;
+		let material;
+		if (usePhoto) {
+			const tex = this.galleryTextures[Math.floor(Math.random() * this.galleryTextures.length)];
+			// 其他面用随机浅色
+			const faceColor = new THREE.Color(`hsl(${Math.round(Math.random() * 360)}, 60%, 75%)`);
+			const sideMat = new THREE.MeshLambertMaterial({ color: faceColor });
+			const photoMat = new THREE.MeshLambertMaterial({ map: tex });
+			// CubeGeometry 材质数组顺序: +x, -x, +y, -y, +z, -z
+			// 照片贴在最上面（+y 顶面），俯视视角清晰可见
+			material = [sideMat, sideMat, photoMat, sideMat, sideMat, sideMat];
+		} else {
+			// 随机浅亮色（HSL 色相 0~360，饱和度 60~80%，亮度 65~85%）
+			let hue = Math.round(Math.random() * 360);
+			let sat = Math.round(Math.random() * 20 + 60); // 60~80
+			let light = Math.round(Math.random() * 20 + 65); // 65~85
+			material = new THREE.MeshLambertMaterial({
+				color: new THREE.Color(`hsl(${hue}, ${sat}%, ${light}%)`)
+			});
+		}
 		//材质,对象包含了颜色、透明度等属性，
 		let cube = new THREE.Mesh(geometry, material); //合并在一起
+		cube.userData = { width: cubeW, deep: cubeD }; //记录实际尺寸（落点判断用）
 		if (this.cubes.length) {
 			//从第二块开始随机左右方向出现
-			cube.position.x = this.cubes[this.cubes.length - 1].position.x;
-			cube.position.y = this.cubes[this.cubes.length - 1].position.y;
-			cube.position.z = this.cubes[this.cubes.length - 1].position.z;
-			this.cubeStat.nextDir = Math.random() > 0.5 ? "left" : "right"; //要不左边要不右边
+			let prevCube = this.cubes[this.cubes.length - 1];
+			cube.position.x = prevCube.position.x;
+			cube.position.y = prevCube.position.y;
+			cube.position.z = prevCube.position.z;
+			// 动态间距：前块半宽 + 本块半宽 + 间隙(1~4)，保证不重叠且最小间隙 1
+			let prevSize = this.cubeStat.nextDir == "left" ? prevCube.userData.width : prevCube.userData.deep;
+			let curSize = this.cubeStat.nextDir == "left" ? cubeW : cubeD;
+			let gap = Math.round(Math.random() * 3 + 1); // 间隙 1~4
+			let distance = prevSize / 2 + curSize / 2 + gap;
 			if (this.cubeStat.nextDir == "left") {
 				//左边改变x轴否则y轴
-				cube.position.x = cube.position.x - Math.round(Math.random() * 4 + 6);
+				cube.position.x = cube.position.x - distance;
 			} else {
-				cube.position.z = cube.position.z - Math.round(Math.random() * 4 + 6);
+				cube.position.z = cube.position.z - distance;
 			}
 		}
 		this.cubes.push(cube); //统一添加块

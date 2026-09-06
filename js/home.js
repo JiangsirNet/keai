@@ -88,6 +88,22 @@ async function loadGallery() {
     galleryData = data || [];
     galleryPage = 1;
     renderGallery();
+    // 缓存第一页照片供跳一跳游戏读取（iframe 同源共享 localStorage）
+    cacheGalleryForJump();
+}
+
+// 缓存相册第一页照片 URL 到 localStorage，供跳一跳游戏作为方块纹理
+function cacheGalleryForJump() {
+    try {
+        const firstPage = galleryData.slice(0, GALLERY_PAGE_SIZE);
+        const urls = firstPage.map(item => item.img_url).filter(Boolean);
+        localStorage.setItem("ls_gallery_cache", JSON.stringify({
+            urls: urls,
+            updatedAt: Date.now()
+        }));
+    } catch (e) {
+        console.warn("[Gallery] 缓存相册失败:", e);
+    }
 }
 
 function renderGallery() {
@@ -326,6 +342,7 @@ async function deleteMessage(id) {
 window.uploadImageToImgBB = uploadImageToImgBB;
 window.deletePhoto = deletePhoto;
 window.loadGallery = loadGallery;
+window.cacheGalleryForJump = cacheGalleryForJump;
 window.renderGallery = renderGallery;
 window.galleryPrevPage = () => { galleryPage--; renderGallery(); };
 window.galleryNextPage = () => { galleryPage++; renderGallery(); };
