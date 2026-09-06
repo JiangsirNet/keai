@@ -22,9 +22,14 @@ class Game {
 			current: new THREE.Vector3(0, 0, 0), //当前位置	  
 			next: new THREE.Vector3(0, 0, 0), //落下位置
 		};
+		// 移动端优化：根据设备能力关闭抗锯齿并限制 DPR，避免低端 GPU 卡顿
+		const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 		this.renderer = new THREE.WebGLRenderer({
-			antialias: true
-		}); //渲染器 （平滑线条）	 
+			antialias: !isMobile, // 手机端默认关闭抗锯齿（GPU 性能有限）
+			powerPreference: "high-performance"
+		});
+		// 限制设备像素比：电脑端 2x、手机端 1.5x，防止高分屏渲染过载
+		this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobile ? 1.5 : 2));
 		this.size = {
 			width: window.innerWidth,
 			height: window.innerHeight
@@ -312,6 +317,21 @@ class Game {
 				const img = new Image();
 				img.crossOrigin = "anonymous";
 				img.onload = () => {
+					// 性能优化：先把原图缩到 512 以内，避免手机大图（4000x3000）占满内存和 GPU 带宽
+					const maxSrc = 512;
+					let srcW = img.width, srcH = img.height;
+					let drawImg = img;
+					if (srcW > maxSrc || srcH > maxSrc) {
+						const s = Math.min(maxSrc / srcW, maxSrc / srcH);
+						const tmp = document.createElement("canvas");
+						tmp.width = Math.round(srcW * s);
+						tmp.height = Math.round(srcH * s);
+						const tctx = tmp.getContext("2d");
+						tctx.drawImage(img, 0, 0, tmp.width, tmp.height);
+						drawImg = tmp;
+						srcW = tmp.width;
+						srcH = tmp.height;
+					}
 					// 用 canvas 按 contain 方式绘制：保持原始比例居中，四周填充浅色，不拉伸
 					const size = 256;
 					const canvas = document.createElement("canvas");
@@ -321,14 +341,17 @@ class Game {
 					ctx.fillStyle = "#f0e6e8"; // 浅粉底色
 					ctx.fillRect(0, 0, size, size);
 					// 不旋转，保持照片原始方向（contain 自适应，不拉伸）
-					const scale = Math.min(size / img.width, size / img.height);
-					const w = img.width * scale;
-					const h = img.height * scale;
+					const scale = Math.min(size / srcW, size / srcH);
+					const w = srcW * scale;
+					const h = srcH * scale;
 					const x = (size - w) / 2;
 					const y = (size - h) / 2;
-					ctx.drawImage(img, x, y, w, h);
+					ctx.drawImage(drawImg, x, y, w, h);
 					const tex = new THREE.CanvasTexture(canvas);
 					tex.minFilter = THREE.LinearFilter;
+					// 性能优化：手机端生成 mipmap 关闭，并关闭各向异性过滤，减少 GPU 开销
+					tex.generateMipmaps = false;
+					tex.needsUpdate = true;
 					this.galleryTextures.push(tex);
 				};
 				img.onerror = () => {
