@@ -9,6 +9,12 @@ window.girlHugging = false;
 
 const SLEEP_DELAY = 2 * 60 * 1000; // 2分钟
 
+// 宠物 CSS 定位基准位置（清除 transform 后的 left/top）
+var petBaseX = {};
+var petBaseY = {};
+// 宠物行走目标位置（用于连续行走不跳位）
+var petTargetX = {};
+
 // ============ 猫猫 ============
 const maoGreetPhrases = ["你好呀~", "喵！打招呼", "好久不见！", "来摸摸我", "喵呜~"];
 let maoWalkingTimer = null;
@@ -59,31 +65,74 @@ function maoPlayGreeting(duration) {
     }, duration || 2000);
 }
 
+// ============ 行走调度：待机为主，偶尔触发 ============
+var WALK_STEP_MS = 8000; // 每步 8 秒
+
+function doOneWalkStep(petId) {
+    var pet = document.getElementById(petId);
+    if (petTargetX[petId] === undefined) {
+        petTargetX[petId] = pet.getBoundingClientRect().left;
+    }
+    var curX = petTargetX[petId];
+    pet.style.transform = '';
+    pet.style.left = curX + 'px';
+    pet.style.top = pet.getBoundingClientRect().top + 'px';
+    pet.style.right = 'auto';
+    pet.style.bottom = 'auto';
+    var petW = pet.offsetWidth || 130;
+    var move = Math.random() > 0.5 ? 80 : -80;
+    var newLeft = Math.max(10, Math.min(window.innerWidth - petW - 10, curX + move));
+    petTargetX[petId] = newLeft;
+    pet.style.transition = 'left ' + WALK_STEP_MS + 'ms linear';
+    pet.style.left = newLeft + 'px';
+    pet.style.transform = 'scaleX(' + (newLeft < curX ? -1 : 1) + ')';
+    if (petId === 'maoPet') maoSetWalking(true);
+    else dogSetWalking(true);
+}
+
+function scheduleNextWalk(petId) {
+    var delay = 15000 + Math.random() * 25000; // 15~40秒后触发
+    var timerId = setTimeout(function() { startWalkSession(petId); }, delay);
+    if (petId === 'maoPet') maoWalkingTimer = timerId;
+    else dogWalkingTimer = timerId;
+}
+
+function startWalkSession(petId) {
+    var isMao = petId === 'maoPet';
+    if (isMao ? maoIsSleeping : dogIsSleeping) return;
+    if (isMao ? maoDragging : dogDragging) { scheduleNextWalk(petId); return; }
+    if (isMao ? maoGreetingActive : dogGreetingActive) { scheduleNextWalk(petId); return; }
+    var steps = 2 + Math.floor(Math.random() * 3); // 2~4步
+    var done = 0;
+    function step() {
+        if (isMao ? maoDragging : dogDragging) { done = steps; stopWalking(petId); return; }
+        if (isMao ? maoGreetingActive : dogGreetingActive) { done = steps; stopWalking(petId); return; }
+        doOneWalkStep(petId);
+        done++;
+        if (done < steps) {
+            var tid = setTimeout(step, WALK_STEP_MS);
+            if (isMao) maoWalkEndTimer = tid; else dogWalkEndTimer = tid;
+        } else {
+            stopWalking(petId);
+        }
+    }
+    step();
+}
+
+function stopWalking(petId) {
+    if (petId === 'maoPet') maoSetWalking(false);
+    else dogSetWalking(false);
+    var pet = document.getElementById(petId);
+    pet.style.transition = '';
+    scheduleNextWalk(petId);
+}
+
 function startMaoWalking() {
-    if (maoWalkingTimer) clearInterval(maoWalkingTimer);
+    if (maoWalkingTimer) clearTimeout(maoWalkingTimer);
     if (maoWalkEndTimer) { clearTimeout(maoWalkEndTimer); maoWalkEndTimer = null; }
     if (maoIsSleeping) return;
-    maoWalkingTimer = setInterval(() => {
-        if (maoDragging || maoGreetingActive) return;
-        const pet = document.getElementById("maoPet");
-        let curLeft;
-        if (pet.style.right && pet.style.right !== 'auto') {
-            const right = parseInt(pet.style.right) || 20;
-            curLeft = window.innerWidth - pet.offsetWidth - right;
-        } else {
-            curLeft = parseInt(pet.style.left) || 20;
-        }
-        const petW = pet.offsetWidth || 130;
-        const move = Math.random() > 0.5 ? 80 : -80;
-        let newLeft = curLeft + move;
-        newLeft = Math.max(10, Math.min(window.innerWidth - petW - 10, newLeft));
-        pet.style.left = newLeft + "px";
-        pet.style.right = "auto";
-        pet.style.transform = move < 0 ? "scaleX(-1)" : "scaleX(1)";
-        maoSetWalking(true);
-        if (maoWalkEndTimer) clearTimeout(maoWalkEndTimer);
-        maoWalkEndTimer = setTimeout(() => maoSetWalking(false), 4000);
-    }, 9000);
+    maoSetWalking(false);
+    scheduleNextWalk('maoPet');
 }
 
 function petMao() {
@@ -179,6 +228,8 @@ function bindPetDrag(el, petId) {
         pet.style.top = newY + 'px';
         pet.style.right = 'auto';
         pet.style.bottom = 'auto';
+        pet.style.transform = '';
+        pet.style.transition = ''; // 拖拽时清除过渡
 
         if (hugDragging && hugState) moveCharacterWithPet(hugState.characterId, pet);
     }
@@ -207,6 +258,9 @@ function bindPetDrag(el, petId) {
                 hugState = null;
             }
             checkHugOnDrop(el);
+            // 拖拽结束，同步目标位置
+            var endRect = el.getBoundingClientRect();
+            petTargetX[petId] = endRect.left;
             if (!hugState) resumePetWalking(petId);
         }
         isDragging = false;
@@ -268,30 +322,11 @@ function dogPlayGreeting(duration) {
 }
 
 function startDogWalking() {
-    if (dogWalkingTimer) clearInterval(dogWalkingTimer);
+    if (dogWalkingTimer) clearTimeout(dogWalkingTimer);
     if (dogWalkEndTimer) { clearTimeout(dogWalkEndTimer); dogWalkEndTimer = null; }
     if (dogIsSleeping) return;
-    dogWalkingTimer = setInterval(() => {
-        if (dogDragging || dogGreetingActive) return;
-        const pet = document.getElementById("dogPet");
-        let curLeft;
-        if (pet.style.right && pet.style.right !== 'auto') {
-            const right = parseInt(pet.style.right) || 20;
-            curLeft = window.innerWidth - pet.offsetWidth - right;
-        } else {
-            curLeft = parseInt(pet.style.left) || 20;
-        }
-        const petW = pet.offsetWidth || 130;
-        const move = Math.random() > 0.5 ? 30 : -30;
-        let newLeft = curLeft + move;
-        newLeft = Math.max(10, Math.min(window.innerWidth - petW - 10, newLeft));
-        pet.style.left = newLeft + "px";
-        pet.style.right = "auto";
-        pet.style.transform = move < 0 ? "scaleX(-1)" : "scaleX(1)";
-        dogSetWalking(true);
-        if (dogWalkEndTimer) clearTimeout(dogWalkEndTimer);
-        dogWalkEndTimer = setTimeout(() => dogSetWalking(false), 4000);
-    }, 8000);
+    dogSetWalking(false);
+    scheduleNextWalk('dogPet');
 }
 
 function petDog() {
@@ -353,14 +388,14 @@ function clearSleepTimeout(petId) {
 
 function goToSleep(petId) {
     if (petId === 'maoPet') {
-        if (maoWalkingTimer) clearInterval(maoWalkingTimer);
+        if (maoWalkingTimer) clearTimeout(maoWalkingTimer);
         if (maoWalkEndTimer) { clearTimeout(maoWalkEndTimer); maoWalkEndTimer = null; }
         if (maoGreetingTimer) { clearTimeout(maoGreetingTimer); maoGreetingTimer = null; }
         maoGreetingActive = false;
         maoIsSleeping = true;
         maoSetImg(MAO_SLEEP);
     } else if (petId === 'dogPet') {
-        if (dogWalkingTimer) clearInterval(dogWalkingTimer);
+        if (dogWalkingTimer) clearTimeout(dogWalkingTimer);
         if (dogWalkEndTimer) { clearTimeout(dogWalkEndTimer); dogWalkEndTimer = null; }
         if (dogGreetingTimer) { clearTimeout(dogGreetingTimer); dogGreetingTimer = null; }
         dogGreetingActive = false;
@@ -385,8 +420,8 @@ function rectsOverlap(a, b) {
 function triggerHug(petId, characterId) {
     const pet = document.getElementById(petId);
     const character = document.getElementById(characterId);
-    if (petId === 'maoPet' && maoWalkingTimer) clearInterval(maoWalkingTimer);
-    if (petId === 'dogPet' && dogWalkingTimer) clearInterval(dogWalkingTimer);
+    if (petId === 'maoPet' && maoWalkingTimer) clearTimeout(maoWalkingTimer);
+    if (petId === 'dogPet' && dogWalkingTimer) clearTimeout(dogWalkingTimer);
     if (characterId === 'boyPet') window.boyHugging = true;
     if (characterId === 'girlPet') window.girlHugging = true;
     hugState = { petId, characterId };
@@ -406,7 +441,9 @@ function syncHugPet() {
     pet.style.top = y + "px";
     pet.style.right = "auto";
     pet.style.bottom = "auto";
+    pet.style.transform = "none";
     pet.style.transition = "none";
+    petTargetX[hugState.petId] = x;
     hugState.rafId = requestAnimationFrame(syncHugPet);
 }
 
@@ -427,6 +464,9 @@ function releaseHug() {
     pet.style.left = Math.max(10, Math.min(window.innerWidth - pet.offsetWidth - 10, petX)) + "px";
     pet.style.top = "auto";
     pet.style.bottom = Math.max(20, petBottom) + "px";
+    pet.style.right = "auto";
+    pet.style.transform = "";
+    petTargetX[petId] = parseFloat(pet.style.left);
     resumePetWalking(petId);
 }
 

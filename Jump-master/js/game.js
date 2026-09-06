@@ -1,3 +1,128 @@
+//音效管理器（Web Audio API 程序化生成）
+class SoundManager {
+	constructor() {
+		this.ctx = null;
+		this.chargeOsc = null;
+		this.chargeGain = null;
+		this.chargeFreq = 200;
+	}
+	_ensure() {
+		if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+		if (this.ctx.state === 'suspended') this.ctx.resume();
+		return this.ctx;
+	}
+	//蓄力音效：持续音调升高
+	playCharge() {
+		const ctx = this._ensure();
+		if (this.chargeOsc) return;
+		this.chargeOsc = ctx.createOscillator();
+		this.chargeGain = ctx.createGain();
+		this.chargeOsc.type = 'sine';
+		this.chargeFreq = 200;
+		this.chargeOsc.frequency.value = 200;
+		this.chargeGain.gain.value = 0.08;
+		this.chargeOsc.connect(this.chargeGain);
+		this.chargeGain.connect(ctx.destination);
+		this.chargeOsc.start();
+	}
+	updateChargePitch(ratio) {
+		if (!this.chargeOsc) return;
+		this.chargeFreq = Math.min(200 + ratio * 600, 800);
+		this.chargeOsc.frequency.value = this.chargeFreq;
+	}
+	stopCharge() {
+		if (this.chargeOsc) {
+			try { this.chargeOsc.stop(); } catch(e) {}
+			this.chargeOsc = null;
+			this.chargeGain = null;
+		}
+	}
+	//起跳弹出
+	playJump() {
+		const ctx = this._ensure();
+		const osc = ctx.createOscillator();
+		const gain = ctx.createGain();
+		osc.type = 'sine';
+		osc.frequency.setValueAtTime(300, ctx.currentTime);
+		osc.frequency.exponentialRampToValueAtTime(900, ctx.currentTime + 0.12);
+		gain.gain.setValueAtTime(0.15, ctx.currentTime);
+		gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+		osc.connect(gain); gain.connect(ctx.destination);
+		osc.start(); osc.stop(ctx.currentTime + 0.15);
+	}
+	//普通落地得分
+	playScore() {
+		const ctx = this._ensure();
+		const osc = ctx.createOscillator();
+		const gain = ctx.createGain();
+		osc.type = 'triangle';
+		osc.frequency.value = 520;
+		gain.gain.setValueAtTime(0.12, ctx.currentTime);
+		gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+		osc.connect(gain); gain.connect(ctx.destination);
+		osc.start(); osc.stop(ctx.currentTime + 0.2);
+	}
+	//完美落地加分
+	playPerfect() {
+		const ctx = this._ensure();
+		const t = ctx.currentTime;
+		[523, 659, 784].forEach((f, i) => {
+			const osc = ctx.createOscillator();
+			const gain = ctx.createGain();
+			osc.type = 'sine';
+			osc.frequency.value = f;
+			gain.gain.setValueAtTime(0, t + i * 0.06);
+			gain.gain.linearRampToValueAtTime(0.15, t + i * 0.06 + 0.02);
+			gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.06 + 0.25);
+			osc.connect(gain); gain.connect(ctx.destination);
+			osc.start(t + i * 0.06); osc.stop(t + i * 0.06 + 0.25);
+		});
+	}
+	//连续连击音效
+	playCombo(count) {
+		const ctx = this._ensure();
+		const baseFreq = 400 + Math.min(count, 10) * 50;
+		const t = ctx.currentTime;
+		[0, 0.06, 0.12].forEach((delay, i) => {
+			const osc = ctx.createOscillator();
+			const gain = ctx.createGain();
+			osc.type = 'square';
+			osc.frequency.value = baseFreq * (1 + i * 0.25);
+			gain.gain.setValueAtTime(0.08, t + delay);
+			gain.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.1);
+			osc.connect(gain); gain.connect(ctx.destination);
+			osc.start(t + delay); osc.stop(t + delay + 0.1);
+		});
+	}
+	//掉落失败
+	playFail() {
+		const ctx = this._ensure();
+		const osc = ctx.createOscillator();
+		const gain = ctx.createGain();
+		osc.type = 'sawtooth';
+		osc.frequency.setValueAtTime(400, ctx.currentTime);
+		osc.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.5);
+		gain.gain.setValueAtTime(0.12, ctx.currentTime);
+		gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.5);
+		osc.connect(gain); gain.connect(ctx.destination);
+		osc.start(); osc.stop(ctx.currentTime + 0.5);
+	}
+	//游戏开始
+	playGameStart() {
+		const ctx = this._ensure();
+		const t = ctx.currentTime;
+		[262, 330, 392, 523].forEach((f, i) => {
+			const osc = ctx.createOscillator();
+			const gain = ctx.createGain();
+			osc.type = 'sine';
+			osc.frequency.value = f;
+			gain.gain.setValueAtTime(0.12, t + i * 0.1);
+			gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.1 + 0.2);
+			osc.connect(gain); gain.connect(ctx.destination);
+			osc.start(t + i * 0.1); osc.stop(t + i * 0.1 + 0.2);
+		});
+	}
+}
 class Game {
 	constructor() {
 		//基础信息 属性
@@ -54,6 +179,9 @@ class Game {
 			speed: 0.2
 		}
 		this.galleryTextures = []; //相册照片纹理缓存（从 localStorage 读取）
+		this.model = null; //哈士奇3D模型
+		this.sound = new SoundManager(); //音效管理器
+		this.combo = 0; //连续成功计数
 	}
 
 	init() {
@@ -64,6 +192,8 @@ class Game {
 		this._createCube(); //块
 		this._createCube();
 		this._createJumper();
+		this._createHusky(); //绘制哈士奇
+		this.sound.playGameStart(); //游戏开始音效
 		this._updateCamera(); //改变相机
 		this._handleWindowResize();
 		window.addEventListener("resize", () => {
@@ -113,12 +243,18 @@ class Game {
 	_handleMouseDown() {
 		// 最大蓄力限制：xSpeed 上限 0.65（约 1.3 秒），防止蓄力过久跳太远
 		if (!this.jumperStat.ready && this.jumper.scale.y > 0.02 && this.jumperStat.xSpeed < 0.65) {
+			//首次进入蓄力，开始蓄力音效
+			if (this.jumperStat.xSpeed === 0) {
+				this.sound.playCharge();
+			}
 			const now = performance.now();
 			const delta = this._lastChargeTime ? Math.min((now - this._lastChargeTime) / 1000, 0.1) : 1 / 60;
 			this._lastChargeTime = now;
 			this.jumper.scale.y -= 0.02 * (delta * 60); //压缩速度与帧率无关
 			this.jumperStat.xSpeed += 0.5 * delta; //每秒蓄力 0.5（跳 4~7 需 0.45~0.6 秒）
 			this.jumperStat.ySpeed += 0.5 * delta; //每秒蓄力 0.5
+			this._updateHuskyAnim(); //跳跃姿势动画
+			this.sound.updateChargePitch(this.jumperStat.xSpeed / 0.65); //更新蓄力音调
 			this._render();
 			requestAnimationFrame(() => {
 				this._handleMouseDown()
@@ -129,6 +265,10 @@ class Game {
 	_handleMouseUp() {
 		this.jumperStat.ready = true;
 		if (this.jumper.position.y >= 1) {
+			this.sound.stopCharge(); //停止蓄力音效
+			if (this.jumper.scale.y >= 1 && this.jumperStat.ySpeed > 0) {
+				this.sound.playJump(); //起跳弹出
+			}
 			const now = performance.now();
 			const delta = this._lastJumpTime ? Math.min((now - this._lastJumpTime) / 1000, 0.1) : 1 / 60;
 			this._lastJumpTime = now;
@@ -143,6 +283,7 @@ class Game {
 			}
 			this.jumper.position.y += this.jumperStat.ySpeed * delta * 60;
 			this.jumperStat.ySpeed -= 0.025 * delta * 60;//重力 1.5/秒，跳跃动画更舒缓
+			this._updateHuskyAnim(); //跳跃姿势动画
 			this._render();
 			requestAnimationFrame(() => {
 				//循环执行
@@ -157,10 +298,25 @@ class Game {
 			this._lastJumpTime = null;
 			this.jumper.position.y = 1;
 			this.jumper.scale.y = 1;
+			this.sound.stopCharge(); //确保停止蓄力音效
+			// 落地后重置身体姿势
+			this._updateHuskyAnim();
 			this._checkInCube();//检测落在哪里
 			if (this.falledStat.location == 1) {
-				//下落后等于1，+分数
+				//成功落在下一个块上
 				this.score++;
+				this.combo++;
+				//检测完美落地（接近中心）
+				const isPerfect = this.falledStat.distance < this.config.jumperWidth;
+				if (isPerfect) {
+					this.sound.playPerfect();
+				} else {
+					this.sound.playScore();
+				}
+				//连击音效（每3连击触发）
+				if (this.combo >= 3 && this.combo % 3 === 0) {
+					this.sound.playCombo(this.combo);
+				}
 				this._createCube();
 				this._updateCamera();
 				if (this.successCallback) {
@@ -282,6 +438,7 @@ class Game {
 			})
 		} else {
 			if (this.failedCallback) {
+				this.sound.playFail(); //掉落失败音效
 				this.failedCallback()
 			}
 		}
@@ -373,6 +530,7 @@ class Game {
 		// 先确定方向（材质正面需要）
 		if (this.cubes.length) {
 			this.cubeStat.nextDir = Math.random() > 0.5 ? "left" : "right"; //要不左边要不右边
+			this._updateModelDirection(); //哈士奇朝向跳跃方向
 		}
 		// 只有 4x4 正方形方块才有 70% 概率使用照片纹理，2x2 / 3x3 不显示图片
 		let usePhoto = this.galleryTextures.length > 0 && cubeW === cubeD && cubeW === 4 && Math.random() < 0.7;
@@ -427,13 +585,155 @@ class Game {
 			this._updateCameraPros();
 		}
 	};
+	//绘制3D哈士奇（用基础几何体拼出）
+	_createHusky() {
+		const husky = new THREE.Group();
+		const mat = (c) => new THREE.MeshLambertMaterial({ color: c });
+		const gray = mat(0x777777);    //灰色身体
+		const dark = mat(0x444444);    //深色
+		const white = mat(0xdddddd);   //白色
+		const blue = mat(0x5599dd);    //蓝色眼睛
+		const black = mat(0x111111);   //黑色
+
+		// 压缩组：身体+肚皮+后腿+尾巴（蓄力时整体下沉）
+		const compressGroup = new THREE.Group();
+		husky.add(compressGroup);
+
+		//身体
+		const body = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.55, 1.2), gray);
+		body.position.set(0, 0.62, 0);
+		compressGroup.add(body);
+
+		//白色肚皮
+		const belly = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.12, 0.9), white);
+		belly.position.set(0, 0.37, 0);
+		compressGroup.add(belly);
+
+		// 静态部分：头+五官+耳朵+前腿（保持不动，抵消父级scale压缩）
+		const staticParts = [];
+		//头
+		const head = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.45, 0.5), dark);
+		head.position.set(0, 1.05, 0.45);
+		husky.add(head);
+
+		//口鼻（浅色突出）
+		const snout = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.2, 0.22), white);
+		snout.position.set(0, 0.95, 0.72);
+		husky.add(snout);
+
+		//鼻子
+		const nose = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.08, 0.06), black);
+		nose.position.set(0, 1.0, 0.84);
+		husky.add(nose);
+
+		//眼白
+		[-1, 1].forEach(s => {
+			const eyeW = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), white);
+			eyeW.position.set(s * 0.15, 1.12, 0.68);
+			husky.add(eyeW);
+			staticParts.push(eyeW);
+			//蓝色瞳孔
+			const eyeB = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), blue);
+			eyeB.position.set(s * 0.15, 1.12, 0.73);
+			husky.add(eyeB);
+			staticParts.push(eyeB);
+		});
+
+		//尖耳朵
+		[-1, 1].forEach(s => {
+			const ear = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.22, 4), dark);
+			ear.position.set(s * 0.18, 1.4, 0.4);
+			husky.add(ear);
+			staticParts.push(ear);
+		});
+
+		staticParts.push(head, snout, nose);
+
+		//前腿（深色，保持不动）
+		const legGeo = new THREE.BoxGeometry(0.14, 0.35, 0.14);
+		[[-0.22, 0.175, 0.38], [0.22, 0.175, 0.38]].forEach(p => {
+			const leg = new THREE.Mesh(legGeo, dark);
+			leg.position.set(p[0], p[1], p[2]);
+			husky.add(leg);
+			staticParts.push(leg);
+		});
+
+		//后腿（深色，随压缩组下沉）
+		[[-0.22, 0.175, -0.38], [0.22, 0.175, -0.38]].forEach(p => {
+			const leg = new THREE.Mesh(legGeo, dark);
+			leg.position.set(p[0], p[1], p[2]);
+			compressGroup.add(leg);
+		});
+
+		//尾巴（向上翘起，随压缩组下沉）
+		const tailPivot = new THREE.Group();
+		tailPivot.position.set(0, 0.82, -0.6);
+		tailPivot.rotation.x = Math.PI / 4;
+		const tail = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.45), white);
+		tail.position.set(0, 0.1, -0.2);
+		tailPivot.add(tail);
+		compressGroup.add(tailPivot);
+
+		husky.userData.compressGroup = compressGroup; //保存压缩组引用
+		husky.userData.staticParts = staticParts; //保存静态部件引用（抵消scale压缩）
+
+		//清理旧模型并添加新的
+		this._disposeHusky();
+		while (this.jumper.children.length) this.jumper.remove(this.jumper.children[0]);
+		this.jumper.add(husky);
+		this.model = husky;
+		//保存初始偏移（底部在y=0），蓄力补偿用
+		husky.userData.offsetY = 0;
+		this._updateModelDirection();
+		this._render();
+	}
+	//清理旧哈士奇的几何体和材质（防内存泄漏）
+	_disposeHusky() {
+		if (!this.model) return;
+		this.model.traverse((child) => {
+			if (child.geometry) child.geometry.dispose();
+			if (child.material) {
+				if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+				else child.material.dispose();
+			}
+		});
+		this.model = null;
+	}
+	//哈士奇头部朝向跳跃方向（头默认朝+z，根据 nextDir 旋转）
+	_updateModelDirection() {
+		if (!this.model) return;
+		if (this.cubeStat.nextDir === 'left') {
+			this.model.rotation.y = -Math.PI / 2;  //朝向 -x
+		} else {
+			this.model.rotation.y = Math.PI;        //朝向 -z
+		}
+	}
+	//哈士奇跳跃姿势动画：前腿+头部不动，身体+后腿+尾巴整体下沉
+	_updateHuskyAnim() {
+		if (!this.model) return;
+		const sy = this.jumper.scale.y;
+		// 压缩组下沉（身体+后腿+尾巴）
+		if (this.model.userData.compressGroup) {
+			const cg = this.model.userData.compressGroup;
+			cg.position.y = sy < 1 ? -(1 - sy) * 0.5 : 0;
+		}
+		// 静态部件（头+五官+耳朵+前腿）抵消父级scale，保持原比例
+		if (this.model.userData.staticParts) {
+			const invSy = 1 / sy;
+			this.model.userData.staticParts.forEach(p => {
+				p.scale.y = invSy;
+			});
+		}
+	}
 	//跳块
 	_createJumper() {
 		let geometry = new THREE.CubeGeometry(this.config.jumperWidth, this.config.jumperHeight, this.config
-			.jumperDeep);// （宽，高，深度）			
+			.jumperDeep);// （宽，高，深度）
 		let material = new THREE.MeshLambertMaterial({
-			color: this.config.jumperColor
-		});//材质,颜色、透明度
+			color: this.config.jumperColor,
+			transparent: true,
+			opacity: 0.01 // 近乎透明，模型加载后几乎不可见
+		});//材质
 		this.jumper = new THREE.Mesh(geometry, material);//合并在一起
 		this.jumper.position.y = 1;//显示跳块
 		geometry.translate(0, 1, 0);//平移
@@ -512,10 +812,13 @@ class Game {
 			this.scene.remove(this.cubes.shift());
 		}
 		this.score = 0;
+		this.combo = 0; //重置连击
 		this.successCallback(this.score);
 		this._createCube();
 		this._createCube();
 		this._createJumper();
+		this._createHusky(); //重新绘制哈士奇
+		this.sound.playGameStart(); //游戏开始音效
 		this._updateCamera();
 	};
 }
