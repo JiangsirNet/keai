@@ -1394,3 +1394,24 @@
     opacity: 0.4;
     cursor: not-allowed;
 }
+
+/* ===== 跳一跳全屏 ===== */
+.jump-fullscreen {
+    border-radius: 0 !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    background: #000 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+.jump-fullscreen iframe {
+    width: 100% !important;
+    height: 100% !important;
+    border: none !important;
+}

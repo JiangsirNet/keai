@@ -99,6 +99,9 @@ function jumpToggleFullscreen() {
             const startBtn = document.getElementById("jumpStartBtn");
             if (startBtn) startBtn.innerHTML = '<i class="fa fa-stop mr-1"></i>收起游戏';
         }
+        // 全屏样式：占满屏幕，去掉圆角/边框/外边距
+        area.classList.add("jump-fullscreen");
+        frame.style.height = "100%";
         area.requestFullscreen().then(() => {
             btn.innerHTML = '<i class="fa fa-compress"></i>';
             btn.title = "退出全屏";
@@ -113,6 +116,7 @@ function jumpToggleFullscreen() {
             btn.innerHTML = '<i class="fa fa-expand"></i>';
             btn.title = "全屏";
             frame.style.height = "";
+            area.classList.remove("jump-fullscreen");
         });
     }
 }
@@ -120,9 +124,13 @@ function jumpToggleFullscreen() {
 // 监听全屏退出（ESC 键等）
 document.addEventListener("fullscreenchange", () => {
     const btn = document.getElementById("jumpFullscreenBtn");
+    const area = document.getElementById("jumpPlayArea");
+    const frame = document.getElementById("jumpFrame");
     if (btn && !document.fullscreenElement) {
         btn.innerHTML = '<i class="fa fa-expand"></i>';
         btn.title = "全屏";
+        if (frame) frame.style.height = "";
+        if (area) area.classList.remove("jump-fullscreen");
     }
 });
 

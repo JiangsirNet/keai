@@ -351,8 +351,8 @@ class Game {
 		if (this.cubes.length) {
 			this.cubeStat.nextDir = Math.random() > 0.5 ? "left" : "right"; //要不左边要不右边
 		}
-		// 只有正方形（宽=深，即 3x3 或 4x4）才有 70% 概率使用照片纹理
-		let usePhoto = this.galleryTextures.length > 0 && cubeW === cubeD && Math.random() < 0.7;
+		// 只有 4x4 正方形方块才有 70% 概率使用照片纹理，2x2 / 3x3 不显示图片
+		let usePhoto = this.galleryTextures.length > 0 && cubeW === cubeD && cubeW === 4 && Math.random() < 0.7;
 		let material;
 		if (usePhoto) {
 			const tex = this.galleryTextures[Math.floor(Math.random() * this.galleryTextures.length)];
