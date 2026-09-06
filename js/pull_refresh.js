@@ -22,7 +22,7 @@
 
         document.addEventListener('touchstart', (e) => {
             if (refreshing || window.scrollY > 0) return;
-            if (e.target.closest('.boy-pet, .girl-pet, .husky-pet, .cat-pet')) return;
+            if (e.target.closest('.boy-pet, .girl-pet, .husky-pet, .cat-pet, .mao-pet')) return;
             startY = e.touches[0].clientY;
             pulling = true;
             currentDist = 0;
@@ -30,6 +30,7 @@
 
         document.addEventListener('touchmove', (e) => {
             if (!pulling || refreshing) return;
+            if (window.maoDragging || window.dogDragging || window.boyDragging || window.girlDragging) return;
             const dist = e.touches[0].clientY - startY;
             if (dist <= 0) {
                 currentDist = 0;

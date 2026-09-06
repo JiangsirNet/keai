@@ -3,7 +3,7 @@
  * 登录/注册/登出、配置加载（loadConfig）、页面切换（showPage）、initPage 调用所有模块初始化
  * 必须最后加载（load_order=26）
  */
-
+ 
 (function() {
     'use strict';
 
@@ -65,14 +65,11 @@
         document.getElementById("bellPanel").classList.add("hidden");
         if (window.notificationChannel) { sb.removeChannel(window.notificationChannel); window.notificationChannel = null; }
         window.notifications = []; window.unreadCount = 0;
-        document.getElementById("huskyPet").classList.add("hidden");
-        if (window.huskyWalkingTimer) clearInterval(window.huskyWalkingTimer);
-        document.getElementById("catPet").classList.add("hidden");
-        if (window.catWalkingTimer) clearInterval(window.catWalkingTimer);
+        // 新增：只隐藏 mao 和 dog 宠物（不再隐藏 husky/cat，因为它们不使用 GIF 动画）
         document.getElementById("maoPet").classList.add("hidden");
         if (window.maoWalkingTimer) clearInterval(window.maoWalkingTimer);
-        document.getElementById("boyPet").classList.add("hidden");
-        document.getElementById("girlPet").classList.add("hidden");
+        document.getElementById("dogPet").classList.add("hidden");
+        if (window.dogWalkingTimer) clearInterval(window.dogWalkingTimer);
     }
 
     // 从数据库 app_config 表读取所有配置
@@ -185,9 +182,9 @@
     function initHomePage() {
         if (_pageInited.home) return;
         _pageInited.home = true;
-        window.initHusky();
-        window.initCat();
+        // 新增：只初始化 mao（猫猫 GIF）和 dog（狗狗 GIF），不再初始化 husky/cat（不使用 GIF 动画）
         window.initMao();
+        window.initDog();
         window.initBoy();
         window.initGirl();
         window.initWeather();
@@ -275,11 +272,12 @@
 
     // ==================== 显示设置（localStorage 记忆）====================
     const displayMap = {
-        boy: { id: 'boyPet', toggleId: 'toggleBoy' },
-        girl: { id: 'girlPet', toggleId: 'toggleGirl' },
-        husky: { id: 'huskyPet', toggleId: 'toggleHusky' },
-        cat: { id: 'catPet', toggleId: 'toggleCat' },
-        mao: { id: 'maoPet', toggleId: 'toggleMao' }
+        // boy: { id: 'boyPet', toggleId: 'toggleBoy' },  // 已移除，boy 是 Live2D 人物而非 GIF 宠物
+        // girl: { id: 'girlPet', toggleId: 'toggleGirl' }, // 已移除，girl 是 Live2D 人物而非 GIF 宠物
+        // husky: { id: 'huskyPet', toggleId: 'toggleHusky' }, // 已移除，不使用 GIF 动画
+        // cat: { id: 'catPet', toggleId: 'toggleCat' }, // 已移除，不使用 GIF 动画
+        mao: { id: 'maoPet', toggleId: 'toggleMao' }, // 猫猫 GIF 宠物
+        dog: { id: 'dogPet', toggleId: 'toggleDog' } // 狗狗 GIF 宠物
     };
 
     function isDisplayOn(key) {
@@ -308,7 +306,7 @@
         localStorage.setItem('show_' + key, on ? '1' : '0');
         // 如果隐藏的元素正在抱抱，先释放
         if (!on && window.hugState) {
-            const idMap = { boy: 'boyPet', girl: 'girlPet', husky: 'huskyPet', cat: 'catPet', mao: 'maoPet' };
+            const idMap = { mao: 'maoPet', dog: 'dogPet' }; // 新增dog映射
             if (window.hugState.petId === idMap[key] || window.hugState.characterId === idMap[key]) {
                 window.releaseHug();
             }

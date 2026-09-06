@@ -423,3 +423,4 @@ window.initBoy = initBoy;
 window.petBoy = petBoy;
 window.startDragBoy = startDragBoy;
 window.loadBoyImage = loadBoyImage;
+window.boyDragging = boyDragging;

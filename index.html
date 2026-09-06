@@ -52,66 +52,16 @@
         <canvas id="girlCanvas" width="240" height="320"></canvas>
     </div>
 
-    <!-- 哈士奇宠物 -->
-    <div id="huskyPet" class="husky-pet hidden" onclick="petHusky()" onmousedown="startDragHusky(event)" ontouchstart="startDragHusky(event)">
-        <div class="husky-bubble" id="huskyBubble"></div>
-        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-            <path class="husky-tail" d="M70 65 Q82 55 80 42" stroke="#5a6b7a" stroke-width="6" fill="none" stroke-linecap="round"/>
-            <ellipse cx="55" cy="62" rx="22" ry="16" fill="#dfe7ee"/>
-            <rect x="40" y="68" width="7" height="18" rx="3" fill="#5a6b7a"/>
-            <rect x="50" y="68" width="7" height="18" rx="3" fill="#c8d3dc"/>
-            <rect x="60" y="68" width="7" height="18" rx="3" fill="#5a6b7a"/>
-            <rect x="70" y="68" width="7" height="18" rx="3" fill="#c8d3dc"/>
-            <circle cx="35" cy="42" r="18" fill="#dfe7ee"/>
-            <path class="husky-ear-l" d="M25 28 L22 16 L32 24 Z" fill="#5a6b7a"/>
-            <path d="M45 28 L48 16 L38 24 Z" fill="#5a6b7a"/>
-            <path d="M35 30 L30 42 L35 50 L40 42 Z" fill="white"/>
-            <circle cx="29" cy="40" r="3" fill="#1a1a2e"/>
-            <circle cx="30" cy="39" r="1" fill="white"/>
-            <circle cx="41" cy="40" r="3" fill="#1a1a2e"/>
-            <circle cx="42" cy="39" r="1" fill="white"/>
-            <ellipse cx="35" cy="47" rx="3" ry="2" fill="#1a1a2e"/>
-            <path id="huskyMouth" d="M35 49 Q35 53 32 53 M35 49 Q35 53 38 53" stroke="#1a1a2e" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-            <ellipse id="huskyTongue" cx="35" cy="54" rx="3" ry="4" fill="#ff6b8b" style="display:none"/>
-        </svg>
-    </div>
-
-    <!-- 暹罗猫宠物 -->
-    <div id="catPet" class="cat-pet hidden" onclick="petCat()" onmousedown="startDragCat(event)" ontouchstart="startDragCat(event)">
-        <div class="cat-bubble" id="catBubble"></div>
-        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-            <path class="cat-tail" d="M72 58 Q88 48 82 30" stroke="#6b5444" stroke-width="5" fill="none" stroke-linecap="round"/>
-            <ellipse cx="55" cy="60" rx="20" ry="15" fill="#f0e6dc"/>
-            <rect x="42" y="66" width="6" height="18" rx="3" fill="#6b5444"/>
-            <rect x="50" y="66" width="6" height="18" rx="3" fill="#f0e6dc"/>
-            <rect x="60" y="66" width="6" height="18" rx="3" fill="#6b5444"/>
-            <rect x="68" y="66" width="6" height="18" rx="3" fill="#f0e6dc"/>
-            <circle cx="35" cy="42" r="17" fill="#f0e6dc"/>
-            <ellipse cx="35" cy="44" rx="13" ry="11" fill="#6b5444"/>
-            <path class="cat-ear-l" d="M22 30 L18 14 L30 24 Z" fill="#6b5444"/>
-            <path d="M24 27 L22 18 L28 24 Z" fill="#f0b8c0"/>
-            <path d="M48 30 L52 14 L40 24 Z" fill="#6b5444"/>
-            <path d="M46 27 L48 18 L42 24 Z" fill="#f0b8c0"/>
-            <ellipse cx="29" cy="42" rx="3.5" ry="3" fill="#4fc3f7"/>
-            <ellipse cx="29" cy="42" rx="1.5" ry="2.5" fill="#1a1a2e"/>
-            <circle cx="30" cy="41" r="0.8" fill="white"/>
-            <ellipse cx="41" cy="42" rx="3.5" ry="3" fill="#4fc3f7"/>
-            <ellipse cx="41" cy="42" rx="1.5" ry="2.5" fill="#1a1a2e"/>
-            <circle cx="42" cy="41" r="0.8" fill="white"/>
-            <path d="M33 47 L37 47 L35 49 Z" fill="#f0b8c0"/>
-            <path id="catMouth" d="M35 49 Q35 52 32 52 M35 49 Q35 52 38 52" stroke="#3a2a1e" stroke-width="1.2" fill="none" stroke-linecap="round"/>
-            <line x1="20" y1="46" x2="12" y2="44" stroke="#3a2a1e" stroke-width="0.8"/>
-            <line x1="20" y1="48" x2="12" y2="49" stroke="#3a2a1e" stroke-width="0.8"/>
-            <line x1="50" y1="46" x2="58" y2="44" stroke="#3a2a1e" stroke-width="0.8"/>
-            <line x1="50" y1="48" x2="58" y2="49" stroke="#3a2a1e" stroke-width="0.8"/>
-            <ellipse id="catTongue" cx="35" cy="53" rx="2.5" ry="3.5" fill="#ff9ec4" style="display:none"/>
-        </svg>
-    </div>
-
     <!-- 猫咪宠物（GIF 动图） -->
-    <div id="maoPet" class="mao-pet hidden" onclick="petMao()" onmousedown="startDragMao(event)" ontouchstart="startDragMao(event)">
+    <div id="maoPet" class="mao-pet hidden">
         <div class="mao-bubble" id="maoBubble"></div>
         <img id="maoImg" src="images/猫-待机.gif" alt="猫" />
+    </div>
+
+    <!-- 狗宠物（GIF 动图） -->
+    <div id="dogPet" class="mao-pet hidden">
+        <div class="mao-bubble" id="dogBubble"></div>
+        <img id="dogImg" src="images/狗待机.gif" alt="狗" />
     </div>
 
     <!-- 下拉刷新指示器（微信风格圆形） -->

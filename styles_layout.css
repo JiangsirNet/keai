@@ -486,13 +486,11 @@
 .mao-pet {
     position: fixed;
     bottom: 20px;
-    left: 130px;
+    left: 20px; /* 位置：屏幕最左边，与狗狗错开 */
     z-index: 90;
     width: 130px;
     height: 130px;
     cursor: pointer;
-    /* left 用 4s 线性过渡，与行走 GIF 播放时长同步，看起来像真的在走 */
-    transition: left 4s linear, transform 0.3s ease;
     user-select: none;
     touch-action: none;
 }
@@ -544,6 +542,32 @@
 
 .mao-bubble.show {
     opacity: 1;
+}
+
+/* 狗宠物（GIF 动图） */
+#dogPet {
+    position: fixed;
+    bottom: 20px;
+    right: 20px; /* 位置：屏幕最右边 */
+    left: auto; /* 覆盖 .mao-pet 的 left:20px，防止重叠 */
+    z-index: 90;
+    width: 130px;
+    height: 130px;
+    cursor: pointer;
+    user-select: none;
+    touch-action: none;
+}
+
+#dogPet img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.15));
+    pointer-events: none;
+}
+
+#dogPet.happy {
+    animation: mao-happy 0.5s ease;
 }
 
 /* 删除按钮 */

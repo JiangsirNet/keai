@@ -386,7 +386,8 @@
         height: 70px !important;
     }
 
-    .mao-pet {
+    .mao-pet,
+    #dogPet {
         width: 100px !important;
         height: 100px !important;
     }
@@ -405,8 +406,17 @@
         right: 10px;
     }
 
+    /* 猫猫靠左偏中间，狗狗靠右边，两者分开 */
     .mao-pet {
-        left: 90px;
+        left: 80px;
+        right: auto;
+    }
+
+    #dogPet {
+        right: 10px;
+        left: auto;
+        /* 提升 z-index 高于人物(85)，防止拖拽宠物时触摸事件被人物截获 */
+        z-index: 86;
     }
 
     /* 大图预览 */
