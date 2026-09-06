@@ -20,7 +20,7 @@ class SoundManager {
 		this.chargeOsc.type = 'sine';
 		this.chargeFreq = 200;
 		this.chargeOsc.frequency.value = 200;
-		this.chargeGain.gain.value = 0.08;
+		this.chargeGain.gain.value = 0.3;
 		this.chargeOsc.connect(this.chargeGain);
 		this.chargeGain.connect(ctx.destination);
 		this.chargeOsc.start();
@@ -45,7 +45,7 @@ class SoundManager {
 		osc.type = 'sine';
 		osc.frequency.setValueAtTime(300, ctx.currentTime);
 		osc.frequency.exponentialRampToValueAtTime(900, ctx.currentTime + 0.12);
-		gain.gain.setValueAtTime(0.15, ctx.currentTime);
+		gain.gain.setValueAtTime(0.4, ctx.currentTime);
 		gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
 		osc.connect(gain); gain.connect(ctx.destination);
 		osc.start(); osc.stop(ctx.currentTime + 0.15);
@@ -57,7 +57,7 @@ class SoundManager {
 		const gain = ctx.createGain();
 		osc.type = 'triangle';
 		osc.frequency.value = 520;
-		gain.gain.setValueAtTime(0.12, ctx.currentTime);
+		gain.gain.setValueAtTime(0.35, ctx.currentTime);
 		gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
 		osc.connect(gain); gain.connect(ctx.destination);
 		osc.start(); osc.stop(ctx.currentTime + 0.2);
@@ -72,7 +72,7 @@ class SoundManager {
 			osc.type = 'sine';
 			osc.frequency.value = f;
 			gain.gain.setValueAtTime(0, t + i * 0.06);
-			gain.gain.linearRampToValueAtTime(0.15, t + i * 0.06 + 0.02);
+			gain.gain.linearRampToValueAtTime(0.4, t + i * 0.06 + 0.02);
 			gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.06 + 0.25);
 			osc.connect(gain); gain.connect(ctx.destination);
 			osc.start(t + i * 0.06); osc.stop(t + i * 0.06 + 0.25);
@@ -88,7 +88,7 @@ class SoundManager {
 			const gain = ctx.createGain();
 			osc.type = 'square';
 			osc.frequency.value = baseFreq * (1 + i * 0.25);
-			gain.gain.setValueAtTime(0.08, t + delay);
+			gain.gain.setValueAtTime(0.3, t + delay);
 			gain.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.1);
 			osc.connect(gain); gain.connect(ctx.destination);
 			osc.start(t + delay); osc.stop(t + delay + 0.1);
@@ -102,7 +102,7 @@ class SoundManager {
 		osc.type = 'sawtooth';
 		osc.frequency.setValueAtTime(400, ctx.currentTime);
 		osc.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.5);
-		gain.gain.setValueAtTime(0.12, ctx.currentTime);
+		gain.gain.setValueAtTime(0.35, ctx.currentTime);
 		gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.5);
 		osc.connect(gain); gain.connect(ctx.destination);
 		osc.start(); osc.stop(ctx.currentTime + 0.5);
@@ -116,7 +116,7 @@ class SoundManager {
 			const gain = ctx.createGain();
 			osc.type = 'sine';
 			osc.frequency.value = f;
-			gain.gain.setValueAtTime(0.12, t + i * 0.1);
+			gain.gain.setValueAtTime(0.35, t + i * 0.1);
 			gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.1 + 0.2);
 			osc.connect(gain); gain.connect(ctx.destination);
 			osc.start(t + i * 0.1); osc.stop(t + i * 0.1 + 0.2);
