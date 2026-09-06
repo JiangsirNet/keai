@@ -16,69 +16,81 @@
         </div>
     </div>
 
-    <!-- 跳一跳 -->
+    <!-- 跳一跳 + 飞机大战 -->
     <div class="bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow mb-6">
-        <h2 class="text-xl font-bold text-love flex items-center mb-4">
-            <i class="fa fa-frog mr-2"></i>跳一跳
-            <button id="jumpFullscreenBtn" onclick="jumpToggleFullscreen()" class="ml-2 w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:bg-rose-50 hover:text-love transition" title="全屏">
-                <i class="fa fa-expand"></i>
-            </button>
-        </h2>
-        <div id="jumpPlayArea" class="hidden mb-4 rounded-2xl overflow-hidden border border-rose-100">
-            <iframe id="jumpFrame" src="about:blank" class="w-full h-[520px] block" allow="autoplay; fullscreen"></iframe>
+        <div class="flex gap-2 mb-4">
+            <button class="game-tab active px-4 py-1.5 rounded-full text-sm font-medium transition-all" data-game="jump" onclick="switchGameTab('jump')">🐸 跳一跳</button>
+            <button class="game-tab px-4 py-1.5 rounded-full text-sm font-medium transition-all" data-game="plane" onclick="switchGameTab('plane')">✈️ 飞机大战</button>
         </div>
-        <div class="flex justify-center">
-            <button id="jumpStartBtn" onclick="jumpTogglePlay()" class="bg-love hover:bg-loveDark text-white px-8 py-2.5 rounded-full transition-all font-bold">
-                <i class="fa fa-play mr-1"></i>开始游戏
-            </button>
+        <!-- 跳一跳面板 -->
+        <div id="jumpGamePanel">
+            <div class="flex items-center justify-end mb-2">
+                <button id="jumpFullscreenBtn" onclick="jumpToggleFullscreen()" class="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:bg-rose-50 hover:text-love transition" title="全屏">
+                    <i class="fa fa-expand"></i>
+                </button>
+            </div>
+            <div id="jumpPlayArea" class="hidden mb-4 rounded-2xl overflow-hidden border border-rose-100">
+                <iframe id="jumpFrame" src="about:blank" class="w-full h-[520px] block" allow="autoplay; fullscreen"></iframe>
+            </div>
+            <div class="flex justify-center">
+                <button id="jumpStartBtn" onclick="jumpTogglePlay()" class="bg-love hover:bg-loveDark text-white px-8 py-2.5 rounded-full transition-all font-bold">
+                    <i class="fa fa-play mr-1"></i>开始游戏
+                </button>
+            </div>
+        </div>
+        <!-- 飞机大战面板 -->
+        <div id="planeGamePanel" class="hidden">
+            <div class="flex items-center justify-end mb-2">
+                <button id="planeFullscreenBtn" onclick="planeToggleFullscreen()" class="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:bg-rose-50 hover:text-love transition" title="全屏">
+                    <i class="fa fa-expand"></i>
+                </button>
+            </div>
+            <div id="planePlayArea" class="hidden mb-4 rounded-2xl overflow-hidden border border-rose-100">
+                <iframe id="planeFrame" src="about:blank" class="w-full h-[520px] block" allow="autoplay; fullscreen"></iframe>
+            </div>
+            <div class="flex justify-center">
+                <button id="planeStartBtn" onclick="planeTogglePlay()" class="bg-love hover:bg-loveDark text-white px-8 py-2.5 rounded-full transition-all font-bold">
+                    <i class="fa fa-play mr-1"></i>开始游戏
+                </button>
+            </div>
         </div>
     </div>
 
-    <div class="bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow">
-        <h2 class="text-xl font-bold text-love flex items-center mb-4">
-            <i class="fa fa-clone mr-2"></i>骗子酒馆
-            <span id="lbStatus" class="ml-auto text-sm font-normal text-gray-400">空闲</span>
-            <button id="lbSfxToggle" type="button" class="ml-2 w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:bg-rose-50 transition" title="BGM开关">
-                <i class="fa fa-volume-off"></i>
-            </button>
-        </h2>
-        <div class="flex justify-between items-center mb-4 px-4">
-            <div class="text-center">
-                <span class="text-sm font-bold text-love" id="lbMyName">我</span>
-                <div id="lbMyHP" class="text-xl">💧</div>
+    <!-- 骗子酒馆（折叠） -->
+    <div class="bg-white/80 backdrop-blur rounded-3xl card-shadow mb-6 overflow-hidden">
+        <button onclick="toggleLiarPanel()" class="w-full p-6 flex items-center justify-between hover:bg-rose-50/50 transition">
+            <h2 class="text-xl font-bold text-love flex items-center">
+                <i class="fa fa-clone mr-2"></i>骗子酒馆
+                <span id="lbStatus" class="ml-2 text-sm font-normal text-gray-400">空闲</span>
+            </h2>
+            <i id="liarArrow" class="fa fa-chevron-down text-gray-400 transition-transform"></i>
+        </button>
+        <div id="liarPanel" class="hidden px-6 pb-6">
+            <div class="flex justify-end mb-2">
+                <button id="lbSfxToggle" type="button" class="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:bg-rose-50 transition" title="BGM开关">
+                    <i class="fa fa-volume-off"></i>
+                </button>
             </div>
-            <div class="text-center">
-                <div id="lbTargetRank" class="text-3xl font-bold text-gray-300">?</div>
-                <div class="text-xs text-gray-400">目标牌型</div>
+            <div class="flex justify-between items-center mb-4 px-4">
+                <div class="text-center">
+                    <span class="text-sm font-bold text-love" id="lbMyName">我</span>
+                    <div id="lbMyHP" class="text-xl">💧</div>
+                </div>
+                <div class="text-center">
+                    <div id="lbTargetRank" class="text-3xl font-bold text-gray-300">?</div>
+                    <div class="text-xs text-gray-400">目标牌型</div>
+                </div>
+                <div class="text-center">
+                    <span class="text-sm font-bold text-gray-400" id="lbPartnerName">TA</span>
+                    <div id="lbPartnerHP" class="text-xl">💧</div>
+                </div>
             </div>
-            <div class="text-center">
-                <span class="text-sm font-bold text-gray-400" id="lbPartnerName">TA</span>
-                <div id="lbPartnerHP" class="text-xl">💧</div>
+            <div id="lbPartnerPlayed" class="flex justify-center gap-2 min-h-[70px] mb-2"></div>
+            <div id="lbMyHand" class="flex justify-center gap-2 flex-wrap min-h-[70px] mb-3"></div>
+            <div id="lbActions" class="flex justify-center gap-3 flex-wrap">
+                <button onclick="lbStart()" id="lbStartBtn" class="bg-love hover:bg-loveDark text-white px-6 py-2 rounded-full transition-all">邀请对方开始</button>
             </div>
-        </div>
-        <div id="lbPartnerPlayed" class="flex justify-center gap-2 min-h-[70px] mb-2"></div>
-        <div id="lbMyHand" class="flex justify-center gap-2 flex-wrap min-h-[70px] mb-3"></div>
-        <div id="lbActions" class="flex justify-center gap-3 flex-wrap">
-            <button onclick="lbStart()" id="lbStartBtn" class="bg-love hover:bg-loveDark text-white px-6 py-2 rounded-full transition-all">邀请对方开始</button>
-        </div>
-        <div id="lbMessage" class="text-center text-gray-500 mt-3 min-h-[24px] text-sm"></div>
-    </div>
-
-    <!-- 飞机大战 -->
-    <div class="bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow mb-6">
-        <h2 class="text-xl font-bold text-love flex items-center mb-4">
-            <i class="fa fa-fighter-jet mr-2"></i>飞机大战
-            <button id="planeFullscreenBtn" onclick="planeToggleFullscreen()" class="ml-2 w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:bg-rose-50 hover:text-love transition" title="全屏">
-                <i class="fa fa-expand"></i>
-            </button>
-        </h2>
-        <div id="planePlayArea" class="hidden mb-4 rounded-2xl overflow-hidden border border-rose-100">
-            <iframe id="planeFrame" src="about:blank" class="w-full h-[520px] block" allow="autoplay; fullscreen"></iframe>
-        </div>
-        <div class="flex justify-center">
-            <button id="planeStartBtn" onclick="planeTogglePlay()" class="bg-love hover:bg-loveDark text-white px-8 py-2.5 rounded-full transition-all font-bold">
-                <i class="fa fa-play mr-1"></i>开始游戏
-            </button>
+            <div id="lbMessage" class="text-center text-gray-500 mt-3 min-h-[24px] text-sm"></div>
         </div>
     </div>
 

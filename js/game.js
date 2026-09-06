@@ -12,6 +12,7 @@ const CONFIG = window.CONFIG;
 let myUserId = "";
 let myEmail = "";
 let myNickname = "我";
+let _currentBoard = "jump"; // 当前排行榜 Tab
 
 function initJumpGame() {
     // 监听 iframe 内跳一跳上报的分数
@@ -24,8 +25,7 @@ function initJumpGame() {
         const isGirl = myEmail === (CONFIG.girlEmail || "").toLowerCase();
         myNickname = isGirl ? CONFIG.girlName : CONFIG.boyName;
         window.lbInit();
-        loadJumpLeaderboard();
-        loadPlaneLeaderboard();
+        loadBoard("jump");
     });
 }
 
@@ -67,7 +67,7 @@ async function saveJumpScore(score) {
                 : `🐸 跳一跳得分：${score}`;
             window.sendNotification("game", content, beatPartner);
         }
-        loadJumpLeaderboard();
+        loadBoard("jump");
     } catch (e) {
         console.warn("[Jump] 分数保存失败:", e);
     }
@@ -153,27 +153,26 @@ function formatJumpDate(s) {
     return `${d.getMonth() + 1}-${p(d.getDate())}`;
 }
 
-async function loadJumpLeaderboard() {
-    const boardEl = document.getElementById("jumpBoard");
+// 通用排行榜加载
+async function loadBoard(game) {
+    const boardEl = document.getElementById("boardList");
     if (!boardEl) return;
     try {
         const { data, error } = await sb.from("game_scores")
             .select("user_id, nickname, score, created_at")
-            .eq("game", "jump")
+            .eq("game", game)
             .order("score", { ascending: false })
             .limit(100);
         if (error) throw error;
 
-        // 每人取最高分（数据已按分数降序，首次出现即最高）
         const best = new Map();
         (data || []).forEach(r => {
             if (r.user_id && !best.has(r.user_id)) best.set(r.user_id, r);
         });
         const rows = Array.from(best.values());
 
-        // 标题栏显示我的最高分
         const mine = rows.find(r => r.user_id === myUserId);
-        const mineEl = document.getElementById("jumpMyBest");
+        const mineEl = document.getElementById("boardMyBest");
         if (mineEl) mineEl.textContent = mine ? `最高分 ${mine.score}` : "最高分 —";
 
         if (!rows.length) {
@@ -194,10 +193,63 @@ async function loadJumpLeaderboard() {
             </div>
         `).join("");
     } catch (e) {
-        console.warn("[Jump] 排行榜加载失败:", e);
-        boardEl.innerHTML = '<div class="text-center text-gray-400 py-4 text-sm">排行榜加载失败，请确认已创建 game_scores 表</div>';
+        console.warn(`[${game}] 排行榜加载失败:`, e);
+        boardEl.innerHTML = '<div class="text-center text-gray-400 py-4 text-sm">排行榜加载失败</div>';
     }
 }
+
+// 排行榜 Tab 切换
+function switchBoardTab(game) {
+    _currentBoard = game;
+    document.querySelectorAll(".board-tab").forEach(btn => {
+        const isActive = btn.dataset.game === game;
+        btn.classList.toggle("active", isActive);
+        if (isActive) {
+            btn.style.background = "linear-gradient(135deg, #f43f5e, #ec4899)";
+            btn.style.color = "#fff";
+        } else {
+            btn.style.background = "#f3f4f6";
+            btn.style.color = "#6b7280";
+        }
+    });
+    loadBoard(game);
+}
+
+function refreshCurrentBoard() {
+    loadBoard(_currentBoard);
+}
+
+// 游戏 Tab 切换（跳一跳 / 飞机大战）
+function switchGameTab(game) {
+    document.querySelectorAll(".game-tab").forEach(btn => {
+        const isActive = btn.dataset.game === game;
+        btn.classList.toggle("active", isActive);
+        if (isActive) {
+            btn.style.background = "linear-gradient(135deg, #f43f5e, #ec4899)";
+            btn.style.color = "#fff";
+        } else {
+            btn.style.background = "#f3f4f6";
+            btn.style.color = "#6b7280";
+        }
+    });
+    const jumpPanel = document.getElementById("jumpGamePanel");
+    const planePanel = document.getElementById("planeGamePanel");
+    if (jumpPanel) jumpPanel.classList.toggle("hidden", game !== "jump");
+    if (planePanel) planePanel.classList.toggle("hidden", game !== "plane");
+}
+
+// 骗子酒馆折叠
+function toggleLiarPanel() {
+    const panel = document.getElementById("liarPanel");
+    const arrow = document.getElementById("liarArrow");
+    if (!panel) return;
+    const isHidden = panel.classList.contains("hidden");
+    panel.classList.toggle("hidden");
+    if (arrow) arrow.style.transform = isHidden ? "rotate(180deg)" : "";
+}
+
+async function loadJumpLeaderboard() { return loadBoard("jump"); }
+async function loadPlaneLeaderboard() { return loadBoard("plane"); }
 
 // 飞机大战：展开/收起
 function planeTogglePlay() {
@@ -276,54 +328,9 @@ async function savePlaneScore(score) {
                 : `✈️ 飞机大战得分：${score}`;
             window.sendNotification("game", content, beatPartner);
         }
-        loadPlaneLeaderboard();
+        loadBoard("plane");
     } catch (e) {
         console.warn("[Plane] 分数保存失败:", e);
-    }
-}
-
-// 飞机大战：加载排行榜
-async function loadPlaneLeaderboard() {
-    const boardEl = document.getElementById("planeBoard");
-    if (!boardEl) return;
-    try {
-        const { data, error } = await sb.from("game_scores")
-            .select("user_id, nickname, score, created_at")
-            .eq("game", "plane")
-            .order("score", { ascending: false })
-            .limit(100);
-        if (error) throw error;
-
-        const best = new Map();
-        (data || []).forEach(r => {
-            if (r.user_id && !best.has(r.user_id)) best.set(r.user_id, r);
-        });
-        const rows = Array.from(best.values());
-
-        const mine = rows.find(r => r.user_id === myUserId);
-        const mineEl = document.getElementById("planeMyBest");
-        if (mineEl) mineEl.textContent = mine ? `最高分 ${mine.score}` : "最高分 —";
-
-        if (!rows.length) {
-            boardEl.innerHTML = '<div class="text-center text-gray-400 py-4 text-sm">还没有记录，玩一局吧！</div>';
-            return;
-        }
-        const medals = ["🥇", "🥈", "🥉"];
-        boardEl.innerHTML = rows.map((r, i) => `
-            <div class="flex items-center justify-between rounded-xl px-4 py-2.5 ${r.user_id === myUserId ? "bg-rose-50 border border-rose-200" : "bg-white/60 border border-gray-100"}">
-                <div class="flex items-center gap-3">
-                    <span class="text-lg w-7 text-center">${medals[i] || `<span class="text-gray-400 text-sm">${i + 1}</span>`}</span>
-                    <span class="font-medium text-gray-700 text-sm">${escapeHtml(r.nickname || "神秘玩家")}</span>
-                </div>
-                <div class="text-right">
-                    <span class="font-bold text-love">${r.score}</span>
-                    <span class="text-[10px] text-gray-400 ml-2">${formatJumpDate(r.created_at)}</span>
-                </div>
-            </div>
-        `).join("");
-    } catch (e) {
-        console.warn("[Plane] 排行榜加载失败:", e);
-        boardEl.innerHTML = '<div class="text-center text-gray-400 py-4 text-sm">排行榜加载失败</div>';
     }
 }
 
@@ -334,5 +341,12 @@ window.loadJumpLeaderboard = loadJumpLeaderboard;
 window.planeTogglePlay = planeTogglePlay;
 window.planeToggleFullscreen = planeToggleFullscreen;
 window.loadPlaneLeaderboard = loadPlaneLeaderboard;
+window.switchBoardTab = switchBoardTab;
+window.refreshCurrentBoard = refreshCurrentBoard;
+window.switchGameTab = switchGameTab;
+window.toggleLiarPanel = toggleLiarPanel;
+
+// 初始化 Tab 样式
+switchBoardTab("jump");
 
 })();
