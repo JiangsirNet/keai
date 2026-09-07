@@ -522,9 +522,10 @@ class Game {
 	}
 	//创建块
 	_createCube() {
-		// 随机方块尺寸：宽 2~4，深 2~4，高 2
-		let cubeW = Math.round(Math.random() * 2 + 2); // 2~4
-		let cubeD = Math.round(Math.random() * 2 + 2); // 2~4
+		// 动态难度系统：根据分数逐步增加难度
+		let diff = this._getDifficulty();
+		let cubeW = Math.round(Math.random() * (diff.maxSize - diff.minSize) + diff.minSize);
+		let cubeD = Math.round(Math.random() * (diff.maxSize - diff.minSize) + diff.minSize);
 		let geometry = new THREE.CubeGeometry(cubeW, this.config.cubeHeight, cubeD);
 		//创建一个几何体对象 （宽，高，深度）
 		// 先确定方向（材质正面需要）
@@ -565,7 +566,7 @@ class Game {
 			// 动态间距：前块半宽 + 本块半宽 + 间隙(1~4)，保证不重叠且最小间隙 1
 			let prevSize = this.cubeStat.nextDir == "left" ? prevCube.userData.width : prevCube.userData.deep;
 			let curSize = this.cubeStat.nextDir == "left" ? cubeW : cubeD;
-			let gap = Math.round(Math.random() * 3 + 1); // 间隙 1~4
+			let gap = Math.round(Math.random() * (diff.maxGap - diff.minGap) + diff.minGap);
 			let distance = prevSize / 2 + curSize / 2 + gap;
 			if (this.cubeStat.nextDir == "left") {
 				//左边改变x轴否则y轴
@@ -795,6 +796,19 @@ class Game {
 	_render() {
 		this.renderer.render(this.scene, this.camera);
 		//把当前场景相机放进来
+	};
+
+	//动态难度：根据当前分数返回方块尺寸和间隙范围
+	_getDifficulty() {
+		const score = this.score;
+		if (score < 10) return { minSize: 4, maxSize: 4, minGap: 1, maxGap: 1 };
+		if (score < 20) return { minSize: 4, maxSize: 4, minGap: 2, maxGap: 2 };
+		if (score < 30) return { minSize: 4, maxSize: 4, minGap: 3, maxGap: 3 };
+		if (score < 40) return { minSize: 3, maxSize: 4, minGap: 1, maxGap: 2 };
+		if (score < 50) return { minSize: 3, maxSize: 4, minGap: 1, maxGap: 3 };
+		if (score < 60) return { minSize: 3, maxSize: 4, minGap: 1, maxGap: 4 };
+		if (score < 70) return { minSize: 2, maxSize: 4, minGap: 1, maxGap: 4 };
+		return { minSize: 2, maxSize: 4, minGap: 1, maxGap: 4 };
 	};
 
 	_restart() {
