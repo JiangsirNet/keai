@@ -91,13 +91,61 @@ function jumpTogglePlay() {
     }
 }
 
+// ===== 全屏兼容：Safari 需 webkit 前缀；iPhone 无 Fullscreen API 用 CSS 伪全屏回退 =====
+function fsElement() {
+    return document.fullscreenElement || document.webkitFullscreenElement || document.webkitFullScreenElement || null;
+}
+function fsRequest(el) {
+    if (el.requestFullscreen) return el.requestFullscreen();
+    if (el.webkitRequestFullscreen) return el.webkitRequestFullscreen();
+    if (el.webkitRequestFullScreen) return el.webkitRequestFullScreen();
+    return null; // 无 Fullscreen API（如 iPhone Safari）
+}
+function fsExit() {
+    if (document.exitFullscreen) return document.exitFullscreen();
+    if (document.webkitExitFullscreen) return document.webkitExitFullscreen();
+    if (document.webkitCancelFullScreen) return document.webkitCancelFullScreen();
+    return null;
+}
+// 伪全屏状态以 class 为准（每个游戏区域独立）
+function _isFakeFs(area) { return area.classList.contains("jump-fake-fullscreen"); }
+function _setFsBtn(btnId, expanded) {
+    const btn = document.getElementById(btnId);
+    if (!btn) return;
+    btn.innerHTML = expanded ? '<i class="fa fa-compress"></i>' : '<i class="fa fa-expand"></i>';
+    btn.title = expanded ? "退出全屏" : "全屏";
+}
+function _enterFakeFullscreen(area, btnId, exitId, toggleFn) {
+    area.classList.add("jump-fake-fullscreen");
+    // 伪全屏时父工具栏被遮挡，提供浮动退出按钮
+    let exit = document.getElementById(exitId);
+    if (!exit) {
+        exit = document.createElement("button");
+        exit.id = exitId;
+        exit.className = "jump-fake-fs-exit";
+        exit.innerHTML = '<i class="fa fa-compress"></i>';
+        exit.addEventListener("click", toggleFn);
+        document.body.appendChild(exit);
+    }
+    exit.style.display = "flex";
+    _setFsBtn(btnId, true);
+}
+function _exitFakeFullscreen(area, btnId, exitId) {
+    area.classList.remove("jump-fake-fullscreen");
+    const exit = document.getElementById(exitId);
+    if (exit) exit.style.display = "none";
+    _setFsBtn(btnId, false);
+}
+
 // 跳一跳全屏切换
 function jumpToggleFullscreen() {
     const area = document.getElementById("jumpPlayArea");
     const frame = document.getElementById("jumpFrame");
     const btn = document.getElementById("jumpFullscreenBtn");
     if (!area || !frame || !btn) return;
-    if (!document.fullscreenElement) {
+    const inNative = !!fsElement();
+    const inFake = _isFakeFs(area);
+    if (!inNative && !inFake) {
         // 进入全屏：先确保游戏已打开
         if (area.classList.contains("hidden")) {
             frame.src = "Jump-master/index.html";
@@ -108,37 +156,46 @@ function jumpToggleFullscreen() {
         // 全屏样式：占满屏幕，去掉圆角/边框/外边距
         area.classList.add("jump-fullscreen");
         frame.style.height = "100%";
-        area.requestFullscreen().then(() => {
-            btn.innerHTML = '<i class="fa fa-compress"></i>';
-            btn.title = "退出全屏";
-        }).catch(() => {
-            // 全屏失败（如 iframe 权限限制），回退为放大 iframe 高度
-            frame.style.height = "85vh";
-            btn.innerHTML = '<i class="fa fa-compress"></i>';
-            btn.title = "还原高度";
-        });
+        const p = fsRequest(area);
+        if (p && p.then) {
+            p.then(() => _setFsBtn("jumpFullscreenBtn", true)).catch(() => {
+                // 原生全屏被拒（iframe 权限等）→ 伪全屏回退
+                _enterFakeFullscreen(area, "jumpFullscreenBtn", "jumpFakeFsExit", jumpToggleFullscreen);
+            });
+        } else {
+            // 无 Fullscreen API（iPhone Safari）→ 伪全屏
+            _enterFakeFullscreen(area, "jumpFullscreenBtn", "jumpFakeFsExit", jumpToggleFullscreen);
+        }
     } else {
-        document.exitFullscreen().then(() => {
-            btn.innerHTML = '<i class="fa fa-expand"></i>';
-            btn.title = "全屏";
-            frame.style.height = "";
-            area.classList.remove("jump-fullscreen");
-        });
+        // 退出全屏
+        if (inFake) {
+            _exitFakeFullscreen(area, "jumpFullscreenBtn", "jumpFakeFsExit");
+        } else if (inNative) {
+            const p = fsExit();
+            if (p && p.then) p.catch(() => {});
+        }
+        frame.style.height = "";
+        area.classList.remove("jump-fullscreen");
+        _setFsBtn("jumpFullscreenBtn", false);
     }
 }
 
-// 监听全屏退出（ESC 键等）
-document.addEventListener("fullscreenchange", () => {
-    const btn = document.getElementById("jumpFullscreenBtn");
-    const area = document.getElementById("jumpPlayArea");
-    const frame = document.getElementById("jumpFrame");
-    if (btn && !document.fullscreenElement) {
-        btn.innerHTML = '<i class="fa fa-expand"></i>';
-        btn.title = "全屏";
-        if (frame) frame.style.height = "";
-        if (area) area.classList.remove("jump-fullscreen");
-    }
-});
+// 监听全屏退出（ESC 键等），兼容 webkit 前缀事件；两个游戏区域统一复位
+function _onFsChange() {
+    if (fsElement()) return;
+    [["jumpPlayArea", "jumpFrame", "jumpFullscreenBtn"],
+     ["planePlayArea", "planeFrame", "planeFullscreenBtn"]].forEach(([aId, fId, bId]) => {
+        const area = document.getElementById(aId);
+        const frame = document.getElementById(fId);
+        if (area && !_isFakeFs(area)) {
+            _setFsBtn(bId, false);
+            if (frame) frame.style.height = "";
+            area.classList.remove("jump-fullscreen");
+        }
+    });
+}
+document.addEventListener("fullscreenchange", _onFsChange);
+document.addEventListener("webkitfullscreenchange", _onFsChange);
 
 function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, c => ({
@@ -276,7 +333,9 @@ function planeToggleFullscreen() {
     const frame = document.getElementById("planeFrame");
     const btn = document.getElementById("planeFullscreenBtn");
     if (!area || !frame || !btn) return;
-    if (!document.fullscreenElement) {
+    const inNative = !!fsElement();
+    const inFake = _isFakeFs(area);
+    if (!inNative && !inFake) {
         if (area.classList.contains("hidden")) {
             frame.src = "plane-master/index.html";
             area.classList.remove("hidden");
@@ -285,21 +344,24 @@ function planeToggleFullscreen() {
         }
         area.classList.add("jump-fullscreen");
         frame.style.height = "100%";
-        area.requestFullscreen().then(() => {
-            btn.innerHTML = '<i class="fa fa-compress"></i>';
-            btn.title = "退出全屏";
-        }).catch(() => {
-            frame.style.height = "85vh";
-            btn.innerHTML = '<i class="fa fa-compress"></i>';
-            btn.title = "还原高度";
-        });
+        const p = fsRequest(area);
+        if (p && p.then) {
+            p.then(() => _setFsBtn("planeFullscreenBtn", true)).catch(() => {
+                _enterFakeFullscreen(area, "planeFullscreenBtn", "planeFakeFsExit", planeToggleFullscreen);
+            });
+        } else {
+            _enterFakeFullscreen(area, "planeFullscreenBtn", "planeFakeFsExit", planeToggleFullscreen);
+        }
     } else {
-        document.exitFullscreen().then(() => {
-            btn.innerHTML = '<i class="fa fa-expand"></i>';
-            btn.title = "全屏";
-            frame.style.height = "";
-            area.classList.remove("jump-fullscreen");
-        });
+        if (inFake) {
+            _exitFakeFullscreen(area, "planeFullscreenBtn", "planeFakeFsExit");
+        } else if (inNative) {
+            const p = fsExit();
+            if (p && p.then) p.catch(() => {});
+        }
+        frame.style.height = "";
+        area.classList.remove("jump-fullscreen");
+        _setFsBtn("planeFullscreenBtn", false);
     }
 }
 

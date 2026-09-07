@@ -757,27 +757,26 @@ class Game {
 	_updateCamera() {
 		if (this._cameraLoopRunning) return;
 		this._cameraLoopRunning = true;
+		let last = performance.now();
 		const step = () => {
-			this._stepCamera();
+			const now = performance.now();
+			const dt = Math.min((now - last) / 1000, 0.1); //帧间隔，限幅防切后台突变
+			last = now;
+			this._stepCamera(dt);
 			this._render();
 			requestAnimationFrame(step);
 		};
 		step();
 	};
-	//相机向目标点插值一步（不自行递归，由 _updateCamera 的单例循环驱动）
-	_stepCamera() {
-		let cur = this.cameraPros.current;
-		let next = this.cameraPros.next;
-		if (cur.x > next.x || cur.z > next.z) {
-		//满足改变
-			cur.x -= 0.1;
-			cur.z -= 0.1;
-			if (cur.x - next.x < 0.05) {
-				cur.x = next.x;
-			} else if (cur.z - next.z < 0.05) {
-				cur.z = next.z;
-			}
-		}
+	//相机向目标点插值一步（帧率无关的平滑逼近，约0.25秒收敛95%，比固定0.1/帧更快）
+	_stepCamera(dt) {
+		const cur = this.cameraPros.current;
+		const next = this.cameraPros.next;
+		const k = 1 - Math.pow(0.05, dt / 0.25); //每帧逼近剩余距离的比例
+		cur.x += (next.x - cur.x) * k;
+		cur.z += (next.z - cur.z) * k;
+		if (Math.abs(cur.x - next.x) < 0.05) cur.x = next.x;
+		if (Math.abs(cur.z - next.z) < 0.05) cur.z = next.z;
 		this.camera.lookAt(cur.x, 0, cur.z);//镜头的点
 	};
 	//更新镜头位置
