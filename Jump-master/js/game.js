@@ -151,7 +151,8 @@ class Game {
 		const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 		this.renderer = new THREE.WebGLRenderer({
 			antialias: !isMobile, // 手机端默认关闭抗锯齿（GPU 性能有限）
-			powerPreference: "high-performance"
+			powerPreference: "high-performance",
+			alpha: true // 透明画布，露出 CSS 背景图
 		});
 		// 限制设备像素比：电脑端 2x、手机端 1.5x，防止高分屏渲染过载
 		this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobile ? 1.5 : 2));
@@ -451,7 +452,7 @@ class Game {
 	//设置render
 	_setRenderer() {
 		this.renderer.setSize(this.size.width, this.size.height); //画布宽高
-		this.renderer.setClearColor(this.config.background);
+		this.renderer.setClearColor(0x000000, 0); // 透明清屏，露出 CSS 背景图
 		document.body.appendChild(this.renderer.domElement); //渲染的画布放到body里面
 	};
 	//设置灯光
@@ -578,7 +579,9 @@ class Game {
 		this.cubes.push(cube); //统一添加块
 		if (this.cubes.length > 5) {
 			//页面最多看到5个块
-			this.scene.remove(this.cubes.shift()); //超过就移除
+			const old = this.cubes.shift();
+			this.scene.remove(old); //超过就移除
+			this._disposeCube(old); //释放 GPU 资源，防累积
 		}
 		this.scene.add(cube); //添加到场景中
 		if (this.cubes.length > 1) {
@@ -688,6 +691,15 @@ class Game {
 		this._updateModelDirection();
 		this._render();
 	}
+	//释放方块的几何体与材质（防 GPU 内存随局数累积）
+	_disposeCube(cube) {
+		if (!cube) return;
+		if (cube.geometry) cube.geometry.dispose();
+		if (cube.material) {
+			if (Array.isArray(cube.material)) cube.material.forEach(m => m.dispose());
+			else cube.material.dispose();
+		}
+	};
 	//清理旧哈士奇的几何体和材质（防内存泄漏）
 	_disposeHusky() {
 		if (!this.model) return;
@@ -740,36 +752,33 @@ class Game {
 		geometry.translate(0, 1, 0);//平移
 		this.scene.add(this.jumper);//添加到场景中
 	}
-	//改变相机的镜头
+	//改变相机的镜头（单例 rAF 循环：全生命周期只启动一次，
+	//避免每次跳跃/重开都叠加一个无限循环导致越玩越卡）
 	_updateCamera() {
-		let cur = {
-			//当前位置
-			x: this.cameraPros.current.x,
-			y: this.cameraPros.current.y,
-			z: this.cameraPros.current.z,
+		if (this._cameraLoopRunning) return;
+		this._cameraLoopRunning = true;
+		const step = () => {
+			this._stepCamera();
+			this._render();
+			requestAnimationFrame(step);
 		};
-		let next = {
-			//下一个位置
-			x: this.cameraPros.next.x,
-			y: this.cameraPros.next.y,
-			z: this.cameraPros.next.z,
-		};
+		step();
+	};
+	//相机向目标点插值一步（不自行递归，由 _updateCamera 的单例循环驱动）
+	_stepCamera() {
+		let cur = this.cameraPros.current;
+		let next = this.cameraPros.next;
 		if (cur.x > next.x || cur.z > next.z) {
 		//满足改变
-			this.cameraPros.current.x -= 0.1;
-			this.cameraPros.current.z -= 0.1;
-			if (this.cameraPros.current.x - this.cameraPros.next.x < 0.05) {
-				this.cameraPros.current.x = this.cameraPros.next.x;
-			} else if (this.cameraPros.current.z - this.cameraPros.next.z < 0.05) {
-				this.cameraPros.current.z = this.cameraPros.next.z;
+			cur.x -= 0.1;
+			cur.z -= 0.1;
+			if (cur.x - next.x < 0.05) {
+				cur.x = next.x;
+			} else if (cur.z - next.z < 0.05) {
+				cur.z = next.z;
 			}
-		};
-		this.camera.lookAt(new THREE.Vector3(cur.x, 0, cur.z));//镜头的点
-		this._render();
-		requestAnimationFrame(() => {
-			//不断执行
-			this._updateCamera();
-		})
+		}
+		this.camera.lookAt(cur.x, 0, cur.z);//镜头的点
 	};
 	//更新镜头位置
 	_updateCameraPros() {
@@ -821,9 +830,16 @@ class Game {
 			speed: 0.2
 		};
 		let length = this.cubes.length;
-		this.scene.remove(this.jumper);
+		const oldJumper = this.jumper;
+		this.scene.remove(oldJumper);
+		if (oldJumper) {
+			oldJumper.geometry.dispose();
+			oldJumper.material.dispose();
+		}
 		for (let i = 0; i < length; i++) {
-			this.scene.remove(this.cubes.shift());
+			const old = this.cubes.shift();
+			this.scene.remove(old);
+			this._disposeCube(old);
 		}
 		this.score = 0;
 		this.combo = 0; //重置连击

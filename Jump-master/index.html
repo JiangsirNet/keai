@@ -9,6 +9,14 @@
       margin: 0;padding: 0;
       -webkit-user-select: none;
       overflow: hidden;
+      /* 背景图 cover 适配：不变形，超出裁切；#4a6741 为图片加载前的兜底色 */
+      background: #4a6741 url('跳一跳背景图.jpg') center / cover no-repeat;
+    }
+    /* 竖屏（手机端）使用竖版背景图，横屏（桌面端）用横版图 */
+    @media (orientation: portrait){
+      html,body{
+        background-image: url('手机跳一跳背景图.jpg');
+      }
     }
     .mask{
       display: none;
