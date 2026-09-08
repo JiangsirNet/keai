@@ -122,6 +122,36 @@ class SoundManager {
 			osc.start(t + i * 0.1); osc.stop(t + i * 0.1 + 0.2);
 		});
 	}
+	//道具拾取（清脆上行双音）
+	playPickup() {
+		const ctx = this._ensure();
+		const t = ctx.currentTime;
+		[660, 990].forEach((f, i) => {
+			const osc = ctx.createOscillator();
+			const gain = ctx.createGain();
+			osc.type = 'triangle';
+			osc.frequency.value = f;
+			gain.gain.setValueAtTime(0.0001, t + i * 0.07);
+			gain.gain.linearRampToValueAtTime(0.35, t + i * 0.07 + 0.02);
+			gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.07 + 0.2);
+			osc.connect(gain); gain.connect(ctx.destination);
+			osc.start(t + i * 0.07); osc.stop(t + i * 0.07 + 0.2);
+		});
+	}
+	//护盾救场（碎裂下滑音）
+	playShieldBreak() {
+		const ctx = this._ensure();
+		const t = ctx.currentTime;
+		const osc = ctx.createOscillator();
+		const gain = ctx.createGain();
+		osc.type = 'square';
+		osc.frequency.setValueAtTime(880, t);
+		osc.frequency.exponentialRampToValueAtTime(220, t + 0.3);
+		gain.gain.setValueAtTime(0.3, t);
+		gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+		osc.connect(gain); gain.connect(ctx.destination);
+		osc.start(t); osc.stop(t + 0.35);
+	}
 }
 class Game {
 	constructor() {
@@ -183,6 +213,22 @@ class Game {
 		this.model = null; //哈士奇3D模型
 		this.sound = new SoundManager(); //音效管理器
 		this.combo = 0; //连续成功计数
+		// ===== 道具系统状态 =====
+		this.jumpCount = 0; //成功落地次数（驱动难度，与含道具加分的 score 解耦）
+		this.shield = false; //护盾：抵挡一次掉落并原地复活
+		this.doubleJumps = 0; //加倍卡剩余生效跳跃次数
+		this.autoPlaying = false; //骰子/火箭自动前进中，锁定手动输入
+		this._autoRemaining = 0; //自动前进剩余格数
+		this._pendingAuto = 0; //待触发的自动前进格数（避免重入）
+		this._itemTime = 0; //道具浮动动画计时
+		this._toastTimer = null; //toast 计时器
+		//道具定义（图标 + 稀有度权重 + 底色）
+		this.itemTypes = [
+			{ type: 'dice', icon: '🎲', weight: 35, bg: '#f59e0b' },
+			{ type: 'double', icon: '×2', weight: 30, bg: '#ec4899' },
+			{ type: 'shield', icon: '🛡️', weight: 20, bg: '#3b82f6' },
+			{ type: 'rocket', icon: '🚀', weight: 15, bg: '#ef4444' }
+		];
 	}
 
 	init() {
@@ -242,6 +288,7 @@ class Game {
 	};
 	//鼠标按下状态（基于时间蓄力，统一手机/电脑帧率差异）
 	_handleMouseDown() {
+		if (this.autoPlaying) return; //自动前进（骰子/火箭）期间锁定手动蓄力
 		// 最大蓄力限制：xSpeed 上限 0.65（约 1.3 秒），防止蓄力过久跳太远
 		if (!this.jumperStat.ready && this.jumper.scale.y > 0.02 && this.jumperStat.xSpeed < 0.65) {
 			//首次进入蓄力，开始蓄力音效
@@ -264,6 +311,7 @@ class Game {
 	};
 	//鼠标松开谈起状态（基于时间跳跃，统一手机/电脑帧率差异）
 	_handleMouseUp() {
+		if (this.autoPlaying) return; //自动前进期间锁定手动起跳
 		this.jumperStat.ready = true;
 		if (this.jumper.position.y >= 1) {
 			this.sound.stopCharge(); //停止蓄力音效
@@ -305,25 +353,19 @@ class Game {
 			this._checkInCube();//检测落在哪里
 			if (this.falledStat.location == 1) {
 				//成功落在下一个块上
-				this.score++;
-				this.combo++;
-				//检测完美落地（接近中心）
 				const isPerfect = this.falledStat.distance < this.config.jumperWidth;
-				if (isPerfect) {
-					this.sound.playPerfect();
-				} else {
-					this.sound.playScore();
+				this._onLandSuccess(isPerfect, false);
+				//道具（骰子/火箭）排队的自动前进，在落地状态稳定后触发
+				if (this._pendingAuto > 0 && !this.autoPlaying) {
+					const n = this._pendingAuto;
+					this._pendingAuto = 0;
+					this._autoAdvance(n);
 				}
-				//连击音效（每3连击触发）
-				if (this.combo >= 3 && this.combo % 3 === 0) {
-					this.sound.playCombo(this.combo);
-				}
-				this._createCube();
-				this._updateCamera();
-				if (this.successCallback) {
-					//否则失败
-					this.successCallback(this.score);
-				}
+			} else if (this.shield) {
+				//护盾救场：抵挡本次掉落，原地复活
+				this.shield = false;
+				this.sound.playShieldBreak();
+				this._applyShieldSave();
 			} else {
 				this._falling()
 			}
@@ -580,10 +622,12 @@ class Game {
 		if (this.cubes.length > 5) {
 			//页面最多看到5个块
 			const old = this.cubes.shift();
+			if (old.userData.item) { this._disposeItem(old.userData.item); old.userData.item = null; } //移除旧块上的道具
 			this.scene.remove(old); //超过就移除
 			this._disposeCube(old); //释放 GPU 资源，防累积
 		}
 		this.scene.add(cube); //添加到场景中
+		this._maybeSpawnItem(cube); //按概率在新块上方生成道具
 		if (this.cubes.length > 1) {
 			//更新镜头位置
 			this._updateCameraPros();
@@ -763,6 +807,7 @@ class Game {
 			const dt = Math.min((now - last) / 1000, 0.1); //帧间隔，限幅防切后台突变
 			last = now;
 			this._stepCamera(dt);
+			this._updateItems(dt); //道具浮动/呼吸动画
 			this._render();
 			requestAnimationFrame(step);
 		};
@@ -808,7 +853,7 @@ class Game {
 
 	//动态难度：根据当前分数返回方块尺寸和间隙范围
 	_getDifficulty() {
-		const score = this.score;
+		const score = this.jumpCount; //用成功跳跃次数驱动难度（加分道具不虚高难度）
 		if (score < 10) return { minSize: 4, maxSize: 4, minGap: 1, maxGap: 1 };
 		if (score < 20) return { minSize: 4, maxSize: 4, minGap: 2, maxGap: 2 };
 		if (score < 30) return { minSize: 4, maxSize: 4, minGap: 3, maxGap: 3 };
@@ -818,6 +863,224 @@ class Game {
 		if (score < 70) return { minSize: 2, maxSize: 4, minGap: 1, maxGap: 4 };
 		return { minSize: 2, maxSize: 4, minGap: 1, maxGap: 4 };
 	};
+
+	// ===== 道具系统 =====
+	//成功落地统一处理（手动跳跃与骰子/火箭自动前进共用）
+	_onLandSuccess(isPerfect, isAuto) {
+		const gain = this.doubleJumps > 0 ? 2 : 1; //加倍卡生效时得分翻倍
+		this.score += gain;
+		if (this.doubleJumps > 0) this.doubleJumps--;
+		this.jumpCount++;
+		this.combo++;
+		if (!isAuto) {
+			if (isPerfect) { this.sound.playPerfect(); } else { this.sound.playScore(); }
+			if (this.combo >= 3 && this.combo % 3 === 0) { this.sound.playCombo(this.combo); }
+		}
+		//拾取落点方块上的道具（可能给 _pendingAuto 排队自动前进）
+		const landed = this.cubes[this.cubes.length - 1];
+		if (landed && landed.userData.item) this._collectItem(landed);
+		this._createCube();
+		this._updateCamera();
+		this._updateItemHUD();
+		if (this.successCallback) this.successCallback(this.score);
+	}
+	//按概率在新方块上方生成道具
+	_maybeSpawnItem(cube) {
+		if (this.cubes.length <= 2) return; //起始前两块不刷
+		const prev = this.cubes[this.cubes.length - 2];
+		if (prev && prev.userData.item) return; //相邻块不连续刷
+		if (Math.random() > 0.28) return; //基础刷新率 28%
+		const pool = this.itemTypes.filter(t => !(t.type === 'shield' && this.shield));
+		const total = pool.reduce((s, t) => s + t.weight, 0);
+		let r = Math.random() * total;
+		let chosen = pool[0];
+		for (let i = 0; i < pool.length; i++) {
+			if (r < pool[i].weight) { chosen = pool[i]; break; }
+			r -= pool[i].weight;
+		}
+		this._spawnItem(cube, chosen);
+	}
+	//创建道具精灵并挂到方块上
+	_spawnItem(cube, def) {
+		const tex = this._makeIconTexture(def.icon, def.bg);
+		const mat = new THREE.SpriteMaterial({ map: tex, transparent: true });
+		const sprite = new THREE.Sprite(mat);
+		const s = 2.2;
+		sprite.scale.set(s, s, s);
+		const baseY = cube.position.y + this.config.cubeHeight / 2 + 2.2;
+		sprite.position.set(cube.position.x, baseY, cube.position.z);
+		sprite.userData.baseY = baseY;
+		sprite.userData.baseScale = s;
+		cube.userData.item = { sprite: sprite, type: def.type, icon: def.icon };
+		this.scene.add(sprite);
+	}
+	//用 canvas 画 emoji/文字图标生成纹理（圆形底色 + 居中图标）
+	_makeIconTexture(icon, bg) {
+		const size = 128;
+		const canvas = document.createElement('canvas');
+		canvas.width = size; canvas.height = size;
+		const ctx = canvas.getContext('2d');
+		ctx.beginPath();
+		ctx.arc(size / 2, size / 2, size / 2 - 5, 0, Math.PI * 2);
+		ctx.fillStyle = bg || '#ffffff';
+		ctx.fill();
+		ctx.lineWidth = 7;
+		ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+		ctx.stroke();
+		ctx.fillStyle = '#ffffff';
+		ctx.textAlign = 'center';
+		ctx.textBaseline = 'middle';
+		ctx.font = 'bold ' + Math.round(size * 0.5) + 'px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif';
+		ctx.fillText(icon, size / 2, size / 2 + 2);
+		const tex = new THREE.CanvasTexture(canvas);
+		tex.minFilter = THREE.LinearFilter;
+		tex.generateMipmaps = false;
+		tex.needsUpdate = true;
+		return tex;
+	}
+	//拾取道具：触发效果 + 音效 + 提示，并移除道具
+	_collectItem(cube) {
+		const item = cube.userData.item;
+		if (!item) return;
+		const type = item.type;
+		this._disposeItem(item);
+		cube.userData.item = null;
+		this.sound.playPickup();
+		if (type === 'dice') {
+			const n = 1 + Math.floor(Math.random() * 6); //摇 1~6 点
+			this._pendingAuto += n;
+			this._showToast('🎲 ' + n + ' 点');
+		} else if (type === 'rocket') {
+			this._pendingAuto += 10; //直接飞过 10 格
+			this._showToast('🚀 飞行 10 格');
+		} else if (type === 'shield') {
+			this.shield = true; //抵挡一次掉落
+			this._showToast('🛡️ 护盾');
+		} else if (type === 'double') {
+			this.doubleJumps += 1; //下一跳得分翻倍（可叠加）
+			this._showToast('×2 双倍');
+		}
+		this._updateItemHUD();
+	}
+	//释放道具精灵的纹理与材质
+	_disposeItem(item) {
+		if (!item || !item.sprite) return;
+		this.scene.remove(item.sprite);
+		if (item.sprite.material) {
+			if (item.sprite.material.map) item.sprite.material.map.dispose();
+			item.sprite.material.dispose();
+		}
+	}
+	//道具浮动 + 呼吸动画（挂在常驻渲染循环里）
+	_updateItems(dt) {
+		this._itemTime += dt;
+		for (let i = 0; i < this.cubes.length; i++) {
+			const item = this.cubes[i].userData && this.cubes[i].userData.item;
+			if (item && item.sprite) {
+				const sp = item.sprite;
+				sp.position.y = sp.userData.baseY + Math.sin(this._itemTime * 2.5) * 0.35;
+				const k = sp.userData.baseScale * (1 + Math.sin(this._itemTime * 3.5) * 0.08);
+				sp.scale.set(k, k, k);
+			}
+		}
+	}
+	//骰子/火箭：自动前进 n 格（锁定手动输入，逐格动画跳跃）
+	_autoAdvance(n) {
+		if (n <= 0) return;
+		if (this.autoPlaying) { this._pendingAuto += n; return; }
+		this.autoPlaying = true;
+		this._autoRemaining = n;
+		this._updateItemHUD();
+		this._autoHop();
+	}
+	_autoHop() {
+		if (this._autoRemaining <= 0) {
+			if (this._pendingAuto > 0) {
+				this._autoRemaining = this._pendingAuto;
+				this._pendingAuto = 0;
+			} else {
+				this.autoPlaying = false;
+				this._updateItemHUD();
+				return;
+			}
+		}
+		const cur = this.cubes[this.cubes.length - 2];
+		const next = this.cubes[this.cubes.length - 1];
+		if (!cur || !next) { this.autoPlaying = false; return; }
+		this._animateHop(next, () => {
+			this._onLandSuccess(true, true); //自动跳跃按完美落地计分
+			this._autoRemaining--;
+			this._autoHop();
+		});
+	}
+	//单格跳跃弧线动画：从当前位置飞到目标方块顶面
+	_animateHop(toCube, cb) {
+		const startX = this.jumper.position.x;
+		const startZ = this.jumper.position.z;
+		const endX = toCube.position.x;
+		const endZ = toCube.position.z;
+		const peak = 4.5;
+		const dur = 320;
+		const t0 = performance.now();
+		this.sound.playJump();
+		const step = () => {
+			const p = Math.min((performance.now() - t0) / dur, 1);
+			this.jumper.position.x = startX + (endX - startX) * p;
+			this.jumper.position.z = startZ + (endZ - startZ) * p;
+			this.jumper.position.y = 1 + peak * Math.sin(Math.PI * p);
+			this._render();
+			if (p < 1) {
+				requestAnimationFrame(step);
+			} else {
+				this.jumper.position.y = 1;
+				this.jumper.scale.y = 1;
+				this._updateHuskyAnim();
+				this._render();
+				cb();
+			}
+		};
+		requestAnimationFrame(step);
+	}
+	//护盾救场：把跳块复位到起跳方块顶面，玩家原地重跳
+	_applyShieldSave() {
+		const cur = this.cubes[this.cubes.length - 2];
+		if (cur) {
+			this.jumper.position.x = cur.position.x;
+			this.jumper.position.z = cur.position.z;
+		}
+		this.jumper.position.y = 1;
+		this.jumper.rotation.set(0, 0, 0);
+		this.jumper.scale.y = 1;
+		this.fallingStat.end = false;
+		this.jumperStat.ready = false;
+		this.jumperStat.xSpeed = 0;
+		this.jumperStat.ySpeed = 0;
+		this._lastChargeTime = null;
+		this._lastJumpTime = null;
+		this._updateHuskyAnim();
+		this._updateItemHUD();
+		this._showToast('🛡️ 护盾救场!');
+		this._render();
+	}
+	//更新顶部道具状态栏
+	_updateItemHUD() {
+		const hud = document.getElementById('itemHud');
+		if (!hud) return;
+		const parts = [];
+		if (this.shield) parts.push('<span class="buff">🛡️</span>');
+		if (this.doubleJumps > 0) parts.push('<span class="buff">×2 <b>' + this.doubleJumps + '</b></span>');
+		if (this.autoPlaying) parts.push('<span class="buff">🚀 前进中</span>');
+		hud.innerHTML = parts.join('');
+	}
+	//拾取/触发提示浮层（约 0.9s 淡出）
+	_showToast(text) {
+		const el = document.getElementById('itemToast');
+		if (!el) return;
+		el.textContent = text;
+		el.classList.add('show');
+		if (this._toastTimer) clearTimeout(this._toastTimer);
+		this._toastTimer = setTimeout(() => { el.classList.remove('show'); }, 900);
+	}
 
 	_restart() {
 		this.cameraPros = {
@@ -837,11 +1100,20 @@ class Game {
 		}
 		for (let i = 0; i < length; i++) {
 			const old = this.cubes.shift();
+			if (old.userData.item) { this._disposeItem(old.userData.item); old.userData.item = null; }
 			this.scene.remove(old);
 			this._disposeCube(old);
 		}
 		this.score = 0;
 		this.combo = 0; //重置连击
+		//重置道具系统状态
+		this.jumpCount = 0;
+		this.shield = false;
+		this.doubleJumps = 0;
+		this.autoPlaying = false;
+		this._autoRemaining = 0;
+		this._pendingAuto = 0;
+		this._updateItemHUD();
 		this.successCallback(this.score);
 		this._createCube();
 		this._createCube();
