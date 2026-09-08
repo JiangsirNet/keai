@@ -5,6 +5,9 @@
     <meta name="viewport" content="initial-scale=1.0,maximum-scale=1,user-scalable=no" />
     <title>小灰灰战机</title>
     <link rel="stylesheet" type="text/css" href="css/main.css"/>
+    <!-- 分数入库依赖：Supabase（必需）+ EmailJS（超越对方纪录时发邮件，可选） -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
 </head>
 <body>
 <audio src="music/bg.mp3" loop="true" autoplay="autoplay"></audio>
@@ -79,6 +82,7 @@
         document.querySelector('.btn-box').style.display = 'block';
     }
 </script>
+<script type="text/javascript" src="js/score.js"></script>
 <script type="text/javascript" src="js/main.js"></script>
 </body>
 </html>

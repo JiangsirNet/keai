@@ -38,20 +38,13 @@
                 </button>
             </div>
         </div>
-        <!-- 飞机大战面板 -->
+        <!-- 飞机大战面板（直接跳转到独立游戏页面，不再内嵌 iframe） -->
         <div id="planeGamePanel" class="hidden">
-            <div class="flex items-center justify-end mb-2">
-                <button id="planeFullscreenBtn" onclick="planeToggleFullscreen()" class="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:bg-rose-50 hover:text-love transition" title="全屏">
-                    <i class="fa fa-expand"></i>
-                </button>
-            </div>
-            <div id="planePlayArea" class="hidden mb-4 rounded-2xl overflow-hidden border border-rose-100">
-                <iframe id="planeFrame" src="about:blank" class="w-full h-[520px] block" allow="autoplay; fullscreen"></iframe>
-            </div>
+            <p class="text-center text-gray-400 text-sm mb-4">点击「开始游戏」将跳转到飞机大战独立页面，分数会自动计入情侣排行榜</p>
             <div class="flex justify-center">
-                <button id="planeStartBtn" onclick="planeTogglePlay()" class="bg-love hover:bg-loveDark text-white px-8 py-2.5 rounded-full transition-all font-bold">
+                <a href="plane-master/index.html" class="bg-love hover:bg-loveDark text-white px-8 py-2.5 rounded-full transition-all font-bold inline-flex items-center">
                     <i class="fa fa-play mr-1"></i>开始游戏
-                </button>
+                </a>
             </div>
         </div>
     </div>

@@ -1,7 +1,7 @@
 /**
  * 游戏模块（跳一跳 + 飞机大战）
  * 跳一跳：iframe 加载 Jump-master，postMessage 收分数入库 game_scores(game='jump')，展示情侣排行榜。
- * 飞机大战：iframe 加载 plane-master，postMessage 收分数入库 game_scores(game='plane')，展示情侣排行榜。
+ * 飞机大战：直接跳转到 plane-master 独立页面，分数由该页面自行入库 game_scores(game='plane')；本页仅负责展示情侣排行榜。
  * 同时负责初始化骗子酒馆（game_liar.js 的 lbInit 依赖 window.myRpsEmail）。
  */
 
@@ -35,9 +35,6 @@ function onJumpMessage(e) {
     if (d.type === "jump_score") {
         const score = parseInt(d.score, 10) || 0;
         if (score > 0) saveJumpScore(score);
-    } else if (d.type === "plane_score") {
-        const score = parseInt(d.score, 10) || 0;
-        if (score > 0) savePlaneScore(score);
     }
 }
 
@@ -183,8 +180,7 @@ function jumpToggleFullscreen() {
 // 监听全屏退出（ESC 键等），兼容 webkit 前缀事件；两个游戏区域统一复位
 function _onFsChange() {
     if (fsElement()) return;
-    [["jumpPlayArea", "jumpFrame", "jumpFullscreenBtn"],
-     ["planePlayArea", "planeFrame", "planeFullscreenBtn"]].forEach(([aId, fId, bId]) => {
+    [["jumpPlayArea", "jumpFrame", "jumpFullscreenBtn"]].forEach(([aId, fId, bId]) => {
         const area = document.getElementById(aId);
         const frame = document.getElementById(fId);
         if (area && !_isFakeFs(area)) {
@@ -308,100 +304,13 @@ function toggleLiarPanel() {
 async function loadJumpLeaderboard() { return loadBoard("jump"); }
 async function loadPlaneLeaderboard() { return loadBoard("plane"); }
 
-// 飞机大战：展开/收起
-function planeTogglePlay() {
-    const area = document.getElementById("planePlayArea");
-    const frame = document.getElementById("planeFrame");
-    const btn = document.getElementById("planeStartBtn");
-    if (!area || !frame || !btn) return;
-    const isOpen = !area.classList.contains("hidden");
-    if (isOpen) {
-        area.classList.add("hidden");
-        frame.src = "about:blank";
-        btn.innerHTML = '<i class="fa fa-play mr-1"></i>开始游戏';
-    } else {
-        frame.src = "plane-master/index.html";
-        area.classList.remove("hidden");
-        btn.innerHTML = '<i class="fa fa-stop mr-1"></i>收起游戏';
-        area.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-}
-
-// 飞机大战：全屏切换
-function planeToggleFullscreen() {
-    const area = document.getElementById("planePlayArea");
-    const frame = document.getElementById("planeFrame");
-    const btn = document.getElementById("planeFullscreenBtn");
-    if (!area || !frame || !btn) return;
-    const inNative = !!fsElement();
-    const inFake = _isFakeFs(area);
-    if (!inNative && !inFake) {
-        if (area.classList.contains("hidden")) {
-            frame.src = "plane-master/index.html";
-            area.classList.remove("hidden");
-            const startBtn = document.getElementById("planeStartBtn");
-            if (startBtn) startBtn.innerHTML = '<i class="fa fa-stop mr-1"></i>收起游戏';
-        }
-        area.classList.add("jump-fullscreen");
-        frame.style.height = "100%";
-        const p = fsRequest(area);
-        if (p && p.then) {
-            p.then(() => _setFsBtn("planeFullscreenBtn", true)).catch(() => {
-                _enterFakeFullscreen(area, "planeFullscreenBtn", "planeFakeFsExit", planeToggleFullscreen);
-            });
-        } else {
-            _enterFakeFullscreen(area, "planeFullscreenBtn", "planeFakeFsExit", planeToggleFullscreen);
-        }
-    } else {
-        if (inFake) {
-            _exitFakeFullscreen(area, "planeFullscreenBtn", "planeFakeFsExit");
-        } else if (inNative) {
-            const p = fsExit();
-            if (p && p.then) p.catch(() => {});
-        }
-        frame.style.height = "";
-        area.classList.remove("jump-fullscreen");
-        _setFsBtn("planeFullscreenBtn", false);
-    }
-}
-
-// 飞机大战：保存分数
-async function savePlaneScore(score) {
-    if (!myUserId) return;
-    try {
-        const { data: rows, error: qErr } = await sb.from("game_scores")
-            .select("user_id, score")
-            .eq("game", "plane")
-            .order("score", { ascending: false })
-            .limit(100);
-        if (qErr) throw qErr;
-        let partnerBest = 0;
-        (rows || []).forEach(r => {
-            if (r.user_id !== myUserId && r.score > partnerBest) partnerBest = r.score;
-        });
-        const beatPartner = partnerBest > 0 && score > partnerBest;
-
-        const { error } = await sb.from("game_scores")
-            .insert({ game: "plane", user_id: myUserId, nickname: myNickname, score: score });
-        if (error) throw error;
-        if (window.sendNotification) {
-            const content = beatPartner
-                ? `✈️ 飞机大战：${score} 分，超越 TA 的最高纪录 ${partnerBest}！`
-                : `✈️ 飞机大战得分：${score}`;
-            window.sendNotification("game", content, beatPartner);
-        }
-        loadBoard("plane");
-    } catch (e) {
-        console.warn("[Plane] 分数保存失败:", e);
-    }
-}
+// 飞机大战已改为直接跳转 plane-master 独立页面，
+// 分数入库 + 通知逻辑移至 plane-master/js/score.js；本页仅保留排行榜展示。
 
 window.initJumpGame = initJumpGame;
 window.jumpTogglePlay = jumpTogglePlay;
 window.jumpToggleFullscreen = jumpToggleFullscreen;
 window.loadJumpLeaderboard = loadJumpLeaderboard;
-window.planeTogglePlay = planeTogglePlay;
-window.planeToggleFullscreen = planeToggleFullscreen;
 window.loadPlaneLeaderboard = loadPlaneLeaderboard;
 window.switchBoardTab = switchBoardTab;
 window.refreshCurrentBoard = refreshCurrentBoard;

@@ -36,7 +36,7 @@
     var gardetxt = ['DDD','CCC', 'BBB', 'AAA', 'SSS'];
     var bodyWidth = document.documentElement.clientWidth
     var bodyheight = document.documentElement.clientHeight
-    // 桌面端提示已移除，iframe 内嵌模式支持鼠标操作
+    // 桌面端提示已移除，直接打开时支持鼠标操作
     var highscore = window.localStorage.getItem('highScore')
     var highgrade = window.localStorage.getItem('highgrade')
     if(highscore){
@@ -983,8 +983,8 @@
         }
         enddiv.style.display = "block";
         planscore.innerHTML = scores;
-        // 通知父页面游戏结束和分数
-        try { window.parent.postMessage({type:'plane_score', score: scores}, '*'); } catch(e) {}
+        // 直接跳转模式：本页面自行将分数写入数据库（情侣排行榜）
+        try { if (window.savePlaneScore) window.savePlaneScore(scores); } catch(e) {}
         if (document.removeEventListener) {
             mainDiv.removeEventListener("touchmove", yidong, true);
             bodyobj.removeEventListener("touchmove", bianjie, true);
@@ -1032,9 +1032,10 @@
             }
         }
     }
-    //游戏结束后点击结束按钮事件
+    //游戏结束 / 回到主页：返回情侣空间主应用（直接跳转模式）
     function end() {
-        location.reload(true);
+        if (window.history.length > 1) { window.history.back(); }
+        else { window.location.href = "../index.html"; }
     }
 
 
