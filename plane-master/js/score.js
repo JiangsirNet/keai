@@ -49,6 +49,11 @@
     window.savePlaneScore = async function (score) {
         score = parseInt(score, 10) || 0;
         if (score <= 0 || _saving) return;
+        // 本地开发环境（127.0.0.1 / localhost）测试不计入排行榜，避免污染真实数据与误发通知
+        if (location.hostname === "127.0.0.1" || location.hostname === "localhost") {
+            console.log("[plane-score] 本地环境，跳过排行榜入库:", score);
+            return;
+        }
         _saving = true;
         try {
             var userRes = await sb.auth.getUser();

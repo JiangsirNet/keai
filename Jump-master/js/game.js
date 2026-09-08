@@ -152,6 +152,34 @@ class SoundManager {
 		osc.connect(gain); gain.connect(ctx.destination);
 		osc.start(t); osc.stop(t + 0.35);
 	}
+	//火圈灼烧（高频快速下滑）
+	playBurn() {
+		const ctx = this._ensure();
+		const t = ctx.currentTime;
+		const osc = ctx.createOscillator();
+		const gain = ctx.createGain();
+		osc.type = 'sawtooth';
+		osc.frequency.setValueAtTime(1200, t);
+		osc.frequency.exponentialRampToValueAtTime(120, t + 0.28);
+		gain.gain.setValueAtTime(0.32, t);
+		gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+		osc.connect(gain); gain.connect(ctx.destination);
+		osc.start(t); osc.stop(t + 0.3);
+	}
+	//碎裂/冰块触发（低频短促 rumble）
+	playCrumble() {
+		const ctx = this._ensure();
+		const t = ctx.currentTime;
+		const osc = ctx.createOscillator();
+		const gain = ctx.createGain();
+		osc.type = 'square';
+		osc.frequency.setValueAtTime(160, t);
+		osc.frequency.exponentialRampToValueAtTime(60, t + 0.22);
+		gain.gain.setValueAtTime(0.28, t);
+		gain.gain.exponentialRampToValueAtTime(0.001, t + 0.24);
+		osc.connect(gain); gain.connect(ctx.destination);
+		osc.start(t); osc.stop(t + 0.24);
+	}
 }
 class Game {
 	constructor() {
@@ -229,6 +257,12 @@ class Game {
 			{ type: 'shield', icon: '🛡️', weight: 20, bg: '#3b82f6' },
 			{ type: 'rocket', icon: '🚀', weight: 15, bg: '#ef4444' }
 		];
+		// ===== 陷阱系统状态 =====
+		this._inFlight = false; //飞行中标记（捕获本跳的风/火圈）
+		this._activeWind = null; //本跳生效的侧风
+		this._activeRing = null; //本跳穿越的火圈
+		this._windDrift = 0; //本跳侧风造成的横向位移（用于越界判定）
+		this._trapTime = 0; //陷阱动画计时
 	}
 
 	init() {
@@ -314,6 +348,14 @@ class Game {
 		if (this.autoPlaying) return; //自动前进期间锁定手动起跳
 		this.jumperStat.ready = true;
 		if (this.jumper.position.y >= 1) {
+			if (!this._inFlight) {
+				//起飞首帧：捕获本跳要穿越的火圈与侧风
+				this._inFlight = true;
+				this._windDrift = 0;
+				const tgt = this.cubes[this.cubes.length - 1];
+				this._activeRing = tgt && tgt.userData.ring ? tgt.userData.ring : null;
+				this._activeWind = tgt && tgt.userData.wind ? tgt.userData.wind : null;
+			}
 			this.sound.stopCharge(); //停止蓄力音效
 			if (this.jumper.scale.y >= 1 && this.jumperStat.ySpeed > 0) {
 				this.sound.playJump(); //起跳弹出
@@ -332,6 +374,11 @@ class Game {
 			}
 			this.jumper.position.y += this.jumperStat.ySpeed * delta * 60;
 			this.jumperStat.ySpeed -= 0.025 * delta * 60;//重力 1.5/秒，跳跃动画更舒缓
+			this._applyWind(delta); //侧风横向漂移
+			if (!this.autoPlaying && this._checkRingBurn()) { //火圈灼烧：终止飞行递归
+				this._trapFail('ring');
+				return;
+			}
 			this._updateHuskyAnim(); //跳跃姿势动画
 			this._render();
 			requestAnimationFrame(() => {
@@ -340,6 +387,9 @@ class Game {
 			})
 		} else {
 			//落下状态
+			this._inFlight = false;
+			this._activeWind = null;
+			this._activeRing = null;
 			this.jumperStat.ready = false;
 			this.jumperStat.xSpeed = 0;
 			this.jumperStat.ySpeed = 0;
@@ -405,6 +455,14 @@ class Game {
 		} else {
 			//落在中间
 			this.falledStat.location = 0;
+		}
+		//侧风漂移越界判定：只统计风造成的横向位移，无风时 _windDrift=0 不影响正常落地
+		if (this.falledStat.location == 1 || this.falledStat.location == 10) {
+			const perpAxis = this.cubeStat.nextDir == "left" ? 'z' : 'x';
+			const perpHalf = (this.cubeStat.nextDir == "left" ? nextCube.userData.deep : nextCube.userData.width) / 2;
+			if (Math.abs(this._windDrift) > perpHalf + this.config.jumperWidth * 0.6) {
+				this.falledStat.location = 0; //被侧风吹出块外，判为落空
+			}
 		}
 	};
 	//下落过程
@@ -628,6 +686,7 @@ class Game {
 		}
 		this.scene.add(cube); //添加到场景中
 		this._maybeSpawnItem(cube); //按概率在新块上方生成道具
+		this._maybeSpawnTrap(cube); //按 jumpCount 分段在新块/间隙生成陷阱
 		if (this.cubes.length > 1) {
 			//更新镜头位置
 			this._updateCameraPros();
@@ -738,6 +797,7 @@ class Game {
 	//释放方块的几何体与材质（防 GPU 内存随局数累积）
 	_disposeCube(cube) {
 		if (!cube) return;
+		if (cube.userData && cube.userData.ring) this._disposeRing(cube.userData.ring); //释放间隙火圈
 		if (cube.geometry) cube.geometry.dispose();
 		if (cube.material) {
 			if (Array.isArray(cube.material)) cube.material.forEach(m => m.dispose());
@@ -808,6 +868,7 @@ class Game {
 			last = now;
 			this._stepCamera(dt);
 			this._updateItems(dt); //道具浮动/呼吸动画
+			this._updateTraps(dt); //陷阱动画（移动/火圈/碎裂/冰块）
 			this._render();
 			requestAnimationFrame(step);
 		};
@@ -876,9 +937,24 @@ class Game {
 			if (isPerfect) { this.sound.playPerfect(); } else { this.sound.playScore(); }
 			if (this.combo >= 3 && this.combo % 3 === 0) { this.sound.playCombo(this.combo); }
 		}
-		//拾取落点方块上的道具（可能给 _pendingAuto 排队自动前进）
+		//拾取落点方块上的道具（自动前进途中 isAuto 不拾取，避免连锁触发；一轮前进的最终落点由 _autoHop 结束时拾取）
 		const landed = this.cubes[this.cubes.length - 1];
-		if (landed && landed.userData.item) this._collectItem(landed);
+		if (landed && landed.userData.item && !isAuto) this._collectItem(landed);
+		if (landed) {
+			//侧风跳：把跳块垂直轴吸附回落点块心，消除横向累积偏移
+			if (!isAuto && this._windDrift !== 0) {
+				const perp = this.cubeStat.nextDir == "left" ? 'z' : 'x';
+				this.jumper.position[perp] = landed.position[perp];
+			}
+			//落点块陷阱：移动块冻结，碎裂/冰块启动计时（自动前进豁免）
+			if (landed.userData.trap) {
+				if (isAuto || this.autoPlaying) {
+					if (landed.userData.trap.type === 'moving') landed.userData.trap.frozen = true;
+				} else {
+					this._activateLandedTrap(landed);
+				}
+			}
+		}
 		this._createCube();
 		this._updateCamera();
 		this._updateItemHUD();
@@ -999,8 +1075,18 @@ class Game {
 				this._autoRemaining = this._pendingAuto;
 				this._pendingAuto = 0;
 			} else {
+				//一轮自动前进结束：玩家停在最终落点（末块是刚生成的下一目标，落脚块是倒数第二块）
 				this.autoPlaying = false;
 				this._updateItemHUD();
+				const landed = this.cubes[this.cubes.length - 2];
+				if (landed && landed.userData.item) {
+					this._collectItem(landed); //仅最终落点的道具可触发
+					if (this._pendingAuto > 0) { //最终落点又是骰子/火箭则开启新一轮前进
+						const n = this._pendingAuto;
+						this._pendingAuto = 0;
+						this._autoAdvance(n);
+					}
+				}
 				return;
 			}
 		}
@@ -1062,6 +1148,208 @@ class Game {
 		this._showToast('🛡️ 护盾救场!');
 		this._render();
 	}
+	// ===== 陷阱系统 =====
+	//按 jumpCount 分段返回可用陷阱类型与概率
+	_getTrapConfig() {
+		const j = this.jumpCount;
+		if (j < 100) return null;
+		if (j < 130) return { cube: ['crumble'], gap: [], pCube: 0.18, pGap: 0 };
+		if (j < 160) return { cube: ['crumble', 'ice'], gap: [], pCube: 0.24, pGap: 0 };
+		if (j < 200) return { cube: ['crumble', 'ice', 'moving'], gap: ['ring'], pCube: 0.28, pGap: 0.14 };
+		if (j < 250) return { cube: ['crumble', 'ice', 'moving'], gap: ['ring', 'wind'], pCube: 0.30, pGap: 0.20 };
+		return { cube: ['crumble', 'ice', 'moving'], gap: ['ring', 'wind'], pCube: 0.32, pGap: 0.26 };
+	}
+	//按概率在新块或其间隙生成陷阱（与道具互斥，相邻致命块去重）
+	_maybeSpawnTrap(cube) {
+		const cfg = this._getTrapConfig();
+		if (!cfg) return;
+		if (this.cubes.length <= 3) return; //起始块不刷
+		if (cube.userData.item) return; //道具块不叠陷阱
+		const prev = this.cubes[this.cubes.length - 2];
+		const prevDeadly = prev && prev.userData.trap && (prev.userData.trap.type === 'crumble' || prev.userData.trap.type === 'ice');
+		const roll = Math.random();
+		if (roll < cfg.pCube) {
+			let pool = cfg.cube;
+			if (prevDeadly) pool = pool.filter(t => t !== 'crumble' && t !== 'ice'); //相邻致命块去重
+			if (pool.length) {
+				this._applyCubeTrap(cube, pool[Math.floor(Math.random() * pool.length)]);
+				return;
+			}
+		}
+		if (cfg.gap.length && roll < cfg.pCube + cfg.pGap) {
+			this._applyGapTrap(cube, cfg.gap[Math.floor(Math.random() * cfg.gap.length)]);
+		}
+	}
+	//块陷阱：碎裂/冰块/移动
+	_applyCubeTrap(cube, type) {
+		const trap = { type: type, timer: 0, active: false, slide: false, frozen: false, basePos: 0, phase: Math.random() * Math.PI * 2, axis: 'x', slideAxis: 'x', slideDir: -1 };
+		if (type === 'crumble') {
+			this._setCubeColor(cube, 0x8a7f6a, 0.9); //灰褐、微透明，跳前可辨识
+		} else if (type === 'ice') {
+			this._setCubeColor(cube, 0x9fd8ff, 0.72); //浅蓝半透明冰面
+		} else if (type === 'moving') {
+			trap.axis = this.cubeStat.nextDir == "left" ? 'x' : 'z'; //沿跳跃轴振荡
+			trap.basePos = cube.position[trap.axis];
+		}
+		cube.userData.trap = trap;
+	}
+	//改方块颜色/透明度（兼容照片块的材质数组）
+	_setCubeColor(cube, color, opacity) {
+		const apply = (m) => {
+			if (!m) return;
+			m.color = new THREE.Color(color);
+			m.transparent = true;
+			m.opacity = opacity;
+			m.needsUpdate = true;
+		};
+		if (Array.isArray(cube.material)) cube.material.forEach(apply);
+		else apply(cube.material);
+	}
+	//间隙飞行陷阱：火圈/侧风
+	_applyGapTrap(cube, type) {
+		if (type === 'ring') {
+			this._makeFireRing(cube);
+		} else if (type === 'wind') {
+			const perpAxis = this.cubeStat.nextDir == "left" ? 'z' : 'x'; //垂直于跳跃轴
+			const force = (Math.random() > 0.5 ? 1 : -1) * (0.02 + Math.random() * 0.025);
+			cube.userData.wind = { axis: perpAxis, force: force };
+			this._updateItemHUD(); //刷新侧风警示徽标
+		}
+	}
+	//在 prev 与本块间隙中点建一个上下振荡的火焰圆环
+	_makeFireRing(cube) {
+		const prev = this.cubes[this.cubes.length - 2];
+		if (!prev) return;
+		const axis = this.cubeStat.nextDir == "left" ? 'x' : 'z'; //跳跃轴
+		const midX = (prev.position.x + cube.position.x) / 2;
+		const midZ = (prev.position.z + cube.position.z) / 2;
+		const geo = new THREE.TorusGeometry(1.5, 0.34, 10, 26);
+		const mat = new THREE.MeshBasicMaterial({ color: 0xff5a1f });
+		const mesh = new THREE.Mesh(geo, mat);
+		mesh.rotation.x = Math.PI / 2; //水平放置（环面平行地面）
+		mesh.position.set(midX, 3.5, midZ);
+		this.scene.add(mesh);
+		cube.userData.ring = {
+			mesh: mesh,
+			axis: axis,
+			mid: axis === 'x' ? midX : midZ,
+			yMin: 0.8, yMax: 7.0, speed: 2.2,
+			phase: Math.random() * Math.PI * 2
+		};
+	}
+	//释放火圈资源
+	_disposeRing(ringData) {
+		if (!ringData || !ringData.mesh) return;
+		this.scene.remove(ringData.mesh);
+		if (ringData.mesh.geometry) ringData.mesh.geometry.dispose();
+		if (ringData.mesh.material) ringData.mesh.material.dispose();
+	}
+	//陷阱逐帧动画（挂在常驻渲染循环）
+	_updateTraps(dt) {
+		this._trapTime += dt;
+		if (this.cubes.length < 2) return;
+		const target = this.cubes[this.cubes.length - 1];
+		const current = this.cubes[this.cubes.length - 2];
+		//移动方块：仅目标块沿跳跃轴振荡，落地冻结或自动前进时停止
+		if (target && target.userData.trap && target.userData.trap.type === 'moving' && !target.userData.trap.frozen && !this.autoPlaying) {
+			const tr = target.userData.trap;
+			target.position[tr.axis] = tr.basePos + Math.sin(this._trapTime * 2.2 + tr.phase) * 1.4;
+		}
+		//火圈：上下振荡 + 火焰脉动
+		if (target && target.userData.ring && target.userData.ring.mesh) {
+			const r = target.userData.ring;
+			const midY = (r.yMin + r.yMax) / 2;
+			const amp = (r.yMax - r.yMin) / 2;
+			r.mesh.position.y = midY + Math.sin(this._trapTime * r.speed + r.phase) * amp;
+			const s = 1 + Math.sin(this._trapTime * 8) * 0.06;
+			r.mesh.scale.set(s, s, s);
+		}
+		//自动前进（骰子/火箭）豁免落地型陷阱
+		if (this.autoPlaying) return;
+		const onCube = this.jumper.position.y <= 1.01; //跳块是否仍贴在方块顶面（轻点腾空仅暂停，落回继续）
+		//碎裂方块：抖动 + 下沉 + 计时，倒计时结束且仍站立则坠落
+		if (current && current.userData.trap && current.userData.trap.type === 'crumble' && current.userData.trap.active) {
+			const tr = current.userData.trap;
+			if (tr.timer > 0) {
+				tr.timer -= dt;
+				current.position.x += (Math.random() - 0.5) * 0.1;
+				current.position.z += (Math.random() - 0.5) * 0.1;
+				current.position.y -= dt * 0.6;
+				const op = Math.max(0.25, tr.timer);
+				if (Array.isArray(current.material)) current.material.forEach(m => { m.transparent = true; m.opacity = op; });
+				else { current.material.transparent = true; current.material.opacity = op; }
+			} else if (onCube) {
+				tr.active = false;
+				this._trapFail('crumble');
+			}
+		}
+		//冰块：站立时沿前进方向缓慢漂移，滑出块外则坠落
+		if (current && current.userData.trap && current.userData.trap.type === 'ice' && current.userData.trap.slide) {
+			const tr = current.userData.trap;
+			if (onCube) {
+				this.jumper.position[tr.slideAxis] += tr.slideDir * 0.9 * dt;
+				const half = (tr.slideAxis === 'x' ? current.userData.width : current.userData.deep) / 2;
+				const off = Math.abs(this.jumper.position[tr.slideAxis] - current.position[tr.slideAxis]);
+				if (off > half) { tr.slide = false; this._trapFail('ice'); }
+			}
+		}
+	}
+	//火圈碰撞：飞行途中穿过环平面且高度接近环面则灼烧
+	_checkRingBurn() {
+		const r = this._activeRing;
+		if (!r || !r.mesh) return false;
+		if (Math.abs(this.jumper.position[r.axis] - r.mid) > 0.7) return false; //未到/已越过环平面
+		return Math.abs(this.jumper.position.y - r.mesh.position.y) < 1.0;
+	}
+	//侧风：飞行途中沿垂直轴施加横向漂移
+	_applyWind(delta) {
+		if (!this._activeWind || this.autoPlaying) return;
+		const d = this._activeWind.force * delta * 60;
+		this.jumper.position[this._activeWind.axis] += d;
+		this._windDrift += d;
+	}
+	//落地陷阱激活：移动块冻结，碎裂/冰块启动计时
+	_activateLandedTrap(cube) {
+		const trap = cube.userData.trap;
+		if (!trap) return;
+		if (trap.type === 'moving') {
+			trap.frozen = true;
+		} else if (trap.type === 'crumble') {
+			trap.timer = 1.0;
+			trap.active = true;
+			this.sound.playCrumble();
+			this._showToast('💔 碎裂! 快跳!');
+		} else if (trap.type === 'ice') {
+			trap.slide = true;
+			trap.slideAxis = this.cubeStat.nextDir == "left" ? 'x' : 'z';
+			trap.slideDir = -1; //前进方向（left→-x，right→-z）
+			this._showToast('🧊 冰面! 快跳!');
+		}
+	}
+	//陷阱导致的失败：护盾可救，否则坠落结算
+	_trapFail(reason) {
+		this._inFlight = false;
+		this._activeWind = null;
+		this._activeRing = null;
+		if (reason === 'ring') this.sound.playBurn();
+		else this.sound.playCrumble();
+		const toastMap = { ring: '🔥 火圈!', crumble: '💔 碎裂!', ice: '🧊 滑落了!', wind: '🌬️ 被吹落!' };
+		this._showToast(toastMap[reason] || '陷阱!');
+		if (this.shield) {
+			this.shield = false;
+			this.sound.playShieldBreak();
+			const cur = this.cubes[this.cubes.length - 2];
+			if (cur && cur.userData.trap && (reason === 'crumble' || reason === 'ice')) {
+				cur.userData.trap.active = false; //碎裂/冰块：清除该块陷阱，平台复位
+				cur.userData.trap.slide = false;
+				cur.userData.trap.timer = 0;
+			}
+			this._applyShieldSave();
+		} else {
+			this.falledStat.location = 0;
+			this._falling();
+		}
+	}
 	//更新顶部道具状态栏
 	_updateItemHUD() {
 		const hud = document.getElementById('itemHud');
@@ -1070,6 +1358,10 @@ class Game {
 		if (this.shield) parts.push('<span class="buff">🛡️</span>');
 		if (this.doubleJumps > 0) parts.push('<span class="buff">×2 <b>' + this.doubleJumps + '</b></span>');
 		if (this.autoPlaying) parts.push('<span class="buff">🚀 前进中</span>');
+		//侧风警示：显示下一段间隙的风向
+		const tgt = this.cubes[this.cubes.length - 1];
+		const wind = tgt && tgt.userData.wind;
+		if (wind && !this.autoPlaying) parts.push('<span class="buff warn">🌬️ 侧风 ' + (wind.force > 0 ? '→' : '←') + '</span>');
 		hud.innerHTML = parts.join('');
 	}
 	//拾取/触发提示浮层（约 0.9s 淡出）
@@ -1113,6 +1405,12 @@ class Game {
 		this.autoPlaying = false;
 		this._autoRemaining = 0;
 		this._pendingAuto = 0;
+		//重置陷阱系统状态
+		this._inFlight = false;
+		this._activeWind = null;
+		this._activeRing = null;
+		this._windDrift = 0;
+		this._trapTime = 0;
 		this._updateItemHUD();
 		this.successCallback(this.score);
 		this._createCube();

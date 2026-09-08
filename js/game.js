@@ -39,6 +39,8 @@ function onJumpMessage(e) {
 }
 
 async function saveJumpScore(score) {
+    // 本地开发环境（127.0.0.1 / localhost）测试不计入排行榜，避免污染真实数据与误发通知
+    if (location.hostname === "127.0.0.1" || location.hostname === "localhost") return;
     if (!myUserId) return;
     try {
         // 查询双方最高分，判断是否超越对方的最高纪录
