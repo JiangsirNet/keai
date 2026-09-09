@@ -152,6 +152,22 @@ class SoundManager {
 		osc.connect(gain); gain.connect(ctx.destination);
 		osc.start(t); osc.stop(t + 0.35);
 	}
+	//生命复活（温暖上行三音，区别于护盾碎裂）
+	playRevive() {
+		const ctx = this._ensure();
+		const t = ctx.currentTime;
+		[392, 523, 659].forEach((f, i) => {
+			const osc = ctx.createOscillator();
+			const gain = ctx.createGain();
+			osc.type = 'sine';
+			osc.frequency.value = f;
+			gain.gain.setValueAtTime(0.0001, t + i * 0.08);
+			gain.gain.linearRampToValueAtTime(0.35, t + i * 0.08 + 0.02);
+			gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.08 + 0.28);
+			osc.connect(gain); gain.connect(ctx.destination);
+			osc.start(t + i * 0.08); osc.stop(t + i * 0.08 + 0.28);
+		});
+	}
 	//火圈灼烧（高频快速下滑）
 	playBurn() {
 		const ctx = this._ensure();
@@ -241,6 +257,8 @@ class Game {
 		this.model = null; //哈士奇3D模型
 		this.sound = new SoundManager(); //音效管理器
 		this.combo = 0; //连续成功计数
+		this.maxLives = 3; //初始生命数（三条命）
+		this.lives = this.maxLives; //当前剩余生命：失败时消耗一条并原地复活，耗尽才结算
 		// ===== 道具系统状态 =====
 		this.jumpCount = 0; //成功落地次数（驱动难度，与含道具加分的 score 解耦）
 		this.shield = false; //护盾：抵挡一次掉落并原地复活
@@ -277,6 +295,7 @@ class Game {
 		this.sound.playGameStart(); //游戏开始音效
 		this._updateCamera(); //改变相机
 		this._handleWindowResize();
+		this._updateItemHUD(); //初始显示生命值 HUD
 		window.addEventListener("resize", () => {
 			this._handleWindowResize(); //绑定窗口大小
 		});
@@ -416,6 +435,9 @@ class Game {
 				this.shield = false;
 				this.sound.playShieldBreak();
 				this._applyShieldSave();
+			} else if (this.lives > 0) {
+				//消耗一条命：原地复活，保留当前分数
+				this._useLife();
 			} else {
 				this._falling()
 			}
@@ -1127,8 +1149,8 @@ class Game {
 		};
 		requestAnimationFrame(step);
 	}
-	//护盾救场：把跳块复位到起跳方块顶面，玩家原地重跳
-	_applyShieldSave() {
+	//原地复活：把跳块复位到起跳方块顶面，玩家重跳（护盾救场 / 生命复活共用）
+	_applyShieldSave(toastText) {
 		const cur = this.cubes[this.cubes.length - 2];
 		if (cur) {
 			this.jumper.position.x = cur.position.x;
@@ -1145,8 +1167,15 @@ class Game {
 		this._lastJumpTime = null;
 		this._updateHuskyAnim();
 		this._updateItemHUD();
-		this._showToast('🛡️ 护盾救场!');
+		this._showToast(toastText || '🛡️ 护盾救场!');
 		this._render();
+	}
+	//消耗一条命原地复活（掉落/陷阱失败且无护盾时触发，保留当前分数）
+	_useLife() {
+		this.lives--;
+		this.sound.playRevive();
+		const txt = this.lives > 0 ? ('❤️ 复活! 剩余 ' + this.lives + ' 命') : '💔 没有退路了!';
+		this._applyShieldSave(txt);
 	}
 	// ===== 陷阱系统 =====
 	//按 jumpCount 分段返回可用陷阱类型与概率
@@ -1335,16 +1364,21 @@ class Game {
 		else this.sound.playCrumble();
 		const toastMap = { ring: '🔥 火圈!', crumble: '💔 碎裂!', ice: '🧊 滑落了!', wind: '🌬️ 被吹落!' };
 		this._showToast(toastMap[reason] || '陷阱!');
-		if (this.shield) {
-			this.shield = false;
-			this.sound.playShieldBreak();
+		if (this.shield || this.lives > 0) {
+			//护盾或生命：清除致命陷阱后原地复活
 			const cur = this.cubes[this.cubes.length - 2];
 			if (cur && cur.userData.trap && (reason === 'crumble' || reason === 'ice')) {
 				cur.userData.trap.active = false; //碎裂/冰块：清除该块陷阱，平台复位
 				cur.userData.trap.slide = false;
 				cur.userData.trap.timer = 0;
 			}
-			this._applyShieldSave();
+			if (this.shield) {
+				this.shield = false;
+				this.sound.playShieldBreak();
+				this._applyShieldSave();
+			} else {
+				this._useLife();
+			}
 		} else {
 			this.falledStat.location = 0;
 			this._falling();
@@ -1355,6 +1389,7 @@ class Game {
 		const hud = document.getElementById('itemHud');
 		if (!hud) return;
 		const parts = [];
+		parts.push('<span class="buff lives">❤️ <b>' + this.lives + '</b></span>'); //生命值常驻显示
 		if (this.shield) parts.push('<span class="buff">🛡️</span>');
 		if (this.doubleJumps > 0) parts.push('<span class="buff">×2 <b>' + this.doubleJumps + '</b></span>');
 		if (this.autoPlaying) parts.push('<span class="buff">🚀 前进中</span>');
@@ -1398,6 +1433,7 @@ class Game {
 		}
 		this.score = 0;
 		this.combo = 0; //重置连击
+		this.lives = this.maxLives; //重置生命值
 		//重置道具系统状态
 		this.jumpCount = 0;
 		this.shield = false;
