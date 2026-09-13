@@ -1,0 +1,791 @@
+<!DOCTYPE HTML>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no"/>
+<title>台词配置 · 爱的飞行员</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: radial-gradient(ellipse at top, #0e1438 0%, #06081c 70%);
+    color: #e8ecff; min-height: 100vh; padding: 16px;
+  }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 4px; color: #8fc7ff; text-shadow: 0 0 18px rgba(143,199,255,.5); }
+  .sub { color: #8a93b8; font-size: 13px; margin-bottom: 14px; line-height: 1.6; }
+  .layout { display: grid; grid-template-columns: 240px 1fr; gap: 14px; }
+  @media(max-width:760px){ .layout{ grid-template-columns: 1fr; } }
+  .sidebar { background: rgba(255,255,255,.04); border: 1px solid rgba(150,200,255,.15); border-radius: 12px; padding: 12px; height: fit-content; }
+  .sidebar h3 { margin: 0 0 10px; font-size: 14px; color: #8fc7ff; }
+  .group-item {
+    display: flex; align-items: center; gap: 6px; padding: 8px 10px; border-radius: 8px;
+    cursor: pointer; margin-bottom: 4px; transition: .15s; border: 1px solid transparent;
+  }
+  .group-item:hover { background: rgba(143,199,255,.08); }
+  .group-item.active { background: rgba(143,199,255,.16); border-color: rgba(143,199,255,.4); }
+  .group-item .gname { flex: 1; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .group-item .dot { width: 8px; height: 8px; border-radius: 50%; background: #555; flex-shrink: 0; }
+  .group-item.active-group .dot { background: #4ade80; box-shadow: 0 0 8px #4ade80; }
+  .group-actions { display: flex; gap: 6px; margin-top: 10px; }
+  .main { min-width: 0; }
+  .card { background: rgba(255,255,255,.04); border: 1px solid rgba(150,200,255,.15); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; }
+  .card h3 { margin: 0 0 8px; font-size: 14px; color: #8fc7ff; }
+  .card .desc { font-size: 12px; color: #8a93b8; margin-bottom: 10px; line-height: 1.6; }
+  .field { display: flex; flex-direction: column; gap: 4px; min-width: 120px; }
+  label { font-size: 12px; color: #8a93b8; }
+  input[type=text], textarea, select {
+    background: rgba(0,0,0,.35); border: 1px solid rgba(150,200,255,.25); border-radius: 6px;
+    padding: 7px 9px; color: #fff; font-size: 13px; width: 100%; font-family: inherit; outline: none; transition: .15s;
+  }
+  textarea { resize: vertical; min-height: 42px; line-height: 1.5; }
+  input[type=text]:focus, textarea:focus, select:focus { border-color: #8fc7ff; box-shadow: 0 0 0 2px rgba(143,199,255,.18); }
+  .toolbar {
+    position: sticky; top: 0; z-index: 5; background: rgba(6,8,28,.92); backdrop-filter: blur(8px);
+    padding: 10px 0; margin-bottom: 12px; border-bottom: 1px solid rgba(150,200,255,.15);
+    display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+  }
+  .toolbar .cur-group { color: #ffe08a; font-weight: bold; margin-right: auto; font-size: 14px; }
+  button { padding: 7px 14px; border-radius: 8px; border: 1px solid; cursor: pointer; font-size: 13px; font-family: inherit; transition: .15s; }
+  .btn-primary { background: linear-gradient(180deg, #4a7dff, #2f5be0); border-color: #6a93ff; color: #fff; }
+  .btn-primary:hover { filter: brightness(1.12); }
+  .btn-ghost { background: rgba(255,255,255,.06); border-color: rgba(150,200,255,.3); color: #cdd8f5; }
+  .btn-ghost:hover { background: rgba(143,199,255,.12); }
+  .btn-warn { background: rgba(255,90,90,.15); border-color: rgba(255,120,120,.5); color: #ffb0b0; }
+  .btn-warn:hover { background: rgba(255,90,90,.25); }
+  .btn-mini { padding: 3px 8px; font-size: 11px; background: rgba(255,255,255,.08); border-color: rgba(150,200,255,.25); color: #cdd8f5; }
+  .btn-mini:hover { background: rgba(143,199,255,.15); }
+  .btn-mini:disabled { opacity: .35; cursor: default; }
+  /* 模块卡片 */
+  .mod-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+  .mod-head .mname { flex: 1 1 140px; font-weight: bold; }
+  .mod-head .tsel { flex: 0 0 190px; }
+  .mod-head .tparam { flex: 0 0 90px; }
+  .mod-head .msel { flex: 0 0 130px; }
+  /* 台词卡片 */
+  .line-card { background: rgba(0,0,0,.25); border: 1px solid rgba(150,200,255,.18); border-radius: 10px; padding: 10px; margin-bottom: 8px; }
+  .line-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .line-no { width: 22px; height: 22px; flex-shrink: 0; border-radius: 50%; background: rgba(143,199,255,.2); border:1px solid rgba(143,199,255,.5); color:#8fc7ff; font-size: 12px; display:flex; align-items:center; justify-content:center; font-weight:bold; }
+  .line-head .speaker-sel { flex: 0 0 150px; }
+  .line-head .spacer { flex: 1; }
+  .line-sprites { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
+  .line-sprites select { padding: 5px 6px; font-size: 12px; }
+  .add-line { width: 100%; margin-top: 4px; border-style: dashed; background: rgba(143,199,255,.06); }
+  .quick-add { display: flex; gap: 6px; flex-wrap: wrap; }
+  .preview {
+    position: relative; height: 340px; border-radius: 12px; overflow: hidden;
+    background: linear-gradient(180deg, #0a0f2e, #05071a); border: 1px solid rgba(150,200,255,.25); margin-bottom: 12px;
+  }
+  .preview .slot { position: absolute; bottom: 9%; height: 46%; transition: all .4s ease; filter: drop-shadow(0 0 18px rgba(130,180,255,.5)); }
+  .preview .slot img { height: 100%; display: block; }
+  .preview .slot.L { left: 6%; }
+  .preview .slot.R { right: 6%; }
+  .preview .dlg { position: absolute; left: 8%; right: 8%; bottom: 4%; background: rgba(8,10,28,.9); border: 1px solid rgba(150,200,255,.4); border-radius: 12px; padding: 10px 14px; }
+  .preview .dlg .nm { font-size: 13px; color: #8fc7ff; font-weight: bold; margin-bottom: 3px; }
+  .preview .dlg .tx { font-size: 14px; line-height: 1.5; color: #fff; }
+  /* 旁白（字幕）样式 */
+  .preview.narrator .dlg { top: 16%; bottom: auto; background: transparent; border: none; text-align: center; padding: 0 8%; }
+  .preview.narrator .dlg .nm { display: none; }
+  .preview.narrator .dlg .tx { color: #cdd8f5; font-size: 15px; line-height: 1.8; text-shadow: 0 0 10px rgba(0,0,0,.9); }
+  .preview .cap { position: absolute; top: 10px; left: 12px; font-size: 12px; color: #8a93b8; z-index: 2; }
+  .preview .select-moment { position: absolute; top: 10px; right: 12px; width: 260px; z-index: 2; }
+  .link-box { background: rgba(0,0,0,.4); border: 1px dashed rgba(150,200,255,.4); border-radius: 8px; padding: 10px; font-size: 12px; color: #cdd8f5; word-break: break-all; margin-top: 6px; }
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: rgba(10,14,36,.95); border: 1px solid #8fc7ff; color: #fff; padding: 10px 22px; border-radius: 8px; font-size: 13px; z-index: 50; opacity: 0; transition: .3s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+  .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 60; align-items: center; justify-content: center; padding: 20px; }
+  .modal.show { display: flex; }
+  .modal-box { background: #0e1438; border: 1px solid rgba(150,200,255,.3); border-radius: 12px; padding: 18px; max-width: 720px; width: 100%; max-height: 82vh; display: flex; flex-direction: column; }
+  .modal-box h3 { margin: 0 0 10px; color: #8fc7ff; }
+  .modal-box pre { flex: 1; overflow: auto; background: rgba(0,0,0,.4); border-radius: 8px; padding: 12px; font-size: 12px; line-height: 1.5; color: #cdd8f5; white-space: pre-wrap; }
+  .modal-box .hint { font-size: 12px; color: #8a93b8; margin: 8px 0; line-height: 1.6; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+  code { background: rgba(0,0,0,.4); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎬 台词配置 · 爱的飞行员</h1>
+  <div class="sub">
+    剧情由若干<strong>台词模块</strong>组成，每个模块 = 名字 + 挂载标识 + 播放方式 + 一组连续台词（每句可选说话人 小爱 / 阿伟 / <strong>旁白</strong>，立绘直接在句上设置）。<br>
+    <strong>挂载全自动</strong>：主线位（开场独白 / 回忆 / 变故 / 现实 / 通关）在固定节点播放；<code>开战后N秒 / 击落第N架 / 血量降至N / Boss登场</code> 在战斗中自动挂载；自定义标识由关卡页面调用 <code>fireStoryMount('标识')</code> 主动挂载。<strong>未添加的主线模块 = 该段跳过</strong>。<br>
+    剧情统一保存在 Supabase <code>plane_story</code> 表（多设备同步，需登录后保存）；表未建或未登录时自动暂存浏览器缓存。保存后通过 <code>level1.html?story=组名</code> 触发。
+  </div>
+
+  <div class="toolbar">
+    <span class="cur-group">当前编辑：<span id="curGroupName">默认</span></span>
+    <button class="btn-primary" onclick="saveCurrent()">💾 保存本组</button>
+    <button class="btn-ghost" onclick="setActive()">⭐ 设为默认触发组</button>
+    <button class="btn-ghost" onclick="generateLink()">🔗 生成关卡触发链接</button>
+    <button class="btn-ghost" onclick="exportAll()">📤 导出全部组</button>
+    <button class="btn-warn" onclick="clearAll()">🗑️ 清除全部自定义</button>
+  </div>
+
+  <!-- 实时预览 -->
+  <div class="preview" id="preview">
+    <div class="cap">实时预览（选择任意一句台词）</div>
+    <select class="select-moment" id="previewMoment"></select>
+    <div class="slot L" id="prevL"><img id="prevLImg" src=""></div>
+    <div class="slot R" id="prevR"><img id="prevRImg" src=""></div>
+    <div class="dlg">
+      <div class="nm" id="prevName">—</div>
+      <div class="tx" id="prevText">选择一句台词以预览</div>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div class="sidebar">
+      <h3>📚 剧情组</h3>
+      <div id="groupList"></div>
+      <div class="group-actions">
+        <button class="btn-ghost" style="flex:1" onclick="newGroup()">+ 新建空白组</button>
+      </div>
+    </div>
+
+    <div class="main" id="linesPanel"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="modal" id="linkModal">
+  <div class="modal-box">
+    <h3>🔗 触发链接</h3>
+    <div class="hint">复制下方链接，在浏览器打开即可以该剧情组进入第 1 关。也可把链接放到任意页面作为入口。</div>
+    <div class="link-box" id="linkUrl"></div>
+    <div class="hint">💡 若要在关卡代码中硬绑定，在对应 <code>js/levels/levelN.js</code> 顶部加入：<code>window.LEVEL_STORY_GROUP = '组名';</code></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal('linkModal')">关闭</button>
+      <button class="btn-primary" onclick="copyLink()">复制链接</button>
+      <button class="btn-primary" onclick="openLink()">在新标签打开</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="exportModal">
+  <div class="modal-box">
+    <h3>📤 导出全部剧情组</h3>
+    <div class="hint">将下方 JSON 保存为备份。</div>
+    <pre id="exportCode"></pre>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal('exportModal')">关闭</button>
+      <button class="btn-primary" onclick="copyExport()">复制到剪贴板</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ========== 默认配置（与 engine.js 中 STORY_CONFIG_DEFAULT 保持一致） ========== */
+function L(speaker, text, lImg, rImg){
+  var ln = { speaker: speaker, text: text };
+  if(lImg) ln.L = lImg;
+  if(rImg) ln.R = rImg;
+  return ln;
+}
+function M(id, name, trigger, lines){ return { id: id, name: name, trigger: trigger, mode: 'pause', lines: lines }; }
+var DEFAULT_CONFIG = { modules: [
+  M('intro', '开场独白', 'flow:intro', [
+    L('小爱', '自那次事件以后，寻找阿伟的多少天，还是毫无进展。', '小爱-担心焦虑.png')
+  ]),
+  M('recall', '回忆·并肩巡航', 'flow:recall', [
+    L('小爱', '阿伟，你看，我们的航线和星星一样整齐。', '小爱-开心.png', '阿伟-温柔微笑.png'),
+    L('阿伟', '放轻松，小爱。飞行不用时刻紧绷，试着感受风，它会托住你的战机。'),
+    L('阿伟', '记住，轻轻拉动摇杆就能转向，按下发射键可以击碎漂浮的气流碎片。我们一起练习。')
+  ]),
+  M('incident', '变故', 'flow:incident', [
+    L('旁白', '教学刚刚完成，夜空深处突然亮起诡异的紫色光团……', '小爱-开心.png', '阿伟-温柔微笑.png'),
+    L('旁白', '一艘陌生的外星飞行器无声从云层里浮现，光束锁定了阿伟的战机。'),
+    L('阿伟', '小爱！快躲开！我不知道这是什么东西！', null, '阿伟-担心牵挂.png'),
+    L('小爱', '阿伟！！'),
+    L('旁白', '小爱拼命推动操纵杆想要冲过去，可一股能量屏障挡住了她。只能眼睁睁看着阿伟的战机被拖走……', '小爱-担心焦虑.png'),
+    L('旁白', '通讯频道里，阿伟的声音断断续续，最后彻底沉寂……'),
+    L('阿伟', '小爱……不要放弃……找到我……'),
+    L('旁白', '小爱：把阿伟还给我——！'),
+    L('小爱', '啊——！好烫……阿伟……我一定会……找到你的……')
+  ]),
+  M('reality', '现实启程', 'flow:reality', [
+    L('小爱', '刚才的一切，是多年前的训练空域。阿伟在这里被带走，信号就此消失。', '小爱-坚定认真.png'),
+    L('小爱', '这片空域残留着外星派出的巡逻残影敌机，我必须冲破它们，顺着残留的能量痕迹，出发去找他。')
+  ]),
+  M('ending', '通关剧情', 'flow:ending', [
+    L('小爱', '最后一架敌机残影被击毁。雷达捕捉到一丝微弱、遥远的能量信号——指向沙漠方向……', '小爱-坚定认真.png'),
+    L('小爱', '我找到一点线索了。阿伟，等着我，我一定会跨越所有天空，找到你。')
+  ])
+]};
+
+var SPEAKERS = ['小爱', '阿伟', '旁白'];
+var CHAR_IMAGES = [
+  '小爱-开心.png', '小爱-坚定认真.png', '小爱-感动流泪.png', '小爱-担心焦虑.png',
+  '阿伟-温柔微笑.png', '阿伟-坚定鼓励.png', '阿伟-感动含泪.png', '阿伟-担心牵挂.png'
+];
+/* 挂载标识（引擎全自动挂载；custom 由关卡页面 fireStoryMount('标识') 主动挂载） */
+var FLOW_PRESETS = [
+  { key:'intro',    name:'开场独白' },
+  { key:'recall',   name:'回忆·并肩巡航' },
+  { key:'incident', name:'变故' },
+  { key:'reality',  name:'现实启程' },
+  { key:'ending',   name:'通关剧情' }
+];
+var FLOW_DESC = {
+  'flow:intro':   '主线·开场独白位：开场独飞后自动播放，点完 → 变灰进入回忆。',
+  'flow:recall':  '主线·回忆位：双机回忆飞行后自动播放，点完 → 新手教学。',
+  'flow:incident':'主线·变故位：共 9 句与固定画面一一对应（前 7 句点击推进：紫光→飞船→警告→光束拖拽→屏障→沉寂→遗言；第 8 句开战怒吼自动播放；第 9 句坠机后点击进入现实），建议保持 9 句。',
+  'flow:reality': '主线·现实位：坠机闪白转场后自动播放，点完 → 正式开战。',
+  'flow:ending':  '主线·通关位：击败 Boss 后自动播放，点完 → 过关结算。'
+};
+var TRIGGER_TYPES = [
+  { v:'flow',   label:'主线·开场独白位', needs:'', fixed:'intro' },
+  { v:'flow',   label:'主线·回忆位',     needs:'', fixed:'recall' },
+  { v:'flow',   label:'主线·变故位',     needs:'', fixed:'incident' },
+  { v:'flow',   label:'主线·现实位',     needs:'', fixed:'reality' },
+  { v:'flow',   label:'主线·通关位',     needs:'', fixed:'ending' },
+  { v:'time',   label:'战斗·开战后N秒',  needs:'number' },
+  { v:'kill',   label:'战斗·击落第N架敌机', needs:'number' },
+  { v:'hp',     label:'战斗·血量降至N',  needs:'number' },
+  { v:'boss',   label:'战斗·Boss登场',   needs:'' },
+  { v:'custom', label:'自定义·页面主动挂载', needs:'text' }
+];
+var MODES = [ { v:'pause', label:'⏸ 暂停式过场' }, { v:'bubble', label:'💬 不暂停气泡' } ];
+
+var groups = {};
+var currentGroup = '默认';
+var config = deepCopy(DEFAULT_CONFIG);
+
+function deepCopy(o){ return JSON.parse(JSON.stringify(o)); }
+function newId(){ return 'm' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36); }
+
+/* ========== 挂载标识解析/序列化 ========== */
+function parseTrigger(t){
+  t = t || 'time:5';
+  if(t.indexOf('flow:') === 0) return { type:'flow', param:t.slice(5) };
+  if(t === 'boss') return { type:'boss', param:'' };
+  var ci = t.indexOf(':');
+  if(ci > 0 && ['time','kill','hp'].indexOf(t.slice(0, ci)) >= 0) return { type:t.slice(0, ci), param:t.slice(ci + 1) };
+  return { type:'custom', param:t };
+}
+function buildTrigger(type, param){
+  if(type === 'flow') return 'flow:' + (param || 'intro');
+  if(type === 'boss') return 'boss';
+  if(type === 'custom') return (param || '自定义标识').trim();
+  return type + ':' + (parseInt(param, 10) || 1);
+}
+function triggerLabel(t){
+  var p = parseTrigger(t);
+  if(p.type === 'flow') return ({ intro:'主线·开场独白位', recall:'主线·回忆位', incident:'主线·变故位', reality:'主线·现实位', ending:'主线·通关位' })[p.param] || t;
+  if(p.type === 'boss') return '战斗·Boss登场';
+  if(p.type === 'time') return '战斗·开战后 ' + p.param + ' 秒';
+  if(p.type === 'kill') return '战斗·击落第 ' + p.param + ' 架敌机';
+  if(p.type === 'hp')   return '战斗·血量降至 ' + p.param;
+  return '自定义挂载「' + p.param + '」';
+}
+function modeLabel(mo){ return mo === 'bubble' ? '💬 不暂停气泡' : '⏸ 暂停式过场'; }
+
+/* ========== 旧数据迁移（与 engine.js migrateStoryGroup 同步） ========== */
+function migrateStoryGroup(g){
+  var d = g.dialogs, cut = g.cutscene || d || {}, sub = g.subtitles || {}, sp = g.sprites || {};
+  g.lines = g.lines || {};
+  if(d){
+    if(!g.lines.intro && d.intro) g.lines.intro = [d.intro];
+    if(!g.lines.recall){
+      var rc = [d.recall_start, d.recall_step1, d.recall_step2].filter(Boolean);
+      if(rc.length) g.lines.recall = rc;
+    }
+    if(!g.lines.reality){
+      var rv = [d.reality_explain, d.reality_vow].filter(Boolean);
+      if(rv.length) g.lines.reality = rv;
+    }
+    if(!g.lines.ending){
+      var eh = [d.ending_signal, d.ending_hope].filter(Boolean);
+      if(eh.length) g.lines.ending = eh;
+    }
+  }
+  var hasLegacyIncident = sub.incident_glow || sub.incident_alien || sub.incident_shield || sub.incident_silence
+    || sub.shipfight_roar || cut.incident_warning || cut.incident_cry || cut.incident_lastword || cut.crash_pain
+    || sp.incident_start || sp.recall_start;
+  if(hasLegacyIncident && (!Array.isArray(g.lines.incident) || !g.lines.incident.length)){
+    var startSP = sp.incident_start || sp.recall_start || {};
+    function spImg(key, side){ return sp[key] && sp[key][side] ? sp[key][side].img : null; }
+    function cutLine(key){
+      var c = cut[key];
+      return c ? L(c.speaker || '', c.text || '') : null;
+    }
+    function subLine(text, lImg, rImg){ return text ? L('旁白', text, lImg, rImg) : null; }
+    g.lines.incident = [
+      subLine(sub.incident_glow, startSP.L && startSP.L.img, startSP.R && startSP.R.img),
+      subLine(sub.incident_alien),
+      (function(){ var ln = cutLine('incident_warning'); if(ln){ ln.R = spImg('incident_warning','R') || undefined; } return ln; })(),
+      cutLine('incident_cry'),
+      subLine(sub.incident_shield, spImg('incident_cry','L')),
+      subLine(sub.incident_silence),
+      cutLine('incident_lastword'),
+      subLine(sub.shipfight_roar),
+      cutLine('crash_pain')
+    ].filter(Boolean);
+  }
+  var phaseSprites = { intro: sp.intro, recall: sp.recall || sp.recall_start, reality: sp.reality, ending: sp.ending };
+  Object.keys(phaseSprites).forEach(function(ph){
+    var ps = phaseSprites[ph], first = g.lines[ph] && g.lines[ph][0];
+    if(!ps || !first) return;
+    ['L','R'].forEach(function(side){
+      if(first[side] === undefined && ps[side] && ps[side].img) first[side] = ps[side].img;
+    });
+  });
+  // lines → 模块列表（v3）；已有 modules 则补全字段
+  if(Array.isArray(g.modules)){
+    g.modules.forEach(function(m, i){
+      m.id = m.id || newId();
+      m.name = m.name || '未命名模块';
+      m.trigger = m.trigger || 'time:5';
+      m.mode = m.mode === 'bubble' ? 'bubble' : 'pause';
+      if(!Array.isArray(m.lines)) m.lines = [];
+    });
+  }else{
+    var linesObj = g.lines || {};
+    g.modules = [];
+    [['intro','开场独白'],['recall','回忆·并肩巡航'],['incident','变故'],['reality','现实启程'],['ending','通关剧情']].forEach(function(p){
+      if(Array.isArray(linesObj[p[0]])) g.modules.push({ id: p[0], name: p[1], trigger: 'flow:' + p[0], mode: 'pause', lines: linesObj[p[0]] });
+    });
+  }
+  delete g.lines;
+  delete g.dialogs; delete g.cutscene; delete g.subtitles; delete g.sprites;
+}
+function normalize(g){
+  if(!Array.isArray(g.modules)) g.modules = [];
+}
+
+/* ========== 剧情组持久化：Supabase plane_story 表（id=1 单行 jsonb）+ localStorage 兜底 ========== */
+var SB_URL = "https://fccsjbvkfllapyoozuvf.supabase.co";
+var SB_KEY = "sb_publishable_A3W8wYMbB-6pABB0-e0vkA_E-VMsJ4n";   // 与 js/config.js、score.js 一致（公开读）
+var sbStory = (window.supabase && window.supabase.createClient) ? window.supabase.createClient(SB_URL, SB_KEY) : null;
+var dbReady = false;       // plane_story 表可读（已在 Supabase 建表）
+var fileActive = '默认';   // 当前激活剧情组（DB 与本地缓存保持同步）
+
+function readLocalGroups(){
+  var g = {};
+  try{
+    var raw = localStorage.getItem('plane_story_groups');
+    if(raw){ g = JSON.parse(raw) || {}; }
+    var old = localStorage.getItem('plane_story_config');
+    if(old && !g['自定义']){ g['自定义'] = JSON.parse(old); }
+  }catch(e){}
+  return g;
+}
+function finishLoadGroups(done){
+  if(!groups['默认']) groups['默认'] = deepCopy(DEFAULT_CONFIG);
+  Object.keys(groups).forEach(function(n){ migrateStoryGroup(groups[n]); normalize(groups[n]); });
+  done && done();
+}
+function loadGroups(done){
+  // 优先读 Supabase（无需登录即可读）；表未建/网络失败时回退 localStorage
+  if(sbStory){
+    sbStory.from('plane_story').select('data').eq('id', 1).maybeSingle().then(function(res){
+      if(res.error){ console.warn('[story-config] 读取 Supabase plane_story 失败:', res.error.message); }
+      else { dbReady = true; }
+      var d = res.data && res.data.data;
+      if(d && d.groups && Object.keys(d.groups).length){
+        fileActive = (d.active && d.groups[d.active]) ? d.active : '默认';
+        groups = d.groups;
+        // 首次升级：把旧 localStorage 里的组并入（仅补充缺失键）
+        var local = readLocalGroups();
+        Object.keys(local).forEach(function(n){ if(!groups[n]) groups[n] = local[n]; });
+      }else{
+        fileActive = localStorage.getItem('plane_story_active') || '默认';
+        groups = readLocalGroups();
+      }
+      finishLoadGroups(done);
+    });
+  }else{
+    fileActive = localStorage.getItem('plane_story_active') || '默认';
+    groups = readLocalGroups();
+    finishLoadGroups(done);
+  }
+}
+function saveGroups(silent){
+  // 始终镜像 localStorage 兜底；表可用时写入 Supabase（需登录，符合项目「认证写」策略）
+  localStorage.setItem('plane_story_groups', JSON.stringify(groups));
+  localStorage.setItem('plane_story_active', fileActive);
+  if(sbStory && dbReady){
+    sbStory.from('plane_story').upsert({
+      id: 1,
+      data: { active: fileActive, groups: groups },
+      updated_at: new Date().toISOString()
+    }).then(function(res){
+      if(res.error){
+        console.warn('[story-config] 写入 Supabase 失败:', res.error.message);
+        toast('保存到 Supabase 失败（' + res.error.message + '），已暂存浏览器缓存');
+      }else if(!silent){
+        toast('已保存到 Supabase ✅（多设备同步）');
+      }
+    });
+  }else if(!silent){
+    toast('已保存到浏览器缓存（写入 Supabase 需先执行 supabase_story_setup.sql 并登录）');
+  }
+}
+function getActiveGroup(){ return fileActive; }
+function setActiveGroup(name){ fileActive = name; saveGroups(true); }
+
+/* ========== 组管理 ========== */
+function renderGroupList(){
+  var active = getActiveGroup();
+  var html = '';
+  Object.keys(groups).forEach(function(name){
+    html += '<div class="group-item ' + (name===currentGroup?'active':'') + ' ' + (name===active?'active-group':'') + '" onclick="selectGroup(\'' + escJs(name) + '\')">'
+      + '<span class="dot"></span><span class="gname" title="' + esc(name) + '">' + esc(name) + '</span>'
+      + (name !== '默认' ? '<button class="btn-mini" onclick="event.stopPropagation();renameGroup(\'' + escJs(name) + '\')">✎</button>'
+                          + '<button class="btn-mini" onclick="event.stopPropagation();deleteGroup(\'' + escJs(name) + '\')">✕</button>' : '')
+      + '</div>';
+  });
+  document.getElementById('groupList').innerHTML = html;
+}
+function selectGroup(name){
+  saveCurrent(true);
+  currentGroup = name;
+  config = deepCopy(groups[name] || DEFAULT_CONFIG);
+  document.getElementById('curGroupName').textContent = name;
+  renderModules(); renderGroupList(); fillMomentSelect(); updatePreview();
+}
+function newGroup(){
+  var name = prompt('请输入新剧情组名称：', '新剧情组' + (Object.keys(groups).length));
+  if(!name) return;
+  name = name.trim();
+  if(!name || groups[name]){ alert('名称为空或已存在'); return; }
+  groups[name] = { modules: [] };   // 空白组：模块从零添加，未添加的主线段落游戏自动跳过
+  saveGroups(); selectGroup(name);
+  toast('已新建空白剧情组「' + name + '」，请在下方添加台词模块');
+}
+function renameGroup(oldName){
+  var name = prompt('重命名剧情组：', oldName);
+  if(!name) return;
+  name = name.trim();
+  if(!name || name === oldName) return;
+  if(groups[name]){ alert('名称已存在'); return; }
+  groups[name] = groups[oldName]; delete groups[oldName];
+  if(getActiveGroup() === oldName) setActiveGroup(name);
+  if(currentGroup === oldName) currentGroup = name;
+  saveGroups();
+  document.getElementById('curGroupName').textContent = currentGroup;
+  renderGroupList(); toast('已重命名为「' + name + '」');
+}
+function deleteGroup(name){
+  if(name === '默认'){ alert('「默认」组不可删除'); return; }
+  if(!confirm('确认删除剧情组「' + name + '」？')) return;
+  delete groups[name];
+  if(getActiveGroup() === name) setActiveGroup('默认');
+  if(currentGroup === name) selectGroup('默认'); else renderGroupList();
+  saveGroups(); toast('已删除「' + name + '」');
+}
+function setActive(){ setActiveGroup(currentGroup); renderGroupList(); toast('已将「' + currentGroup + '」设为默认触发组'); }
+function saveCurrent(silent){
+  groups[currentGroup] = deepCopy(config);
+  saveGroups(silent);   // 保存目标提示（Supabase / 浏览器缓存）统一由 saveGroups 给出
+}
+function clearAll(){
+  if(!confirm('确认清除全部自定义剧情组？将恢复为仅「默认」组。')) return;
+  groups = { '默认': deepCopy(DEFAULT_CONFIG) };
+  setActiveGroup('默认'); currentGroup = '默认'; saveGroups();
+  config = deepCopy(DEFAULT_CONFIG);
+  document.getElementById('curGroupName').textContent = '默认';
+  renderModules(); renderGroupList(); fillMomentSelect(); updatePreview();
+  toast('已清除全部自定义组');
+}
+
+/* ========== 模块编辑 ========== */
+function esc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escJs(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+
+function spriteLineValue(v){ return (v === undefined || v === null) ? '__keep__' : (v === '' ? '__hide__' : v); }
+function spriteSelectHtml(side, cur, mi, i){
+  var val = spriteLineValue(cur);
+  return '<select data-side="'+side+'" data-mod="'+mi+'" data-i="'+i+'">'
+    + '<option value="__keep__" '+(val==='__keep__'?'selected':'')+'>立绘：保持上一句</option>'
+    + '<option value="__hide__" '+(val==='__hide__'?'selected':'')+'>立绘：不显示</option>'
+    + CHAR_IMAGES.map(function(img){ return '<option value="'+img+'" '+(val===img?'selected':'')+'>'+img+'</option>'; }).join('')
+    + '</select>';
+}
+function speakerSelectHtml(mi, i, cur){
+  return '<select class="speaker-sel" data-mod="'+mi+'" data-i="'+i+'" data-prop="speaker">'
+    + SPEAKERS.map(function(s){ return '<option value="'+s+'" '+(cur===s?'selected':'')+'>'+(s==='旁白'?'📝 旁白':'🎙 '+s)+'</option>'; }).join('')
+    + '</select>';
+}
+function triggerTypeValue(m){
+  var p = parseTrigger(m.trigger);
+  if(p.type === 'custom') return 'custom:' + p.param;
+  return p.type === 'flow' ? 'flow:' + p.param : p.type;
+}
+function triggerSelectHtml(mi, m){
+  var cur = triggerTypeValue(m);
+  var opts = '';
+  TRIGGER_TYPES.forEach(function(t){
+    var v = t.fixed ? ('flow:' + t.fixed) : t.v;
+    opts += '<option value="' + v + '" ' + (cur === v ? 'selected' : '') + '>' + t.label + '</option>';
+  });
+  return '<select class="tsel" data-mod="' + mi + '" data-role="trigtype">' + opts + '</select>';
+}
+function flowTaken(flowKey, exceptIdx){
+  return config.modules.some(function(m, i){ return i !== exceptIdx && m.trigger === 'flow:' + flowKey; });
+}
+function renderModules(){
+  var box = document.getElementById('linesPanel');
+  var html = '';
+  // 添加模块区
+  html += '<div class="card"><h3>➕ 添加台词模块</h3>'
+    + '<div class="desc">主线位模块在游戏固定节点自动播放；战斗模块按挂载标识在战斗中自动触发；自定义标识需关卡页面调用 <code>fireStoryMount(\'标识\')</code> 主动挂载。每个主线位只能有一个模块。</div>'
+    + '<div class="quick-add">';
+  FLOW_PRESETS.forEach(function(p){
+    var taken = flowTaken(p.key, -1);
+    html += '<button class="btn-ghost btn-add-flow" data-flow="' + p.key + '" ' + (taken ? 'disabled' : '') + '>＋ ' + p.name + '</button>';
+  });
+  html += '<button class="btn-primary btn-add-free">＋ 自由添加模块</button></div></div>';
+  // 模块列表
+  config.modules.forEach(function(m, mi){
+    var arr = m.lines || [];
+    var p = parseTrigger(m.trigger);
+    var desc = FLOW_DESC[m.trigger] || ('触发：' + triggerLabel(m.trigger) + ' · ' + modeLabel(m.mode) + '。');
+    var paramHtml = '';
+    if(p.type === 'time' || p.type === 'kill' || p.type === 'hp'){
+      paramHtml = '<input type="text" class="tparam" data-mod="' + mi + '" data-role="trigparam" value="' + esc(p.param) + '" placeholder="N">';
+    }else if(p.type === 'custom'){
+      paramHtml = '<input type="text" class="tparam" data-mod="' + mi + '" data-role="trigparam" value="' + esc(p.param) + '" placeholder="标识">';
+    }
+    html += '<div class="card">'
+      + '<div class="mod-head">'
+      +   '<span class="line-no">M' + (mi + 1) + '</span>'
+      +   '<input type="text" class="mname" data-mod="' + mi + '" data-role="name" value="' + esc(m.name) + '" placeholder="模块名（如：隐藏对话）">'
+      +   triggerSelectHtml(mi, m)
+      +   paramHtml
+      +   '<select class="msel" data-mod="' + mi + '" data-role="mode">'
+      +     MODES.map(function(mo){ return '<option value="' + mo.v + '" ' + (m.mode === mo.v ? 'selected' : '') + '>' + mo.label + '</option>'; }).join('')
+      +   '</select>'
+      +   '<button class="btn-mini" onclick="moveModule(' + mi + ',-1)" ' + (mi === 0 ? 'disabled' : '') + '>↑</button>'
+      +   '<button class="btn-mini" onclick="moveModule(' + mi + ',1)" ' + (mi === config.modules.length - 1 ? 'disabled' : '') + '>↓</button>'
+      +   '<button class="btn-mini" onclick="removeModule(' + mi + ')">✕ 移除</button>'
+      + '</div>'
+      + '<div class="desc">' + esc(desc) + '</div>';
+    arr.forEach(function(ln, i){
+      html += '<div class="line-card">'
+        + '<div class="line-head">'
+        +   '<span class="line-no">' + (i + 1) + '</span>'
+        +   speakerSelectHtml(mi, i, ln.speaker || '小爱')
+        +   '<span class="spacer"></span>'
+        +   '<button class="btn-mini" onclick="moveLine(' + mi + ',' + i + ',-1)" ' + (i === 0 ? 'disabled' : '') + '>↑</button>'
+        +   '<button class="btn-mini" onclick="moveLine(' + mi + ',' + i + ',1)" ' + (i === arr.length - 1 ? 'disabled' : '') + '>↓</button>'
+        +   '<button class="btn-mini" onclick="removeLine(' + mi + ',' + i + ')">✕</button>'
+        + '</div>'
+        + '<div class="field"><label>台词文本</label><textarea data-mod="' + mi + '" data-i="' + i + '" data-prop="text">' + esc(ln.text || '') + '</textarea></div>'
+        + '<div class="line-sprites">'
+        +   '<div class="field"><label>◀ 左侧立绘（本句）</label>' + spriteSelectHtml('L', ln.L, mi, i) + '</div>'
+        +   '<div class="field"><label>右侧立绘（本句） ▶</label>' + spriteSelectHtml('R', ln.R, mi, i) + '</div>'
+        + '</div></div>';
+    });
+    html += '<button class="btn-ghost add-line" onclick="addLine(' + mi + ')">＋ 添加一句</button></div>';
+  });
+  if(!config.modules.length){
+    html += '<div class="card"><div class="desc">本组暂无模块：空组进入游戏将跳过全部剧情对白（保留转场），直接按流程战斗。请用上方按钮添加模块。</div></div>';
+  }
+  box.innerHTML = html;
+  bindModuleEvents(box);
+}
+function bindModuleEvents(box){
+  // 快捷添加
+  box.querySelectorAll('.btn-add-flow').forEach(function(el){
+    el.addEventListener('click', function(){
+      addModule({ name: (FLOW_PRESETS.filter(function(p){ return p.key === el.dataset.flow; })[0] || {}).name || '新模块', trigger: 'flow:' + el.dataset.flow });
+    });
+  });
+  box.querySelectorAll('.btn-add-free').forEach(function(el){
+    el.addEventListener('click', function(){ addModule({ name: '隐藏对话', trigger: 'kill:5' }); });
+  });
+  // 模块名
+  box.querySelectorAll('input[data-role="name"]').forEach(function(el){
+    el.addEventListener('input', function(){
+      config.modules[+el.dataset.mod].name = el.value;
+    });
+  });
+  // 挂载标识类型
+  box.querySelectorAll('select[data-role="trigtype"]').forEach(function(el){
+    el.addEventListener('change', function(){
+      var mi = +el.dataset.mod, m = config.modules[mi];
+      var v = el.value;
+      var nt;
+      if(v.indexOf('flow:') === 0){
+        if(flowTaken(v.slice(5), mi)){ toast('该主线位已有模块，每个主线位只能挂一个模块'); renderModules(); return; }
+        nt = v;
+      }else if(v === 'boss'){ nt = 'boss'; }
+      else if(v === 'custom'){ nt = 'custom标识'; }
+      else { nt = v + ':1'; }
+      m.trigger = nt;
+      renderModules(); fillMomentSelect(); updatePreview();
+    });
+  });
+  // 挂载标识参数
+  box.querySelectorAll('input[data-role="trigparam"]').forEach(function(el){
+    el.addEventListener('change', function(){
+      var m = config.modules[+el.dataset.mod];
+      var p = parseTrigger(m.trigger);
+      m.trigger = buildTrigger(p.type === 'custom' ? 'custom' : p.type, el.value);
+      fillMomentSelect();
+    });
+  });
+  // 播放方式
+  box.querySelectorAll('select[data-role="mode"]').forEach(function(el){
+    el.addEventListener('change', function(){
+      config.modules[+el.dataset.mod].mode = el.value;
+    });
+  });
+  // 台词文本
+  box.querySelectorAll('textarea').forEach(function(el){
+    el.addEventListener('input', function(){
+      config.modules[+el.dataset.mod].lines[+el.dataset.i][el.dataset.prop] = el.value;
+      updatePreview();
+    });
+  });
+  // 说话人
+  box.querySelectorAll('.line-head select').forEach(function(el){
+    el.addEventListener('change', function(){
+      config.modules[+el.dataset.mod].lines[+el.dataset.i].speaker = el.value;
+      fillMomentSelect(); updatePreview();
+    });
+  });
+  // 立绘
+  box.querySelectorAll('.line-sprites select').forEach(function(el){
+    el.addEventListener('change', function(){
+      var ln = config.modules[+el.dataset.mod].lines[+el.dataset.i];
+      var v = el.value, side = el.dataset.side;
+      if(v === '__keep__') delete ln[side];
+      else if(v === '__hide__') ln[side] = '';
+      else ln[side] = v;
+      updatePreview();
+    });
+  });
+}
+function addModule(opt){
+  config.modules.push({
+    id: newId(),
+    name: (opt && opt.name) || '新模块',
+    trigger: (opt && opt.trigger) || 'time:5',
+    mode: (opt && opt.mode) || 'pause',
+    lines: (opt && opt.lines) || [{ speaker: '小爱', text: '' }]
+  });
+  renderModules(); fillMomentSelect(); updatePreview();
+}
+function removeModule(mi){
+  if(!confirm('移除模块「' + (config.modules[mi].name || '') + '」？')) return;
+  config.modules.splice(mi, 1);
+  renderModules(); fillMomentSelect(); updatePreview();
+}
+function moveModule(mi, dir){
+  var j = mi + dir;
+  if(j < 0 || j >= config.modules.length) return;
+  var t = config.modules[mi]; config.modules[mi] = config.modules[j]; config.modules[j] = t;
+  renderModules(); fillMomentSelect(); updatePreview();
+}
+function addLine(mi){
+  config.modules[mi].lines.push({ speaker: '小爱', text: '新台词' });
+  renderModules(); fillMomentSelect(); updatePreview();
+}
+function removeLine(mi, i){
+  config.modules[mi].lines.splice(i, 1);
+  renderModules(); fillMomentSelect(); updatePreview();
+}
+function moveLine(mi, i, dir){
+  var arr = config.modules[mi].lines, j = i + dir;
+  if(j < 0 || j >= arr.length) return;
+  var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+  renderModules(); fillMomentSelect(); updatePreview();
+}
+
+/* ========== 预览（按句，旁白=字幕样式；每个模块立绘独立从头叠加） ========== */
+function fillMomentSelect(){
+  var sel = document.getElementById('previewMoment');
+  var cur = sel.value;
+  var opts = [];
+  config.modules.forEach(function(m, mi){
+    (m.lines || []).forEach(function(ln, i){
+      opts.push({ v: mi + ':' + i, t: (m.name || '模块') + ' · 第' + (i + 1) + '句 · ' + (ln.speaker || '') });
+    });
+  });
+  sel.innerHTML = opts.map(function(o){ return '<option value="' + o.v + '">' + esc(o.t) + '</option>'; }).join('');
+  if(cur && opts.some(function(o){ return o.v === cur; })) sel.value = cur;
+  if(!sel.value && opts.length) sel.value = opts[0].v;
+}
+function updatePreview(){
+  var key = document.getElementById('previewMoment').value || '';
+  var parts = key.split(':');
+  var mi = +parts[0], idx = +parts[1];
+  var mod = config.modules[mi];
+  var arr = (mod && mod.lines) || [];
+  var ln = arr[idx];
+  var isNarrator = ln && (ln.speaker === '旁白');
+  document.getElementById('preview').classList.toggle('narrator', !!isNarrator);
+  document.getElementById('prevName').textContent = ln ? (ln.speaker || '') : '—';
+  document.getElementById('prevText').textContent = ln ? (ln.text || '') : '（无台词）';
+  // 模块内从无立绘开始，逐句叠加到当前句（与游戏内播放规则一致）
+  var state = { L: null, R: null };
+  for(var i = 0; i <= idx; i++){
+    var l = arr[i];
+    if(!l) continue;
+    ['L','R'].forEach(function(side){
+      var v = l[side];
+      if(v === undefined || v === null) return;
+      if(v === ''){ state[side] = null; }
+      else { state[side] = { img: v }; }
+    });
+  }
+  ['L','R'].forEach(function(side){
+    var sp = state[side];
+    var slot = document.getElementById('prev' + side);
+    var img = document.getElementById('prev' + side + 'Img');
+    if(sp && sp.img){
+      img.src = 'image/Role/' + sp.img;
+      slot.style.display = 'block';
+      slot.style.bottom = '9%';
+      slot.style.height = '46%';
+      slot.style.opacity = '1';
+    }else{ slot.style.display = 'none'; }
+  });
+}
+
+/* ========== 链接 & 导出 ========== */
+function generateLink(){
+  var url = location.origin + location.pathname.replace(/story-config\.html$/, '') + 'level1.html?story=' + encodeURIComponent(currentGroup);
+  document.getElementById('linkUrl').textContent = url;
+  document.getElementById('linkModal').classList.add('show');
+}
+function copyLink(){
+  navigator.clipboard.writeText(document.getElementById('linkUrl').textContent)
+    .then(function(){ toast('链接已复制'); }, function(){ toast('复制失败，请手动复制'); });
+}
+function openLink(){ window.open(document.getElementById('linkUrl').textContent, '_blank'); }
+function exportAll(){
+  document.getElementById('exportCode').textContent = JSON.stringify(groups, null, 2);
+  document.getElementById('exportModal').classList.add('show');
+}
+function copyExport(){ navigator.clipboard.writeText(document.getElementById('exportCode').textContent).then(function(){ toast('已复制到剪贴板'); }); }
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+
+/* ========== Toast ========== */
+var toastTimer = null;
+function toast(msg){
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 2200);
+}
+
+/* ========== 初始化 ========== */
+var gm = /[?&]group=([^&]+)/.exec(location.search);
+loadGroups(function(){
+  if(gm){ try { var gname = decodeURIComponent(gm[1]); if(groups[gname]) currentGroup = gname; } catch(e){} }
+  else currentGroup = getActiveGroup();
+  if(!groups[currentGroup]) currentGroup = '默认';
+  config = deepCopy(groups[currentGroup]);
+  document.getElementById('curGroupName').textContent = currentGroup;
+  renderModules();
+  renderGroupList();
+  fillMomentSelect();
+  updatePreview();
+  document.getElementById('previewMoment').addEventListener('change', updatePreview);
+});
+</script>
+</body>
+</html>

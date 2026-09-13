@@ -85,8 +85,8 @@
 
             // 站内通知：每局都写入 notifications 表（对方铃铛实时收到）
             var body = beatPartner
-                ? ("✈️ 飞机大战：" + score + " 分，超越 TA 的最高纪录 " + partnerBest + "！")
-                : ("✈️ 飞机大战得分：" + score);
+                ? ("✈️ 爱的飞行员：" + score + " 分，超越 TA 的最高纪录 " + partnerBest + "！")
+                : ("✈️ 爱的飞行员得分：" + score);
             var boyEmail = (cfg.boyEmail || "").toLowerCase().trim();
             var girlEmail = (cfg.girlEmail || "").toLowerCase().trim();
             var toEmail = "", fromName = cfg.boyName;

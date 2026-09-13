@@ -309,6 +309,76 @@ async function loadPlaneLeaderboard() { return loadBoard("plane"); }
 // 飞机大战已改为直接跳转 plane-master 独立页面，
 // 分数入库 + 通知逻辑移至 plane-master/js/score.js；本页仅保留排行榜展示。
 
+// ===== 更新游戏：清除 Service Worker 缓存的游戏资源并重新加载最新版本 =====
+let _gameToastEl = null, _gameToastTimer = null;
+// 轻量浮动提示（自包含内联样式，不依赖外部 CSS）
+function _gameToast(msg) {
+    if (!_gameToastEl) {
+        _gameToastEl = document.createElement("div");
+        _gameToastEl.style.cssText = "position:fixed;left:50%;bottom:40px;transform:translateX(-50%) translateY(20px);z-index:9999;padding:12px 24px;border-radius:999px;background:rgba(0,0,0,0.82);color:#fff;font-size:15px;box-shadow:0 6px 24px rgba(0,0,0,0.25);opacity:0;transition:opacity .25s ease,transform .25s ease;pointer-events:none;max-width:86vw;text-align:center;";
+        document.body.appendChild(_gameToastEl);
+    }
+    _gameToastEl.textContent = msg;
+    requestAnimationFrame(() => {
+        _gameToastEl.style.opacity = "1";
+        _gameToastEl.style.transform = "translateX(-50%) translateY(0)";
+    });
+    if (_gameToastTimer) clearTimeout(_gameToastTimer);
+    _gameToastTimer = setTimeout(() => {
+        _gameToastEl.style.opacity = "0";
+        _gameToastEl.style.transform = "translateX(-50%) translateY(20px)";
+    }, 2400);
+}
+
+async function refreshGameCache() {
+    const btn = document.getElementById("gameCacheRefreshBtn");
+    const setBtn = (loading) => {
+        if (!btn) return;
+        btn.disabled = loading;
+        btn.style.opacity = loading ? "0.6" : "";
+        btn.innerHTML = loading
+            ? '<i class="fa fa-spinner fa-spin mr-1"></i>更新中...'
+            : '<i class="fa fa-refresh mr-1"></i>更新游戏';
+    };
+    setBtn(true);
+    try {
+        // 1. 清除 SW Cache Storage 中游戏目录的资源（stale-while-revalidate 留下的旧副本）
+        let removed = 0;
+        const GAME_DIRS = /(Jump-master|plane-master|GameHub-main|pokemon-phaser-master)\//i;
+        if (window.caches) {
+            const names = await caches.keys();
+            for (const name of names) {
+                const cache = await caches.open(name);
+                const keys = await cache.keys();
+                for (const req of keys) {
+                    try {
+                        if (GAME_DIRS.test(new URL(req.url).pathname)) {
+                            await cache.delete(req);
+                            removed++;
+                        }
+                    } catch (_) {}
+                }
+            }
+        }
+        // 2. 触发 SW 检查更新（sw.js 若有变动则拉取最新并激活）
+        if (navigator.serviceWorker) {
+            const reg = await navigator.serviceWorker.getRegistration();
+            if (reg) await reg.update();
+        }
+        // 3. 破浏览器 HTTP 缓存：已打开的跳一跳 iframe 带时间戳重载
+        const frame = document.getElementById("jumpFrame");
+        if (frame && frame.src && frame.src.indexOf("about:blank") === -1) {
+            frame.src = "Jump-master/index.html?v=" + Date.now();
+        }
+        _gameToast(removed > 0 ? `✅ 已清除 ${removed} 项游戏缓存，正在加载最新版本` : "✅ 已检查更新，游戏为最新版本");
+    } catch (e) {
+        console.warn("[Game] 更新游戏缓存失败:", e);
+        _gameToast("⚠️ 更新失败，请重试或手动刷新页面");
+    } finally {
+        setBtn(false);
+    }
+}
+
 window.initJumpGame = initJumpGame;
 window.jumpTogglePlay = jumpTogglePlay;
 window.jumpToggleFullscreen = jumpToggleFullscreen;
@@ -318,6 +388,7 @@ window.switchBoardTab = switchBoardTab;
 window.refreshCurrentBoard = refreshCurrentBoard;
 window.switchGameTab = switchGameTab;
 window.toggleLiarPanel = toggleLiarPanel;
+window.refreshGameCache = refreshGameCache;
 
 // 初始化 Tab 样式
 switchBoardTab("jump");

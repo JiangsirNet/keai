@@ -3,86 +3,141 @@
 <head>
     <meta http-equiv="content" content="text/html" charset="utf-8"/>
     <meta name="viewport" content="initial-scale=1.0,maximum-scale=1,user-scalable=no" />
-    <title>小灰灰战机</title>
-    <link rel="stylesheet" type="text/css" href="css/main.css"/>
-    <!-- 分数入库依赖：Supabase（必需）+ EmailJS（超越对方纪录时发邮件，可选） -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+    <title>爱的飞行员 · 关卡选择</title>
+    <link rel="stylesheet" type="text/css" href="css/main.css?v=16"/>
+    <style>
+        .level-select-wrap{ max-width: 880px; margin: 0 auto; padding: 28px 18px 60px; color: #e8ecff; }
+        .level-select-wrap h1{ text-align: center; font-size: 26px; color: #8fc7ff; text-shadow: 0 0 22px rgba(143,199,255,.55); margin: 6px 0 4px; }
+        .level-select-wrap .sub{ text-align:center; color:#8a93b8; font-size:13px; margin-bottom: 18px; }
+        .level-topbar{ display:flex; justify-content:space-between; align-items:center; margin-bottom: 18px; flex-wrap:wrap; gap:10px; }
+        .highscore-box{ background: rgba(255,255,255,.06); border:1px solid rgba(150,200,255,.2); border-radius:10px; padding:8px 14px; font-size:13px; }
+        .highscore-box .hs{ color:#ffe08a; font-weight:bold; }
+        .back-btn{ background: rgba(255,255,255,.08); border:1px solid rgba(150,200,255,.3); color:#cdd8f5; padding:7px 14px; border-radius:8px; cursor:pointer; font-size:13px; }
+        .back-btn:hover{ background: rgba(143,199,255,.15); }
+        .level-grid{ display:grid; grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); gap: 14px; }
+        .level-card{
+            background: linear-gradient(180deg, rgba(30,40,80,.7), rgba(12,16,42,.85));
+            border:1px solid rgba(150,200,255,.22); border-radius: 14px; padding: 18px 14px;
+            cursor:pointer; text-align:center; transition: .2s; position:relative; overflow:hidden;
+        }
+        .level-card:hover{ transform: translateY(-3px); border-color:#8fc7ff; box-shadow: 0 8px 24px rgba(80,130,255,.25); }
+        .level-card .num{ font-size: 30px; font-weight:bold; color:#8fc7ff; line-height:1; }
+        .level-card .nm{ font-size: 15px; margin: 8px 0 4px; color:#fff; }
+        .level-card .meta{ font-size: 11px; color:#8a93b8; line-height:1.6; }
+        .level-card .badge{ position:absolute; top:8px; right:8px; font-size:10px; background: rgba(255,180,60,.2); color:#ffd28a; border:1px solid rgba(255,180,60,.4); border-radius:6px; padding:2px 6px; }
+        .action-row{ text-align:center; margin-top: 22px; }
+        .action-row button{ margin: 0 6px; }
+        .story-pick{ display:flex; align-items:center; gap:10px; margin-bottom: 16px; flex-wrap:wrap; }
+        .story-pick label{ font-size:13px; color:#cdd8f5; }
+        .story-pick select{ background: rgba(0,0,0,.35); border:1px solid rgba(150,200,255,.3); color:#fff; padding:7px 10px; border-radius:8px; font-size:13px; min-width:140px; }
+        .story-pick .pick-hint{ font-size:12px; color:#8a93b8; }
+    </style>
 </head>
 <body>
 <audio src="music/bg.mp3" loop="true" autoplay="autoplay"></audio>
-<div id="contentdiv">
-    <div id="startdiv">
-        <h1 class="gameTit">雷霆灰机</h1>
-        <section class="stage">
-            <figure class="ball">
-              <span class="shadow"></span>
-              <span class="iris"></span>
-            </figure>
-        </section>
-        <div class="loading">
-            资源加载中...
-        </div>
-        <div class="btn-box">
-            <button class="begin" onclick="begin()">开始游戏</button>
-            <button class="tips" onclick="tips()">游戏说明</button>
-        </div>
-        <div class="copyright">Copyright © 2019 Fanghui</div>
+<div class="level-select-wrap">
+    <h1>✈️ 爱的飞行员</h1>
+    <div class="sub">跨越十片天空，寻找被带走的他</div>
+
+    <div class="level-topbar">
+        <button class="back-btn" onclick="goBack()">← 返回</button>
+        <div class="highscore-box">历史最高分：<span class="hs" id="hsNum">0</span> · 最高评分：<span class="hs" id="hgNum">DDD</span></div>
     </div>
-    <div id="maindiv">
-        <div id="scorediv">
-            <div style="height: 30px">
-                <div class="fl"><label>分数：</label><label id="score" class="f16 c-green">0</label></div>
-                <div class="fr"><label>历史最高分：</label><label id="highscore">0</label></div>
-            </div>
-            <div style="height: 30px">
-                <div class="fl"><label>生命值：</label><label id="life" class="lifebar"></label></div>
-                <div class="fr"><label>最高评分：</label><label id="highgrade">DDD</label></div>
-            </div>
-            
-        </div>
-        <div id="suspenddiv">
-            <button>继续</button><br/>
-            <button>重新开始</button><br/>
-            <button>回到主页</button>
-        </div>
-        <div id="enddiv" class="enddiv">
-            <p class="plantext">SCORE</p>
-            <p id="planscore">0</p>
-            <div><button class="endbtn" onclick="next()">下一步</button></div>
-        </div>
-        <div id="gradingBox" class="grading-box">
-            <p class="missionstatus">Mission <span id="missionstatus">success</span></p>
-            <p class="f12">您的评分：</p>
-            <div id="grading" class="grading">SSS</div>
-            <div class="detail f12">
-                <div class="item">
-                   <p>摧毁敌军飞机</p>
-                   <p><span id="destroyedEnemys" class="num">50</span>架</p>
-                </div>
-                <div class="item">
-                    <p>未击中敌军飞机</p>
-                   <p><span id="missedEnemys" class="num">12</span>架</p>
-                </div>
-            </div>
-            <div class="tac"><button class="endbtn" onclick="end()">结束</button></div>
-        </div>
+
+    <div class="story-pick">
+        <label>第 1 关剧情组：</label>
+        <select id="storyGroupSel"></select>
+        <button class="back-btn" onclick="location.href='./story-config.html'">✏️ 管理剧情组</button>
+        <span class="pick-hint">选择后点击第 1 关即以该剧情进入</span>
+    </div>
+
+    <div class="level-grid" id="levelGrid"></div>
+
+    <div class="action-row">
+        <button class="back-btn" onclick="location.href='./tips.html'">游戏说明</button>
+        <button class="back-btn" onclick="location.href='./story-config.html'">剧情配置</button>
     </div>
 </div>
+
 <script>
-    // 阻止浏览器的默认上下左右滑动的行为
-    document.querySelector('body').addEventListener('touchmove', function (ev) {
-        ev.preventDefault();
-    },{passive:false});
-    function tips(){
-        window.location.href="./tips.html"
-    }
-    window.onload = function(){
-        document.querySelector('.loading').style.display = 'none';
-        document.querySelector('.btn-box').style.display = 'block';
+    function esc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    var LEVELS = [
+        { n:1,  name:'星夜初航', bg:'image/bg1.jpg',  hpScale:1.0,  freqScale:1.0, bossHp:150,  story:true  },
+        { n:2,  name:'沙漠防线', bg:'image/bg2.jpg',  hpScale:1.15, freqScale:1.0, bossHp:220,  story:false },
+        { n:3,  name:'极地冰原', bg:'image/bg3.jpg',  hpScale:1.3,  freqScale:1.2, bossHp:300,  story:false },
+        { n:4,  name:'密林深处', bg:'image/bg4.jpg',  hpScale:1.45, freqScale:1.2, bossHp:380,  story:false },
+        { n:5,  name:'火山边境', bg:'image/bg5.jpg',  hpScale:1.6,  freqScale:1.4, bossHp:470,  story:false },
+        { n:6,  name:'深海之上', bg:'image/bg6.jpg',  hpScale:1.75, freqScale:1.4, bossHp:560,  story:false },
+        { n:7,  name:'雷暴云层', bg:'image/bg7.jpg',  hpScale:1.9,  freqScale:1.6, bossHp:660,  story:false },
+        { n:8,  name:'雪山之巅', bg:'image/bg8.jpg',  hpScale:2.05, freqScale:1.8, bossHp:760,  story:false },
+        { n:9,  name:'暗夜都市', bg:'image/bg9.jpg',  hpScale:2.2,  freqScale:2.0, bossHp:870,  story:false },
+        { n:10, name:'宇宙尽头', bg:'image/bg10.jpg', hpScale:2.4,  freqScale:2.2, bossHp:1000, story:false }
+    ];
+
+    var grid = document.getElementById('levelGrid');
+    LEVELS.forEach(function(lv){
+        var card = document.createElement('div');
+        card.className = 'level-card';
+        card.style.backgroundImage = 'linear-gradient(180deg, rgba(30,40,80,.55), rgba(8,10,28,.88)), url(' + lv.bg + ')';
+        card.style.backgroundSize = 'cover';
+        card.style.backgroundPosition = 'center';
+        card.innerHTML =
+            (lv.story ? '<span class="badge">剧情</span>' : '') +
+            '<div class="num">' + lv.n + '</div>' +
+            '<div class="nm">' + lv.name + '</div>' +
+            '<div class="meta">血量 ×' + lv.hpScale.toFixed(2) + '<br>射速 ×' + lv.freqScale.toFixed(1) + ' · Boss ' + lv.bossHp + '</div>';
+        card.addEventListener('click', function(){
+            var url = 'level' + lv.n + '.html';
+            if(lv.n === 1){
+                var sg = document.getElementById('storyGroupSel').value;
+                if(sg && sg !== '默认') url += '?story=' + encodeURIComponent(sg);
+            }
+            window.location.href = url;
+        });
+        grid.appendChild(card);
+    });
+
+    // 填充剧情组下拉（Supabase plane_story 优先，localStorage 兜底）
+    (function(){
+        var sel = document.getElementById('storyGroupSel');
+        var SB_URL = "https://fccsjbvkfllapyoozuvf.supabase.co";
+        var SB_KEY = "sb_publishable_A3W8wYMbB-6pABB0-e0vkA_E-VMsJ4n";
+        function fill(groups, active){
+            if(!groups['默认']) groups['默认'] = true;
+            sel.innerHTML = Object.keys(groups).map(function(g){
+                return '<option value="'+esc(g)+'" '+(g===active?'selected':'')+'>'+esc(g)+'</option>';
+            }).join('');
+        }
+        function fillLocal(){
+            var groups = {};
+            try{ groups = JSON.parse(localStorage.getItem('plane_story_groups') || '{}'); }catch(e){}
+            fill(groups, localStorage.getItem('plane_story_active') || '默认');
+        }
+        fetch(SB_URL + '/rest/v1/plane_story?select=data&id=eq.1', {
+            headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY }
+        }).then(function(r){ return r.ok ? r.json() : null; }).then(function(rows){
+            var d = rows && rows[0] && rows[0].data;
+            if(d && d.groups && Object.keys(d.groups).length){
+                fill(d.groups, d.active || localStorage.getItem('plane_story_active') || '默认');
+            }else{
+                fillLocal();
+            }
+        }).catch(fillLocal);
+    })();
+
+    // 显示历史最高分
+    (function(){
+        var hs = localStorage.getItem('highScore') || 0;
+        var hg = localStorage.getItem('highgrade');
+        var grades = ['DDD','CCC','BBB','AAA','SSS'];
+        document.getElementById('hsNum').textContent = hs;
+        document.getElementById('hgNum').textContent = grades[hg] || 'DDD';
+    })();
+
+    function goBack(){
+        if(window.history.length > 1){ window.history.back(); }
+        else { window.location.href = '../index.html'; }
     }
 </script>
-<script type="text/javascript" src="js/score.js"></script>
-<script type="text/javascript" src="js/main.js"></script>
 </body>
 </html>
