@@ -182,20 +182,6 @@ class SoundManager {
 		osc.connect(gain); gain.connect(ctx.destination);
 		osc.start(t); osc.stop(t + 0.3);
 	}
-	//碎裂/冰块触发（低频短促 rumble）
-	playCrumble() {
-		const ctx = this._ensure();
-		const t = ctx.currentTime;
-		const osc = ctx.createOscillator();
-		const gain = ctx.createGain();
-		osc.type = 'square';
-		osc.frequency.setValueAtTime(160, t);
-		osc.frequency.exponentialRampToValueAtTime(60, t + 0.22);
-		gain.gain.setValueAtTime(0.28, t);
-		gain.gain.exponentialRampToValueAtTime(0.001, t + 0.24);
-		osc.connect(gain); gain.connect(ctx.destination);
-		osc.start(t); osc.stop(t + 0.24);
-	}
 }
 class Game {
 	constructor() {
@@ -270,10 +256,11 @@ class Game {
 		this._toastTimer = null; //toast 计时器
 		//道具定义（图标 + 稀有度权重 + 底色）
 		this.itemTypes = [
-			{ type: 'dice', icon: '🎲', weight: 35, bg: '#f59e0b' },
-			{ type: 'double', icon: '×2', weight: 30, bg: '#ec4899' },
-			{ type: 'shield', icon: '🛡️', weight: 20, bg: '#3b82f6' },
-			{ type: 'rocket', icon: '🚀', weight: 15, bg: '#ef4444' }
+			{ type: 'dice', icon: '🎲', weight: 30, bg: '#f59e0b' },
+			{ type: 'double', icon: '×2', weight: 25, bg: '#ec4899' },
+			{ type: 'shield', icon: '🛡️', weight: 15, bg: '#3b82f6' },
+			{ type: 'rocket', icon: '🚀', weight: 10, bg: '#ef4444' },
+			{ type: 'mooncake', icon: '🥮', weight: 10, bg: '#d97706' } //中秋限定，权重与火箭相同（9.20~10.1）
 		];
 		// ===== 陷阱系统状态 =====
 		this._inFlight = false; //飞行中标记（捕获本跳的风/火圈）
@@ -686,7 +673,7 @@ class Game {
 			cube.position.x = prevCube.position.x;
 			cube.position.y = prevCube.position.y;
 			cube.position.z = prevCube.position.z;
-			// 动态间距：前块半宽 + 本块半宽 + 间隙(1~4)，保证不重叠且最小间隙 1
+			// 动态间距：前块半宽 + 本块半宽 + 间隙(2~4)，保证不重叠且最小间隙 2
 			let prevSize = this.cubeStat.nextDir == "left" ? prevCube.userData.width : prevCube.userData.deep;
 			let curSize = this.cubeStat.nextDir == "left" ? cubeW : cubeD;
 			let gap = Math.round(Math.random() * (diff.maxGap - diff.minGap) + diff.minGap);
@@ -937,14 +924,12 @@ class Game {
 	//动态难度：根据当前分数返回方块尺寸和间隙范围
 	_getDifficulty() {
 		const score = this.jumpCount; //用成功跳跃次数驱动难度（加分道具不虚高难度）
-		if (score < 10) return { minSize: 4, maxSize: 4, minGap: 1, maxGap: 1 };
 		if (score < 20) return { minSize: 4, maxSize: 4, minGap: 2, maxGap: 2 };
 		if (score < 30) return { minSize: 4, maxSize: 4, minGap: 3, maxGap: 3 };
-		if (score < 40) return { minSize: 3, maxSize: 4, minGap: 1, maxGap: 2 };
-		if (score < 50) return { minSize: 3, maxSize: 4, minGap: 1, maxGap: 3 };
-		if (score < 60) return { minSize: 3, maxSize: 4, minGap: 1, maxGap: 4 };
-		if (score < 70) return { minSize: 2, maxSize: 4, minGap: 1, maxGap: 4 };
-		return { minSize: 2, maxSize: 4, minGap: 1, maxGap: 4 };
+		if (score < 40) return { minSize: 3, maxSize: 4, minGap: 2, maxGap: 2 };
+		if (score < 50) return { minSize: 3, maxSize: 4, minGap: 2, maxGap: 3 };
+		if (score < 60) return { minSize: 3, maxSize: 4, minGap: 2, maxGap: 4 };
+		return { minSize: 3, maxSize: 4, minGap: 2, maxGap: 4 };
 	};
 
 	// ===== 道具系统 =====
@@ -988,7 +973,14 @@ class Game {
 		const prev = this.cubes[this.cubes.length - 2];
 		if (prev && prev.userData.item) return; //相邻块不连续刷
 		if (Math.random() > 0.28) return; //基础刷新率 28%
-		const pool = this.itemTypes.filter(t => !(t.type === 'shield' && this.shield));
+		const pool = this.itemTypes.filter(t => {
+			if (t.type === 'shield' && this.shield) return false; //已有护盾不重复刷
+			if (t.type === 'mooncake') {
+				if (!this._isMidAutumnPeriod()) return false; //仅 9.20~10.1 出现
+				if (this.lives >= this.maxLives) return false; //满血时不刷月饼
+			}
+			return true;
+		});
 		const total = pool.reduce((s, t) => s + t.weight, 0);
 		let r = Math.random() * total;
 		let chosen = pool[0];
@@ -1051,6 +1043,11 @@ class Game {
 		} else if (type === 'rocket') {
 			this._pendingAuto += 10; //直接飞过 10 格
 			this._showToast('🚀 飞行 10 格');
+		} else if (type === 'mooncake') {
+			const before = this.lives;
+			this.lives = Math.min(this.maxLives, this.lives + 3); //回复3命，不超过生命上限
+			this._showToast('🥮 生命 +' + (this.lives - before));
+			this._showMidAutumn(); //中秋快乐字样 + 彩带庆祝
 		} else if (type === 'shield') {
 			this.shield = true; //抵挡一次掉落
 			this._showToast('🛡️ 护盾');
@@ -1181,58 +1178,35 @@ class Game {
 	//按 jumpCount 分段返回可用陷阱类型与概率
 	_getTrapConfig() {
 		const j = this.jumpCount;
-		if (j < 100) return null;
-		if (j < 130) return { cube: ['crumble'], gap: [], pCube: 0.18, pGap: 0 };
-		if (j < 160) return { cube: ['crumble', 'ice'], gap: [], pCube: 0.24, pGap: 0 };
-		if (j < 200) return { cube: ['crumble', 'ice', 'moving'], gap: ['ring'], pCube: 0.28, pGap: 0.14 };
-		if (j < 250) return { cube: ['crumble', 'ice', 'moving'], gap: ['ring', 'wind'], pCube: 0.30, pGap: 0.20 };
-		return { cube: ['crumble', 'ice', 'moving'], gap: ['ring', 'wind'], pCube: 0.32, pGap: 0.26 };
+		//160 跳后解锁陷阱（碎裂块/冰块已移除，仅保留移动块、火圈、侧风）
+		if (j < 160) return null;
+		if (j < 200) return { cube: ['moving'], gap: ['ring'], pCube: 0.28, pGap: 0.14 };
+		if (j < 250) return { cube: ['moving'], gap: ['ring', 'wind'], pCube: 0.30, pGap: 0.20 };
+		return { cube: ['moving'], gap: ['ring', 'wind'], pCube: 0.32, pGap: 0.26 };
 	}
-	//按概率在新块或其间隙生成陷阱（与道具互斥，相邻致命块去重）
+	//按概率在新块或其间隙生成陷阱（与道具互斥）
 	_maybeSpawnTrap(cube) {
 		const cfg = this._getTrapConfig();
 		if (!cfg) return;
 		if (this.cubes.length <= 3) return; //起始块不刷
 		if (cube.userData.item) return; //道具块不叠陷阱
-		const prev = this.cubes[this.cubes.length - 2];
-		const prevDeadly = prev && prev.userData.trap && (prev.userData.trap.type === 'crumble' || prev.userData.trap.type === 'ice');
 		const roll = Math.random();
-		if (roll < cfg.pCube) {
-			let pool = cfg.cube;
-			if (prevDeadly) pool = pool.filter(t => t !== 'crumble' && t !== 'ice'); //相邻致命块去重
-			if (pool.length) {
-				this._applyCubeTrap(cube, pool[Math.floor(Math.random() * pool.length)]);
-				return;
-			}
+		if (roll < cfg.pCube && cfg.cube.length) {
+			this._applyCubeTrap(cube, cfg.cube[Math.floor(Math.random() * cfg.cube.length)]);
+			return;
 		}
 		if (cfg.gap.length && roll < cfg.pCube + cfg.pGap) {
 			this._applyGapTrap(cube, cfg.gap[Math.floor(Math.random() * cfg.gap.length)]);
 		}
 	}
-	//块陷阱：碎裂/冰块/移动
+	//块陷阱：移动块
 	_applyCubeTrap(cube, type) {
-		const trap = { type: type, timer: 0, active: false, slide: false, frozen: false, basePos: 0, phase: Math.random() * Math.PI * 2, axis: 'x', slideAxis: 'x', slideDir: -1 };
-		if (type === 'crumble') {
-			this._setCubeColor(cube, 0x8a7f6a, 0.9); //灰褐、微透明，跳前可辨识
-		} else if (type === 'ice') {
-			this._setCubeColor(cube, 0x9fd8ff, 0.72); //浅蓝半透明冰面
-		} else if (type === 'moving') {
+		const trap = { type: type, frozen: false, basePos: 0, phase: Math.random() * Math.PI * 2, axis: 'x' };
+		if (type === 'moving') {
 			trap.axis = this.cubeStat.nextDir == "left" ? 'x' : 'z'; //沿跳跃轴振荡
 			trap.basePos = cube.position[trap.axis];
 		}
 		cube.userData.trap = trap;
-	}
-	//改方块颜色/透明度（兼容照片块的材质数组）
-	_setCubeColor(cube, color, opacity) {
-		const apply = (m) => {
-			if (!m) return;
-			m.color = new THREE.Color(color);
-			m.transparent = true;
-			m.opacity = opacity;
-			m.needsUpdate = true;
-		};
-		if (Array.isArray(cube.material)) cube.material.forEach(apply);
-		else apply(cube.material);
 	}
 	//间隙飞行陷阱：火圈/侧风
 	_applyGapTrap(cube, type) {
@@ -1278,7 +1252,6 @@ class Game {
 		this._trapTime += dt;
 		if (this.cubes.length < 2) return;
 		const target = this.cubes[this.cubes.length - 1];
-		const current = this.cubes[this.cubes.length - 2];
 		//移动方块：仅目标块沿跳跃轴振荡，落地冻结或自动前进时停止
 		if (target && target.userData.trap && target.userData.trap.type === 'moving' && !target.userData.trap.frozen && !this.autoPlaying) {
 			const tr = target.userData.trap;
@@ -1292,35 +1265,6 @@ class Game {
 			r.mesh.position.y = midY + Math.sin(this._trapTime * r.speed + r.phase) * amp;
 			const s = 1 + Math.sin(this._trapTime * 8) * 0.06;
 			r.mesh.scale.set(s, s, s);
-		}
-		//自动前进（骰子/火箭）豁免落地型陷阱
-		if (this.autoPlaying) return;
-		const onCube = this.jumper.position.y <= 1.01; //跳块是否仍贴在方块顶面（轻点腾空仅暂停，落回继续）
-		//碎裂方块：抖动 + 下沉 + 计时，倒计时结束且仍站立则坠落
-		if (current && current.userData.trap && current.userData.trap.type === 'crumble' && current.userData.trap.active) {
-			const tr = current.userData.trap;
-			if (tr.timer > 0) {
-				tr.timer -= dt;
-				current.position.x += (Math.random() - 0.5) * 0.1;
-				current.position.z += (Math.random() - 0.5) * 0.1;
-				current.position.y -= dt * 0.6;
-				const op = Math.max(0.25, tr.timer);
-				if (Array.isArray(current.material)) current.material.forEach(m => { m.transparent = true; m.opacity = op; });
-				else { current.material.transparent = true; current.material.opacity = op; }
-			} else if (onCube) {
-				tr.active = false;
-				this._trapFail('crumble');
-			}
-		}
-		//冰块：站立时沿前进方向缓慢漂移，滑出块外则坠落
-		if (current && current.userData.trap && current.userData.trap.type === 'ice' && current.userData.trap.slide) {
-			const tr = current.userData.trap;
-			if (onCube) {
-				this.jumper.position[tr.slideAxis] += tr.slideDir * 0.9 * dt;
-				const half = (tr.slideAxis === 'x' ? current.userData.width : current.userData.deep) / 2;
-				const off = Math.abs(this.jumper.position[tr.slideAxis] - current.position[tr.slideAxis]);
-				if (off > half) { tr.slide = false; this._trapFail('ice'); }
-			}
 		}
 	}
 	//火圈碰撞：飞行途中穿过环平面且高度接近环面则灼烧
@@ -1337,48 +1281,27 @@ class Game {
 		this.jumper.position[this._activeWind.axis] += d;
 		this._windDrift += d;
 	}
-	//落地陷阱激活：移动块冻结，碎裂/冰块启动计时
+	//落地陷阱激活：移动块落地冻结
 	_activateLandedTrap(cube) {
 		const trap = cube.userData.trap;
 		if (!trap) return;
 		if (trap.type === 'moving') {
 			trap.frozen = true;
-		} else if (trap.type === 'crumble') {
-			trap.timer = 1.0;
-			trap.active = true;
-			this.sound.playCrumble();
-			this._showToast('💔 碎裂! 快跳!');
-		} else if (trap.type === 'ice') {
-			trap.slide = true;
-			trap.slideAxis = this.cubeStat.nextDir == "left" ? 'x' : 'z';
-			trap.slideDir = -1; //前进方向（left→-x，right→-z）
-			this._showToast('🧊 冰面! 快跳!');
 		}
 	}
-	//陷阱导致的失败：护盾可救，否则坠落结算
+	//陷阱导致的失败：护盾可救，否则坠落结算（目前仅火圈触发）
 	_trapFail(reason) {
 		this._inFlight = false;
 		this._activeWind = null;
 		this._activeRing = null;
-		if (reason === 'ring') this.sound.playBurn();
-		else this.sound.playCrumble();
-		const toastMap = { ring: '🔥 火圈!', crumble: '💔 碎裂!', ice: '🧊 滑落了!', wind: '🌬️ 被吹落!' };
-		this._showToast(toastMap[reason] || '陷阱!');
-		if (this.shield || this.lives > 0) {
-			//护盾或生命：清除致命陷阱后原地复活
-			const cur = this.cubes[this.cubes.length - 2];
-			if (cur && cur.userData.trap && (reason === 'crumble' || reason === 'ice')) {
-				cur.userData.trap.active = false; //碎裂/冰块：清除该块陷阱，平台复位
-				cur.userData.trap.slide = false;
-				cur.userData.trap.timer = 0;
-			}
-			if (this.shield) {
-				this.shield = false;
-				this.sound.playShieldBreak();
-				this._applyShieldSave();
-			} else {
-				this._useLife();
-			}
+		this.sound.playBurn();
+		this._showToast(reason === 'ring' ? '🔥 火圈!' : '陷阱!');
+		if (this.shield) {
+			this.shield = false;
+			this.sound.playShieldBreak();
+			this._applyShieldSave();
+		} else if (this.lives > 0) {
+			this._useLife();
 		} else {
 			this.falledStat.location = 0;
 			this._falling();
@@ -1407,6 +1330,41 @@ class Game {
 		el.classList.add('show');
 		if (this._toastTimer) clearTimeout(this._toastTimer);
 		this._toastTimer = setTimeout(() => { el.classList.remove('show'); }, 900);
+	}
+	//中秋活动期：9月20日 ~ 10月1日（含首尾）
+	_isMidAutumnPeriod() {
+		const d = new Date();
+		const m = d.getMonth(); //0-based：9月=8，10月=9
+		const day = d.getDate();
+		return (m === 8 && day >= 20) || (m === 9 && day === 1);
+	}
+	//中秋庆祝：画面上方显示「中秋快乐」+ 彩带飘落（纯展示层，pointer-events:none 不挡操作）
+	_showMidAutumn() {
+		const layer = document.getElementById('midAutumnLayer');
+		if (!layer) return;
+		const confettiBox = layer.querySelector('.confetti-box');
+		//重新生成彩带（连吃多个月饼时重播）
+		confettiBox.innerHTML = '';
+		const colors = ['#f59e0b', '#ef4444', '#ec4899', '#fbbf24', '#3b82f6', '#10b981', '#8b5cf6', '#f97316'];
+		const count = 40;
+		for (let i = 0; i < count; i++) {
+			const c = document.createElement('span');
+			c.className = 'confetti';
+			c.style.left = (Math.random() * 100) + 'vw';
+			c.style.background = colors[i % colors.length];
+			c.style.width = (6 + Math.random() * 8) + 'px';
+			c.style.height = (10 + Math.random() * 10) + 'px';
+			c.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+			c.style.animationDuration = (1.8 + Math.random() * 1.4) + 's';
+			c.style.animationDelay = (Math.random() * 0.8) + 's';
+			confettiBox.appendChild(c);
+		}
+		layer.classList.add('show');
+		if (this._midAutumnTimer) clearTimeout(this._midAutumnTimer);
+		this._midAutumnTimer = setTimeout(() => {
+			layer.classList.remove('show');
+			confettiBox.innerHTML = '';
+		}, 3200);
 	}
 
 	_restart() {
