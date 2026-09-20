@@ -259,8 +259,8 @@ class Game {
 			{ type: 'dice', icon: '🎲', weight: 30, bg: '#f59e0b' },
 			{ type: 'double', icon: '×2', weight: 25, bg: '#ec4899' },
 			{ type: 'shield', icon: '🛡️', weight: 15, bg: '#3b82f6' },
-			{ type: 'rocket', icon: '🚀', weight: 10, bg: '#ef4444' },
-			{ type: 'mooncake', icon: '🥮', weight: 10, bg: '#d97706' } //中秋限定，权重与火箭相同（9.20~10.1）
+			{ type: 'rocket', icon: '🚀', weight: 20, bg: '#ef4444' },
+			{ type: 'mooncake', icon: '🥮', weight: 20, bg: '#d97706' } //中秋限定，权重与火箭相同（9.20~10.1）
 		];
 		// ===== 陷阱系统状态 =====
 		this._inFlight = false; //飞行中标记（捕获本跳的风/火圈）
@@ -975,10 +975,7 @@ class Game {
 		if (Math.random() > 0.28) return; //基础刷新率 28%
 		const pool = this.itemTypes.filter(t => {
 			if (t.type === 'shield' && this.shield) return false; //已有护盾不重复刷
-			if (t.type === 'mooncake') {
-				if (!this._isMidAutumnPeriod()) return false; //仅 9.20~10.1 出现
-				if (this.lives >= this.maxLives) return false; //满血时不刷月饼
-			}
+			if (t.type === 'mooncake' && !this._isMidAutumnPeriod()) return false; //仅 9.20~10.1 出现
 			return true;
 		});
 		const total = pool.reduce((s, t) => s + t.weight, 0);
