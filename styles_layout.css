@@ -1536,6 +1536,24 @@
     font-size: 13px;
     word-break: break-all;
 }
+/* 上传者性别标识（左上角） */
+.meal-person {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    color: #fff;
+    font-size: 13px;
+}
+.meal-person.boy {
+    background: #6fa8ff;
+}
+.meal-person.girl {
+    background: #ff8fb1;
+}
 /* 弹窗：头部/底部固定，中间内容区滚动，整体不超一屏 */
 .meal-modal-card {
     display: flex;

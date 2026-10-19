@@ -320,6 +320,11 @@
         font-size: 15px !important;
     }
 
+    /* 刷新按钮：跟随铃铛左移（12 + 38 + 8） */
+    .refresh-toggle {
+        right: 58px !important;
+    }
+
     .bell-panel {
         top: 56px !important;
         right: 8px !important;

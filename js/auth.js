@@ -62,6 +62,7 @@
         if (window.bgmPlaying) window.toggleBgm();
         document.getElementById("weatherWidget").classList.add("hidden");
         document.getElementById("bellToggle").classList.add("hidden");
+        document.getElementById("refreshBtn").classList.add("hidden");
         document.getElementById("bellPanel").classList.add("hidden");
         if (window.notificationChannel) { sb.removeChannel(window.notificationChannel); window.notificationChannel = null; }
         window.notifications = []; window.unreadCount = 0;
@@ -165,6 +166,7 @@
         document.getElementById("fileInput").onchange = window.uploadImageToImgBB;
         document.getElementById("weatherWidget").classList.remove("hidden");
         document.getElementById("bellToggle").classList.remove("hidden");
+        document.getElementById("refreshBtn").classList.remove("hidden");
         // 首页默认子 Tab 初始化
         initHomePage();
         // 恢复上次打开的页面（下拉刷新后保持页面位置）

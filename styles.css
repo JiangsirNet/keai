@@ -1325,6 +1325,12 @@ body {
     transition: transform 0.3s;
 }
 .bell-toggle:hover { transform: scale(1.1); }
+/* 刷新按钮：定位在铃铛左侧（20 + 44 + 12） */
+.refresh-toggle {
+    right: 76px;
+    background: linear-gradient(135deg, #ffa5c3, #ff6b8b);
+    box-shadow: 0 4px 15px rgba(255, 107, 139, 0.4);
+}
 .bell-badge {
     position: absolute;
     top: -2px;

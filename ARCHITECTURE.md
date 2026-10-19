@@ -806,6 +806,7 @@ GRANT EXECUTE ON FUNCTION exec_ddl(TEXT) TO authenticated;
 - **日期**：默认今天，可改成过去日期补传
 - **备注 + 好吃评分**：备注可选；评分 1-5 星（再点同一颗星可取消）
 - **展示**：按日期分组倒序（今天 / 昨天 / 8月18日），每页 7 天，配上一页 / 下一页分页
+- **上传者标识**：每张卡片左上角显示性别符号 —— 用 `uploader_email` 与 `CONFIG.boyEmail` / `girlEmail` 比对，男方蓝底 ♂（`fa fa-mars`）、女方粉底 ♀（`fa fa-venus`），鼠标悬停显示昵称
 - **懒加载**：首次切到该子 Tab 才初始化（`initMealsPage()`）
 
 ### 文件结构

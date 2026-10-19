@@ -260,6 +260,21 @@
         renderMeals();
     }
 
+    // 上传者是谁：按 uploader_email 匹配 CONFIG 里的男女邮箱
+    function personChip(email) {
+        const e = String(email || '').toLowerCase().trim();
+        if (!e || !window.CONFIG) return '';
+        const boy = (window.CONFIG.boyEmail || '').toLowerCase().trim();
+        const girl = (window.CONFIG.girlEmail || '').toLowerCase().trim();
+        if (boy && e === boy) {
+            return `<span class="meal-person boy" title="${escapeHtml(window.CONFIG.boyName || '')}"><i class="fa fa-mars"></i></span>`;
+        }
+        if (girl && e === girl) {
+            return `<span class="meal-person girl" title="${escapeHtml(window.CONFIG.girlName || '')}"><i class="fa fa-venus"></i></span>`;
+        }
+        return '';
+    }
+
     function renderCard(item) {
         const stars = item.rating ? `<div class="meal-stars-sm">${starIcons(item.rating)}</div>` : '';
         const note = item.note ? `<div class="meal-note">${escapeHtml(item.note)}</div>` : '';
@@ -268,7 +283,10 @@
                 <img src="${item.img_url}" loading="lazy"
                     class="aspect-square rounded-xl object-cover w-full cursor-pointer hover:opacity-90"
                     onclick="openPreview('${item.img_url}')">
-                <span class="meal-badge absolute top-2 left-2">${escapeHtml(item.meal_type || '')}</span>
+                <div class="absolute top-2 left-2 flex items-center gap-1">
+                    ${personChip(item.uploader_email)}
+                    <span class="meal-badge">${escapeHtml(item.meal_type || '')}</span>
+                </div>
                 <button onclick="window.deleteMeal('${item.id}','${item.delete_url || ''}')"
                     class="del-btn absolute top-2 right-2 bg-red-500 text-white text-sm shadow-lg opacity-80 hover:opacity-100">
                     <i class="fa fa-trash"></i>
