@@ -34,13 +34,33 @@
     var bulletAttackExtra = 0;
 
     var gardetxt = ['DDD','CCC', 'BBB', 'AAA', 'SSS'];
-    var bodyWidth = document.documentElement.clientWidth
-    var bodyheight = document.documentElement.clientHeight
-    // 小屏适配：以 480px 逻辑宽度为基准，屏幕更窄时飞机/敌机/子弹/补给等比缩小（只缩不放），保证各尺寸手机难度一致
-    // --ps 供 CSS 使用：让贴图跟随缩放后的节点尺寸
-    var SIZE_SCALE = Math.min(1, bodyWidth / 480);
-    function SS(v){ return Math.round(v * SIZE_SCALE); }
-    document.documentElement.style.setProperty('--ps', SIZE_SCALE);
+    // 固定 9:16 逻辑舞台：所有屏幕（含电脑端）均以同一 450×800 比例运行，整体缩放适配屏幕
+    var STAGE_W = 450, STAGE_H = 800;
+    var bodyWidth = STAGE_W;
+    var bodyheight = STAGE_H;
+    // 固定舞台后不再按屏宽缩小节点尺寸
+    function SS(v){ return v; }
+    document.documentElement.style.setProperty('--ps', 1);
+    // 舞台缩放居中：保持 9:16，多余区域留黑边
+    function fitStage(){
+        var vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight;
+        var s = Math.min(vw / STAGE_W, vh / STAGE_H);
+        var cd = document.getElementById('contentdiv');
+        if(cd){
+            cd.style.transformOrigin = '0 0';
+            cd.style.transform = 'scale(' + s + ')';
+            cd.style.left = Math.round((vw - STAGE_W * s) / 2) + 'px';
+            cd.style.top = Math.round((vh - STAGE_H * s) / 2) + 'px';
+        }
+    }
+    window.addEventListener('resize', fitStage);
+    fitStage();
+    // 屏幕坐标 → 舞台坐标（舞台被整体缩放后需换算）
+    function stageXY(clientX, clientY){
+        var r = mainDiv.getBoundingClientRect();
+        var s = r.width / STAGE_W || 1;
+        return { x: (clientX - r.left) / s, y: (clientY - r.top) / s };
+    }
     // 桌面端提示已移除，直接打开时支持鼠标操作
     var highscore = window.localStorage.getItem('highScore')
     var highgrade = window.localStorage.getItem('highgrade')
@@ -444,7 +464,7 @@
     /*
      创建本方飞机
      */
-    var selfplane = new ourplan(120, 485, 'plane1 plane', 'music/explode/Explode01.ogg', 'default');
+    var selfplane = new ourplan(195, 485, 'plane1 plane', 'music/explode/Explode01.ogg', 'default');
 
     //移动事件
     var ourPlan = document.getElementById('ourplan');
@@ -453,10 +473,9 @@
         // var oevent=window.event||arguments[0];
         // var chufa=oevent.srcElement||oevent.target;
         var oevent = ev.touches[0]
-        var selfplaneX = oevent.clientX;
-        var selfplaneY = oevent.clientY;
-        ourPlan.style.left = Math.max(0, Math.min(bodyWidth - selfplane.sizeX, selfplaneX - selfplane.sizeX / 2)) + "px";
-        ourPlan.style.top = Math.max(0, Math.min(bodyheight - selfplane.sizeY, selfplaneY - selfplane.sizeY / 2)) + "px";
+        var p = stageXY(oevent.clientX, oevent.clientY);
+        ourPlan.style.left = Math.max(0, Math.min(bodyWidth - selfplane.sizeX, p.x - selfplane.sizeX / 2)) + "px";
+        ourPlan.style.top = Math.max(0, Math.min(bodyheight - selfplane.sizeY, p.y - selfplane.sizeY / 2)) + "px";
     }
     /*
     暂停事件
@@ -484,9 +503,8 @@
     //判断本方飞机是否移出边界,如果移出边界,则取消mousemove事件,反之加上mousemove事件
     var bianjie = function () {
         var oevent = window.event || arguments[0];
-        var bodyobjX = oevent.clientX;
-        var bodyobjY = oevent.clientY;
-        if (bodyobjX < 0 || bodyobjX > bodyWidth || bodyobjY < 0 || bodyobjY > bodyheight) {
+        var p = stageXY(oevent.clientX, oevent.clientY);
+        if (p.x < 0 || p.x > bodyWidth || p.y < 0 || p.y > bodyheight) {
             if (document.removeEventListener) {
                 mainDiv.removeEventListener("touchstart", yidong, true);
             }
@@ -520,13 +538,13 @@
     if (document.addEventListener) {
         mainDiv.addEventListener("mousemove", function(ev) {
             if(isHUDTarget(ev)) return;   // 鼠标落在 HUD 上时不移动飞机
-            var selfplaneX = ev.clientX;
-            var selfplaneY = ev.clientY;
-            ourPlan.style.left = Math.max(0, Math.min(bodyWidth - selfplane.sizeX, selfplaneX - selfplane.sizeX / 2)) + "px";
-            ourPlan.style.top = Math.max(0, Math.min(bodyheight - selfplane.sizeY, selfplaneY - selfplane.sizeY / 2)) + "px";
+            var p = stageXY(ev.clientX, ev.clientY);
+            ourPlan.style.left = Math.max(0, Math.min(bodyWidth - selfplane.sizeX, p.x - selfplane.sizeX / 2)) + "px";
+            ourPlan.style.top = Math.max(0, Math.min(bodyheight - selfplane.sizeY, p.y - selfplane.sizeY / 2)) + "px";
         }, true);
         bodyobj.addEventListener("mousemove", function(ev) {
-            if (ev.clientX < 0 || ev.clientX > bodyWidth || ev.clientY < 0 || ev.clientY > bodyheight) {
+            var mp = stageXY(ev.clientX, ev.clientY);
+            if (mp.x < 0 || mp.x > bodyWidth || mp.y < 0 || mp.y > bodyheight) {
                 mainDiv.removeEventListener("mousemove", arguments.callee, true);
             }
         }, true);

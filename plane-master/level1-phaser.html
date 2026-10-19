@@ -1,0 +1,92 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <meta http-equiv="content" content="text/html" charset="utf-8"/>
+    <meta name="viewport" content="initial-scale=1.0,maximum-scale=1,user-scalable=no" />
+    <title>第 1 关 · 星夜初航 · 爱的飞行员（Phaser 版）</title>
+    <link rel="stylesheet" type="text/css" href="css/main.css?v=19"/>
+    <!-- 分数入库依赖：Supabase（必需）+ EmailJS（超越对方纪录时发邮件，可选） -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+    <style>
+        /* Phaser 画布容器：铺满 450×800 舞台，层级低于 HUD */
+        #game{ position:absolute; left:0; top:0; width:100%; height:100%; z-index:0; overflow:hidden; }
+        #game canvas{ display:block; }
+    </style>
+</head>
+<body>
+<audio src="music/bg.mp3" loop="true" autoplay="autoplay"></audio>
+<div id="contentdiv">
+    <div id="startdiv" style="display:none">
+        <h1 class="gameTit">爱的飞行员</h1>
+        <div class="copyright">第 1 关 · 星夜初航 · Phaser 版</div>
+    </div>
+    <div id="maindiv">
+        <!-- Phaser 游戏画布挂载点（背景/战机/敌机/子弹/补给全部由 canvas 渲染） -->
+        <div id="game"></div>
+        <div id="levelBanner">第 1 关 · 星夜初航</div>
+
+        <div id="scorediv">
+            <div style="height: 30px">
+                <div class="fl"><label>分数：</label><label id="score" class="f16 c-green">0</label></div>
+                <div class="fr"><label>历史最高分：</label><label id="highscore">0</label></div>
+            </div>
+            <div style="height: 30px">
+                <div class="fl"><label>生命值：</label><label id="life" class="lifebar"></label></div>
+                <div class="fr"><label>最高评分：</label><label id="highgrade">DDD</label></div>
+            </div>
+        </div>
+        <div id="suspenddiv">
+            <button>继续</button><br/>
+            <button>重新开始</button><br/>
+            <button onclick="end()">回到主页</button>
+        </div>
+        <div id="enddiv" class="enddiv">
+            <p class="plantext">SCORE</p>
+            <p id="planscore">0</p>
+            <div><button class="endbtn" onclick="next()">下一步</button></div>
+        </div>
+        <div id="levelClearBox" class="level-clear-box">
+            <p id="clearTitle">第 1 关 通过</p>
+            <p class="f12">当前总分：<span id="clearScore" class="num">0</span></p>
+            <div class="tac">
+                <button class="endbtn" onclick="nextLevel()">进入下一关</button>
+                <button class="endbtn" onclick="end()">回到主页</button>
+            </div>
+        </div>
+        <div id="gradingBox" class="grading-box">
+            <p class="missionstatus">Mission <span id="missionstatus">success</span></p>
+            <p class="f12">您的评分：</p>
+            <div id="grading" class="grading">SSS</div>
+            <div class="detail f12">
+                <div class="item">
+                   <p>摧毁敌军飞机</p>
+                   <p><span id="destroyedEnemys" class="num">0</span>架</p>
+                </div>
+                <div class="item">
+                    <p>未击中敌军飞机</p>
+                   <p><span id="missedEnemys" class="num">0</span>架</p>
+                </div>
+            </div>
+            <div class="tac">
+                <button class="endbtn" onclick="retryLevel()">重新挑战</button>
+                <button class="endbtn" onclick="end()">回到主页</button>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    // 阻止浏览器的默认上下左右滑动的行为
+    document.querySelector('body').addEventListener('touchmove', function (ev) {
+        ev.preventDefault();
+    },{passive:false});
+    window.onload = function(){
+        if (typeof begin === 'function') begin();
+    };
+</script>
+<script type="text/javascript" src="lib/phaser.min.js"></script>
+<script type="text/javascript" src="js/score.js?v=27"></script>
+<script type="text/javascript" src="js/levels/level1.js"></script>
+<script type="text/javascript" src="js/phaser/level1-scene.js?v=9"></script>
+</body>
+</html>

@@ -786,7 +786,24 @@ DO $$ BEGIN ALTER TABLE music ADD COLUMN IF NOT EXISTS cover_url TEXT; EXCEPTION
 DO $$ BEGIN ALTER TABLE music ADD COLUMN IF NOT EXISTS uploader_email TEXT; EXCEPTION WHEN OTHERS THEN END $$;
 ALTER TABLE music ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "allow_read_music" ON music FOR SELECT USING (true);
-CREATE POLICY "allow_write_music" ON music FOR ALL TO authenticated USING (true) WITH CHECK (true);`;
+CREATE POLICY "allow_write_music" ON music FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- 7. 一日三餐表
+CREATE TABLE IF NOT EXISTS meals (
+    id              BIGSERIAL PRIMARY KEY,
+    meal_date       DATE NOT NULL DEFAULT CURRENT_DATE,  -- 归属日期（可补传昨天）
+    meal_type       TEXT NOT NULL DEFAULT '午餐',         -- 早餐 / 午餐 / 晚餐 / 加餐
+    img_url         TEXT NOT NULL,                        -- ImgBB 图片地址
+    delete_url      TEXT,                                 -- ImgBB 远程删除地址
+    note            TEXT,                                 -- 备注（可选）
+    rating          SMALLINT,                             -- 好吃评分 1-5（可选）
+    uploader_email  TEXT,                                 -- 上传者邮箱
+    created_at      TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE meals ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow_read_meals" ON meals FOR SELECT USING (true);
+CREATE POLICY "allow_write_meals" ON meals FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE INDEX IF NOT EXISTS idx_meals_date ON meals (meal_date DESC, created_at DESC);`;
         document.getElementById('sqlBox').value = CREATE_SQL;
 
         // ===== 本地上传文件清单 =====
@@ -818,8 +835,9 @@ CREATE POLICY "allow_write_music" ON music FOR ALL TO authenticated USING (true)
             { path: 'js/karaoke.js',         type: 'js', container: null, order: 25 },
             { path: 'js/video.js',           type: 'js', container: null, order: 26 },
             { path: 'js/cloud.js',           type: 'js', container: null, order: 27 },
-            { path: 'js/pull_refresh.js',    type: 'js', container: null, order: 28 },
-            { path: 'js/auth.js',            type: 'js', container: null, order: 29 },
+            { path: 'js/meals.js',           type: 'js', container: null, order: 28 },
+            { path: 'js/pull_refresh.js',    type: 'js', container: null, order: 29 },
+            { path: 'js/auth.js',            type: 'js', container: null, order: 30 },
             { path: 'ARCHITECTURE.md',       type: 'md', container: null, order: 99 },
         ];
 

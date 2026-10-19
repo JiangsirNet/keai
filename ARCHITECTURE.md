@@ -26,7 +26,7 @@ styles_mobile.css       — 导航栏 + Live2D 人物 + 手机端适配（type=c
 partials/               — HTML 片段
 ├── login.html          — 登录面板
 ├── preview.html        — 大图预览弹窗 + 视频预览弹窗
-├── home.html           — 首页（相册/视频/留言/日志/AI/音乐/K歌）
+├── home.html           — 首页（相册/一日三餐/视频/留言/日志/AI/音乐/K歌/网盘）
 ├── journal.html        — 日志 + 日历打卡 + 纪念日
 ├── game.html           — 游戏页
 └── config.html         — 设置页（含腾讯 COS 配置）
@@ -42,6 +42,7 @@ js/                     — JS 模块
 ├── home.js             — 首页逻辑（相册/留言）
 ├── video.js            — 视频 Tab（腾讯 COS 私有桶上传/签名播放/缩略图/删除）
 ├── cloud.js            — 网盘 Tab（OpenList 多挂载浏览/上传任意文件（多选）/视频图片音频预览/删除）
+├── meals.js            — 一日三餐（拍照上传饭菜：餐次/日期/备注/好吃评分，按日期分组 + 分页）
 ├── karaoke.js          — K 歌房（选歌/歌词/录音/混音/作品库独立播放器；录音用 AudioWorklet 独立线程采集+软限幅，老浏览器回退 ScriptProcessor）
 ├── journal.js          — 日志逻辑
 ├── calendar.js         — 日历/打卡/纪念日
@@ -110,7 +111,8 @@ CSS (0) → HTML (1-6) → JS (10-26)
 config_page.js (10) → notifications.js (11) → weather.js (12) → audio.js (13)
 → music.js (14) → pets.js (15) → characters.js (16) → characters_girl.js (17)
 → home.js (18) → journal.js (19) → calendar.js (20) → game.js (21) → game_liar.js (22)
-→ background.js (23) → video.js (24) → karaoke.js (25) → pull_refresh.js (?) → auth.js (26)
+→ background.js (23) → video.js (24) → karaoke.js (25) → cloud.js (27)
+→ meals.js (28) → pull_refresh.js (29) → auth.js (30)
 ```
 
 > **关键**：`auth.js` 必须最后加载，因为它的 `initPage()` 会调用所有模块的初始化函数。
@@ -463,6 +465,13 @@ GRANT EXECUTE ON FUNCTION exec_ddl(TEXT) TO authenticated;
 | `window.cloudOpenFile(name, path)` | cloud.js | 获取直链并新窗口打开/下载非视频文件 |
 | `window.cloudDeleteFile(name, path)` | cloud.js | 删除网盘视频文件（confirm 确认） |
 | `window.cloudCloseVideo(e)` | cloud.js | 关闭网盘视频播放弹窗 |
+| `window.initMealsPage()` | meals.js | 三餐子 Tab 首次进入时初始化（绑定餐次/星星、重置表单、加载列表） |
+| `window.mealFileSelected(input)` | meals.js | 选图后校验并弹出预览弹窗（此时还没上传） |
+| `window.mealConfirmUpload()` | meals.js | 弹窗内确认上传（压缩 + ImgBB + 写入 meals 表 + 关闭弹窗 + 刷新列表） |
+| `window.mealCloseModal(e)` | meals.js | 关闭三餐弹窗、释放 objectURL 预览地址、清空待上传文件 |
+| `window.mealReselect()` | meals.js | 弹窗内「重新选择照片」（重新触发文件选择，弹窗保持打开） |
+| `window.loadMeals(keepPage)` | meals.js | 加载三餐列表（分组后渲染，`keepPage` 为真时保持当前页码） |
+| `window.deleteMeal(id, deleteUrl)` | meals.js | 删除三餐照片（同时尝试删 ImgBB 远程图片） |
 
 > ⚠️ 表中 `window.toggleAiSettings` / `sendAiMessage` / `clearAiChat` / `saveAiAllOptions` 已废弃（ai_chat.js 不再加载）。
 
@@ -788,9 +797,74 @@ GRANT EXECUTE ON FUNCTION exec_ddl(TEXT) TO authenticated;
 - `js/game.js` canvas 加 `touchstart`/`touchend`（按住蓄力、松手起跳）+ `touch-action:none`
 - 结算弹窗 `max-width:90vw / max-height:90vh`
 
+## 十五点十、一日三餐
+
+### 功能特性
+
+- **拍照上传**：首页子 Tab「一日三餐」→ 点按钮选图/拍照 → **弹出预览弹窗**（显示已选图片大图，可「重新选择照片」），在弹窗里挑餐次/日期/备注/评分 → 点「上传」才压缩上传到 ImgBB 并写入 `meals` 表
+- **餐次**：早餐 / 午餐 / 晚餐 / 加餐 四选一，进入页面时按当前时间自动选中（<10 早餐 / <15 午餐 / <20 晚餐 / 其它加餐）
+- **日期**：默认今天，可改成过去日期补传
+- **备注 + 好吃评分**：备注可选；评分 1-5 星（再点同一颗星可取消）
+- **展示**：按日期分组倒序（今天 / 昨天 / 8月18日），每页 7 天，配上一页 / 下一页分页
+- **懒加载**：首次切到该子 Tab 才初始化（`initMealsPage()`）
+
+### 文件结构
+
+| 文件 | 作用 |
+|---|---|
+| `partials/home.html` `#subTab-meals` | 三餐 Tab UI（上传按钮 / 分组列表 / 分页器） |
+| `partials/home.html` `#mealModal` | 选图后的确认弹窗（图片预览 / 重新选择 / 餐次 / 日期 / 星星评分 / 备注 / 取消·上传） |
+| `styles_layout.css` `.meal-*` | 餐次 chip、分组标题、餐次 badge、星星、备注样式 |
+| `styles_mobile.css` | 移动端星星放大、chip 触摸友好 |
+| `js/meals.js` | 全部三餐逻辑，load_order=28 |
+
+### 数据库字段（meals 表）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `id` | bigserial | ✅ | 主键 |
+| `meal_date` | date | ✅ | 归属日期（默认 `CURRENT_DATE`） |
+| `meal_type` | text | ✅ | 早餐 / 午餐 / 晚餐 / 加餐 |
+| `img_url` | text | ✅ | ImgBB 图片地址 |
+| `delete_url` | text | ❌ | ImgBB 远程删除地址 |
+| `note` | text | ❌ | 备注 |
+| `rating` | smallint | ❌ | 好吃评分 1-5 |
+| `uploader_email` | text | ❌ | 上传者邮箱 |
+| `created_at` | timestamptz | ✅ | 创建时间 |
+
+> **增量升级 SQL**（已有数据库执行）：
+> ```sql
+> CREATE TABLE IF NOT EXISTS meals (
+>     id              BIGSERIAL PRIMARY KEY,
+>     meal_date       DATE NOT NULL DEFAULT CURRENT_DATE,
+>     meal_type       TEXT NOT NULL DEFAULT '午餐',
+>     img_url         TEXT NOT NULL,
+>     delete_url      TEXT,
+>     note            TEXT,
+>     rating          SMALLINT,
+>     uploader_email  TEXT,
+>     created_at      TIMESTAMPTZ DEFAULT now()
+> );
+> ALTER TABLE meals ENABLE ROW LEVEL SECURITY;
+> CREATE POLICY "allow_read_meals" ON meals FOR SELECT USING (true);
+> CREATE POLICY "allow_write_meals" ON meals FOR ALL TO authenticated USING (true) WITH CHECK (true);
+> CREATE INDEX IF NOT EXISTS idx_meals_date ON meals (meal_date DESC, created_at DESC);
+> ```
+
+### 关键实现细节
+
+- **上传复用**：校验（32MB / jpg-png-webp）、`window.compressImage(file, 1920, 0.8)`、ImgBB `fetch` 与按钮文案切换，全部照抄 `js/home.js` 的相册上传写法
+- **分组**：一次性拉全量（`meal_date` + `created_at` 双倒序），JS 里按 `meal_date` 用 `Map` 分组，Map 的插入顺序天然就是日期倒序
+- **分页单位是天**：`MEALS_DAYS_PER_PAGE = 7`；删除时用 `loadMeals(true)` 保持当前页，`renderMeals()` 内自动把越界页码钳回去
+- **评分交互**：在 `#mealStars` 容器上用事件委托（容器只绑一次），避免每次重建星星都重新绑定
+- **弹窗必须放在子 Tab 面板之外**：`#mealModal` 是所有 `.sub-tab-content` 面板的兄弟节点（直接挂在 `page-home` 下）。一旦塞进 `#subTab-cloud` 这类面板内部，切到「一日三餐」时祖先带 `.hidden`（`display:none`），弹窗即使加上 `flex` 也静默不可见
+- **防注入**：备注/餐次文本渲染前过 `escapeHtml()`
+
+---
+
 ## 十六、下拉刷新（橡皮条）
 
-- **文件**：`js/pull_refresh.js`（load_order=25）
+- **文件**：`js/pull_refresh.js`（load_order=29）
 - **HTML**：`index.html` 中的 `#pullRefreshIndicator` 元素
 - **CSS**：`styles.css` 中的 `.pull-refresh-indicator` 样式
 - **触发条件**：页面在顶部（`scrollY === 0`）时手指下拉超过 70px
@@ -860,7 +934,7 @@ GRANT EXECUTE ON FUNCTION exec_ddl(TEXT) TO authenticated;
 10. **Modal/模态框替代原生弹窗**：upload.html 中使用自定义模态框表单（containerModal）和自定义确认框（confirmModal），不使用 prompt/confirm
 11. **CSS 文件 type=css, load_order=0**，确保最先加载（多个 CSS 文件按 file_path 排序）
 12. **HTML 文件必须指定 container_id**，对应 app_containers 表中的 container_id
-13. **JS 文件 load_order 必须在 10-26 之间**，auth.js(26) 必须最后
+13. **JS 文件 load_order 必须在 10-29 之间**，auth.js(30) 必须最后
 14. **新增文件后需更新两处**：upload.html 的 FILES 数组（本地上传用）和本文档的文件结构
 15. **upload.html 保存资源后必须调用 `bumpAssetsVersion()`** 更新版本号，否则用户缓存不会刷新
 16. **文件字符数限制 20000**：超过的文件必须拆分（如 styles.css 拆成 3 个、characters.js 拆成 2 个、game.js 拆成 2 个）

@@ -458,6 +458,28 @@
     #mainPage {
         padding-bottom: 90px !important;
     }
+
+    /* 一日三餐：星星放大、餐次按钮触摸友好 */
+    .meal-stars {
+        font-size: 26px !important;
+    }
+
+    .meal-stars i {
+        padding: 6px 8px !important;
+    }
+
+    .meal-chip {
+        padding: 8px 18px !important;
+    }
+
+    /* 一日三餐弹窗：小屏压缩预览图与整体高度，保证底部按钮可见 */
+    .meal-modal-preview {
+        max-height: 20vh !important;
+    }
+
+    .meal-modal-card {
+        max-height: 82dvh !important;
+    }
 }
 
 /* 超小屏幕（<375px） */

@@ -1,4 +1,4 @@
-<!-- 首页（含子Tab：相册/留言/日志/AI/音乐/K歌/网盘） -->
+<!-- 首页（含子Tab：相册/一日三餐/视频/留言/日志/AI/音乐/K歌/网盘） -->
 <div id="page-home" class="page-content hidden">
     <!-- 恋爱计时器 -->
     <div class="bg-white/80 backdrop-blur rounded-3xl p-6 md:p-10 card-shadow text-center mb-6">
@@ -16,6 +16,9 @@
     <div class="sub-tab-bar mb-6">
         <button onclick="switchSubTab('gallery')" class="sub-tab active" data-sub="gallery">
             <i class="fa fa-camera"></i> 相册
+        </button>
+        <button onclick="switchSubTab('meals')" class="sub-tab" data-sub="meals">
+            <i class="fa fa-cutlery"></i> 一日三餐
         </button>
         <button onclick="switchSubTab('video')" class="sub-tab" data-sub="video">
             <i class="fa fa-video-camera"></i> 视频
@@ -54,6 +57,28 @@
             <div id="galleryWrap" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 overflow-hidden">
                 <div class="text-center text-gray-400 py-10 loading">加载相册...</div>
             </div>
+        </div>
+    </div>
+
+    <!-- ===== 子Tab：一日三餐 ===== -->
+    <div id="subTab-meals" class="sub-tab-content hidden">
+        <div class="bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow">
+            <h2 class="text-xl font-bold text-love flex items-center mb-4">
+                <i class="fa fa-cutlery mr-2"></i>一日三餐
+            </h2>
+
+            <p class="text-sm text-gray-500 mb-3">选好照片后，在弹窗里挑餐次、写备注、打个分</p>
+
+            <input type="file" id="mealFileInput" accept="image/*" class="hidden" onchange="window.mealFileSelected(this)">
+            <button id="mealUploadBtn" onclick="document.getElementById('mealFileInput').click()"
+                class="w-full border border-dashed border-love rounded-xl py-4 text-love mb-4 hover:bg-rose-50 transition">
+                <i class="fa fa-camera mr-1"></i>拍照 / 选择照片
+            </button>
+
+            <div id="mealList">
+                <div class="text-center text-gray-400 py-10">加载中...</div>
+            </div>
+            <div id="mealPager" class="flex items-center justify-center gap-4 mt-4"></div>
         </div>
     </div>
 
@@ -750,6 +775,53 @@ module.exports = {
                     </div>
                     <div id="cloudAudioTitle" class="text-sm font-medium text-gray-800 truncate mb-4"></div>
                     <audio id="cloudAudioPlayer" controls class="w-full"></audio>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 一日三餐：选图后确认上传弹窗（必须放在子 Tab 面板之外，否则会被隐藏的祖先连累） -->
+    <div id="mealModal" class="fixed inset-0 bg-black/70 z-50 hidden items-start justify-center p-4 overflow-y-auto" onclick="mealCloseModal(event)">
+        <div class="relative w-full max-w-md my-auto" onclick="event.stopPropagation()">
+            <div class="meal-modal-card bg-white/95 backdrop-blur rounded-3xl p-4">
+                <div class="flex items-center justify-between mb-2 shrink-0">
+                    <h3 class="text-lg font-bold text-love"><i class="fa fa-cutlery mr-2"></i>确认这顿饭菜</h3>
+                    <button onclick="mealCloseModal()" class="text-gray-400 text-2xl leading-none hover:text-love transition">
+                        <i class="fa fa-times-circle"></i>
+                    </button>
+                </div>
+
+                <div class="meal-modal-body">
+                    <img id="mealPreviewImg" src="" alt="预览" class="meal-modal-preview w-full object-contain rounded-2xl bg-gray-100">
+                    <button onclick="mealReselect()" class="block mx-auto text-xs text-gray-500 hover:text-love transition my-2">
+                        <i class="fa fa-refresh mr-1"></i>重新选择照片
+                    </button>
+
+                    <div id="mealTypeChips" class="flex flex-wrap gap-2 mb-2">
+                        <button class="meal-chip" data-meal="早餐">早餐</button>
+                        <button class="meal-chip" data-meal="午餐">午餐</button>
+                        <button class="meal-chip" data-meal="晚餐">晚餐</button>
+                        <button class="meal-chip" data-meal="加餐">加餐</button>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-3 mb-2">
+                        <input type="date" id="mealDate"
+                            class="border border-rose-200 rounded-lg p-2 outline-none focus:border-love">
+                        <div id="mealStars" class="meal-stars"></div>
+                    </div>
+
+                    <input id="mealNote" placeholder="这顿吃了啥？（可选）"
+                        class="w-full border border-rose-200 rounded-xl p-3 outline-none focus:border-love mb-3">
+                </div>
+
+                <div class="flex gap-3 pt-1 shrink-0">
+                    <button onclick="mealCloseModal()"
+                        class="flex-1 border border-gray-200 rounded-xl py-3 text-gray-500 hover:bg-gray-50 transition">取消</button>
+                    <button id="mealConfirmBtn" onclick="window.mealConfirmUpload()"
+                        class="flex-1 bg-love text-white rounded-xl py-3 hover:opacity-90 transition">
+                        <i class="fa fa-cloud-upload mr-1"></i>上传
+                    </button>
                 </div>
             </div>
         </div>

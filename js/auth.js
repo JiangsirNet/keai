@@ -405,6 +405,13 @@
             if (window.initVideoPage) window.initVideoPage();
             else if (window.loadVideoList) window.loadVideoList();
         }
+        if (sub === 'meals' && !_subTabInited.meals) {
+            // 仅在初始化函数存在时才标记，避免 meals.js 未加载时永久跳过
+            if (window.initMealsPage) {
+                _subTabInited.meals = true;
+                window.initMealsPage();
+            }
+        }
         if (sub === 'cloud' && !_subTabInited.cloud) {
             // 仅在初始化函数存在时才标记，避免 cloud.js 未加载时永久跳过
             if (window.initCloudPage) {
