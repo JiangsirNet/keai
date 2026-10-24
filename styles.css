@@ -1544,7 +1544,7 @@ body {
 #cloudVideoModal.hidden { display: none !important; }
 #cloudVideoModal:not(.hidden) { display: flex !important; }
 
-/* 视频页已有 video-card 样式，补充网盘缩略图加载中效果 */
+/* 网盘缩略图加载中效果 */
 .cloud-file-card img {
     transition: opacity 0.3s;
 }

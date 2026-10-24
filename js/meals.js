@@ -1,6 +1,6 @@
 /**
  * 一日三餐
- * 拍照上传今天的饭菜（餐次 + 备注 + 好吃评分），按日期分组倒序展示 + 分页
+ * 拍照上传今天的饭菜（餐次 + 备注 + 好吃评分），按日期分组倒序展示 + 分页，支持赞/踩
  * load_order=28（在 auth.js 之前）
  */
 
@@ -255,6 +255,23 @@
 
         const page = keepPage ? mealPage : 1;
         mealData = data || [];
+
+        // 赞/踩：一次把本批记录的 reaction 拉回来，挂到对应记录上（不做 N+1）
+        const ids = mealData.map(m => m.id);
+        if (ids.length) {
+            const { data: reacts, error: rErr } = await sb.from('meal_reactions')
+                .select('meal_id,username,value')
+                .in('meal_id', ids);
+            if (rErr) console.warn('[meals] 赞踩加载失败', rErr);
+            const byId = new Map();
+            (reacts || []).forEach(r => {
+                const k = String(r.meal_id);
+                if (!byId.has(k)) byId.set(k, []);
+                byId.get(k).push(r);
+            });
+            mealData.forEach(m => { m.reactions = byId.get(String(m.id)) || []; });
+        }
+
         mealGroups = groupByDate(mealData);
         mealPage = page;
         renderMeals();
@@ -275,6 +292,35 @@
         return '';
     }
 
+    // 赞/踩汇总：一个人对一条记录只保留一个反应（value 1=赞、-1=踩）
+    function reactSummary(item) {
+        const me = String(window.myRpsEmail || '').toLowerCase().trim();
+        let up = 0, down = 0, mine = 0;
+        (item.reactions || []).forEach(r => {
+            const v = Number(r.value);
+            if (v === 1) up++;
+            else if (v === -1) down++;
+            if (me && String(r.username || '').toLowerCase().trim() === me) mine = v;
+        });
+        return { up, down, mine };
+    }
+
+    function reactBar(item) {
+        const { up, down, mine } = reactSummary(item);
+        return `
+            <div class="meal-react">
+                <button class="meal-react-btn up ${mine === 1 ? 'active' : ''}"
+                    onclick="window.reactMeal(${item.id}, 1)" title="赞">
+                    <i class="fa fa-thumbs-up"></i>${up ? `<span>${up}</span>` : ''}
+                </button>
+                <button class="meal-react-btn down ${mine === -1 ? 'active' : ''}"
+                    onclick="window.reactMeal(${item.id}, -1)" title="踩">
+                    <i class="fa fa-thumbs-down"></i>${down ? `<span>${down}</span>` : ''}
+                </button>
+            </div>
+        `;
+    }
+
     function renderCard(item) {
         const stars = item.rating ? `<div class="meal-stars-sm">${starIcons(item.rating)}</div>` : '';
         const note = item.note ? `<div class="meal-note">${escapeHtml(item.note)}</div>` : '';
@@ -291,7 +337,10 @@
                     class="del-btn absolute top-2 right-2 bg-red-500 text-white text-sm shadow-lg opacity-80 hover:opacity-100">
                     <i class="fa fa-trash"></i>
                 </button>
-                ${stars}
+                <div class="meal-foot">
+                    ${stars}
+                    ${reactBar(item)}
+                </div>
                 ${note}
             </div>
         `;
@@ -345,6 +394,59 @@
         loadMeals(true);  // 保持当前页，renderMeals 内会自动修正越界页码
     }
 
+    // 本地更新某条记录的赞/踩（写库成功后调用）
+    function applyLocalReaction(item, me, value) {
+        const lower = me.toLowerCase();
+        if (!item.reactions) item.reactions = [];
+        item.reactions = item.reactions.filter(r => String(r.username || '').toLowerCase() !== lower);
+        if (value !== 0) item.reactions.push({ meal_id: item.id, username: me, value });
+    }
+
+    let _reacting = false;
+    async function reactMeal(mealId, value) {
+        const me = window.myRpsEmail || '';
+        if (!me) { alert('请先登录'); return; }
+        if (_reacting) return;
+
+        const item = mealData.find(m => String(m.id) === String(mealId));
+        if (!item) return;
+        const finalValue = reactSummary(item).mine === value ? 0 : value;  // 再点同一个 = 取消
+
+        _reacting = true;
+        try {
+            const { data, error } = await sb.from('meal_reactions')
+                .select('id')
+                .eq('meal_id', mealId)
+                .eq('username', me);
+            if (error) throw error;
+            const exist = data && data.length ? data[0] : null;
+
+            if (finalValue === 0) {
+                if (exist) {
+                    const { error: e } = await sb.from('meal_reactions').delete().eq('id', exist.id);
+                    if (e) throw e;
+                }
+            } else if (exist) {
+                const { error: e } = await sb.from('meal_reactions').update({ value: finalValue }).eq('id', exist.id);
+                if (e) throw e;
+                if (finalValue === 1) window.sendNotification('like', `👍 赞了你的「${item.meal_type || '饭菜'}」照片`);
+            } else {
+                const { error: e } = await sb.from('meal_reactions')
+                    .insert({ meal_id: Number(mealId), username: me, value: finalValue });
+                if (e) throw e;
+                if (finalValue === 1) window.sendNotification('like', `👍 赞了你的「${item.meal_type || '饭菜'}」照片`);
+            }
+
+            applyLocalReaction(item, me, finalValue);
+            renderMeals();
+        } catch (err) {
+            console.error('[meals] 赞踩失败', err);
+            alert('操作失败：' + (err.message || err));
+        } finally {
+            _reacting = false;
+        }
+    }
+
     // ===== 初始化（首次切到该子 Tab 时由 auth.js 调用）=====
     async function initMealsPage() {
         bindChips();
@@ -361,6 +463,7 @@
     window.loadMeals = loadMeals;
     window.renderMeals = renderMeals;
     window.deleteMeal = deleteMeal;
+    window.reactMeal = reactMeal;
     window.mealPrevPage = () => { mealPage--; renderMeals(); };
     window.mealNextPage = () => { mealPage++; renderMeals(); };
 

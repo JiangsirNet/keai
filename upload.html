@@ -245,7 +245,6 @@
                         <button onclick="formatEditor()" title="格式化文档" class="border border-vsborder rounded px-2 py-1 bg-vspanel hover:bg-[#2d2d30]"><i class="fa fa-indent"></i> 格式化</button>
                         <span class="text-vsgray" id="editorCursor">Ln 1, Col 1</span>
                         <span class="text-vsgray" id="editorCharCount">0 字符</span>
-                        <button onclick="toggleAiPanel()" title="AI 助手" class="border border-love text-love rounded px-2 py-1 bg-vspanel hover:bg-[#2d2d30] ml-auto md:hidden"><i class="fa fa-magic"></i> AI</button>
                     </div>
                     <div id="editorArea" class="w-full md:h-[calc(100vh-340px)] h-[400px]"></div>
                     <div class="flex flex-wrap gap-2 mt-3">
@@ -265,43 +264,6 @@
                             <i class="fa fa-history"></i> 历史版本
                         </button>
                         <span id="saveStatus" class="text-sm text-vsgray self-center"></span>
-                    </div>
-                </div>
-                <!-- AI 代码助手面板 -->
-                <div id="aiPanel" class="hidden md:flex bg-vspanel rounded-xl p-3 shadow w-full md:w-96 lg:w-[420px] flex-shrink-0 flex-col border border-vsborder">
-                    <div class="flex items-center justify-between mb-2">
-                        <h2 class="font-bold text-vstext text-sm flex items-center gap-1">
-                            <i class="fa fa-magic text-love"></i> AI 代码助手
-                        </h2>
-                        <button onclick="toggleAiPanel()" class="text-vsgray hover:text-vstext md:hidden">
-                            <i class="fa fa-times"></i>
-                        </button>
-                    </div>
-                    <div id="aiChatMsgs" class="flex-1 overflow-y-auto space-y-2 mb-2 min-h-[200px] max-h-[300px] md:max-h-[400px] text-sm">
-                        <div class="text-center text-vsgray text-xs py-4">
-                            <i class="fa fa-comments block mb-1"></i>
-                            自动加载项目文档，可手动引用代码文件
-                        </div>
-                    </div>
-                    <!-- 引用文件列表 -->
-                    <div id="aiRefFiles" class="hidden mb-2"></div>
-                    <!-- 快捷指令 -->
-                    <div class="flex flex-wrap items-center gap-1 mb-2">
-                        <button onclick="aiQuickCmd('优化这段代码')" class="text-xs bg-[#38282c] text-love px-2 py-1 rounded hover:bg-[#48343a]">优化</button>
-                        <button onclick="aiQuickCmd('解释这段代码')" class="text-xs bg-[#38282c] text-love px-2 py-1 rounded hover:bg-[#48343a]">解释</button>
-                        <button onclick="aiQuickCmd('修复这个Bug')" class="text-xs bg-[#38282c] text-love px-2 py-1 rounded hover:bg-[#48343a]">修复</button>
-                        <button onclick="aiQuickCmd('添加详细注释')" class="text-xs bg-[#38282c] text-love px-2 py-1 rounded hover:bg-[#48343a]">注释</button>
-                        <button onclick="clearAiChat()" class="text-xs bg-[#333333] text-vsgray px-2 py-1 rounded hover:bg-[#444444] ml-auto" title="清空聊天记录">
-                            <i class="fa fa-trash"></i> 清空
-                        </button>
-                    </div>
-                    <div class="flex gap-1">
-                        <input id="aiChatInput" type="text" placeholder="对 AI 说..."
-                            class="flex-1 border border-vsborder rounded-lg px-2 py-1.5 text-sm outline-none focus:border-love"
-                            onkeydown="if(event.key==='Enter')sendAiChat()">
-                        <button onclick="sendAiChat()" class="bg-love text-white px-3 py-1.5 rounded-lg text-sm hover:bg-loveDark flex-shrink-0">
-                            <i class="fa fa-paper-plane"></i>
-                        </button>
                     </div>
                 </div>
             </div>
@@ -391,43 +353,17 @@
         <!-- ===== Tab: 存储配置 ===== -->
         <div id="panelStorage" class="hidden bg-vspanel rounded-xl p-4 shadow mb-6 border border-vsborder">
             <h2 class="font-bold text-vstext mb-3 flex items-center gap-2"><i class="fa fa-database"></i> 存储 / 网盘配置</h2>
-            <p class="text-sm text-vsgray mb-2">配置腾讯 COS（视频上传）和 OpenList（百度网盘接入）。配置保存在 <code class="bg-[#333333] px-1 rounded text-xs">app_config</code> 表，全局共享。</p>
+            <p class="text-sm text-vsgray mb-2">配置 OpenList（百度网盘接入）。配置保存在 <code class="bg-[#333333] px-1 rounded text-xs">app_config</code> 表，全局共享。</p>
             <!-- 未登录提示 -->
             <div id="storageAuthHint" class="hidden bg-[#443828] border border-orange-700 text-orange-300 rounded-lg px-4 py-3 mb-4 text-sm flex items-start gap-2">
                 <i class="fa fa-exclamation-triangle mt-0.5"></i>
                 <span>未登录无法保存配置。请先在页面 <b>顶部登录框</b> 输入情侣空间的邮箱和密码登录后再保存。测试连接功能无需登录。</span>
             </div>
-            <!-- 腾讯 COS 配置 -->
-            <div class="mb-6">
-                <h3 class="font-semibold text-love flex items-center gap-2 mb-2"><i class="fa fa-cloud"></i> 腾讯 COS 配置</h3>
-                <p class="text-xs text-vsgray mb-3">用于视频上传（在 <a href="https://console.cloud.tencent.com/cam/capi" target="_blank" class="text-love underline">API 密钥管理</a> 获取）</p>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                    <div>
-                        <label class="block text-sm text-vsgray mb-1">SecretId</label>
-                        <input id="cosSecretIdInput" type="password" placeholder="COS SecretId" class="w-full border border-vsborder rounded-lg p-2 outline-none focus:border-love">
-                    </div>
-                    <div>
-                        <label class="block text-sm text-vsgray mb-1">SecretKey</label>
-                        <input id="cosSecretKeyInput" type="password" placeholder="COS SecretKey" class="w-full border border-vsborder rounded-lg p-2 outline-none focus:border-love">
-                    </div>
-                    <div>
-                        <label class="block text-sm text-vsgray mb-1">Bucket</label>
-                        <input id="cosBucketInput" placeholder="如 xxx-1300000000" class="w-full border border-vsborder rounded-lg p-2 outline-none focus:border-love">
-                    </div>
-                    <div>
-                        <label class="block text-sm text-vsgray mb-1">Region</label>
-                        <input id="cosRegionInput" placeholder="如 ap-guangzhou" class="w-full border border-vsborder rounded-lg p-2 outline-none focus:border-love">
-                    </div>
-                </div>
-                <button id="cosSaveBtn" onclick="saveCosConfig()" class="bg-love text-white px-4 py-2 rounded-lg hover:bg-loveDark transition w-full sm:w-auto">
-                    <i class="fa fa-save"></i> 保存 COS 配置
-                </button>
-            </div>
             <!-- OpenList / 百度网盘配置 -->
             <div>
                 <h3 class="font-semibold text-love flex items-center gap-2 mb-2"><i class="fa fa-cloud"></i> OpenList 百度网盘配置</h3>
                 <p class="text-xs text-vsgray mb-3">
-                    通过 OpenList 服务接入百度网盘，用于在「网盘」Tab 中浏览和上传视频。
+                    通过 OpenList 服务接入百度网盘，用于在「网盘」Tab 中浏览和上传文件。
                     <a href="https://github.com/OpenListTeam/OpenList" target="_blank" class="text-love underline">了解 OpenList</a> ·
                     <a href="https://api.oplist.org/" target="_blank" class="text-love underline">获取百度网盘 Token</a>
                 </p>
@@ -621,7 +557,7 @@
                 // 恢复写入按钮（上传 + 存储配置保存）
                 const uploadBtn = document.getElementById('uploadBtn');
                 if (uploadBtn) { uploadBtn.disabled = false; uploadBtn.classList.remove('opacity-50', 'cursor-not-allowed'); }
-                [document.getElementById('cosSaveBtn'), document.getElementById('openlistSaveBtn')].forEach(btn => {
+                [document.getElementById('openlistSaveBtn')].forEach(btn => {
                     if (btn) { btn.disabled = false; btn.classList.remove('opacity-50', 'cursor-not-allowed'); }
                 });
                 // 隐藏未登录提示
@@ -641,7 +577,6 @@
             if (uploadBtn) { uploadBtn.disabled = true; uploadBtn.classList.add('opacity-50', 'cursor-not-allowed'); }
             // 存储配置保存按钮（未登录写数据库会被RLS拒绝，先禁用避免用户以为保存成功）
             const storageSaveButtons = [
-                document.getElementById('cosSaveBtn'),
                 document.getElementById('openlistSaveBtn')
             ];
             storageSaveButtons.forEach(btn => {
@@ -754,24 +689,7 @@ ALTER TABLE karaoke_recordings ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "allow_read_karaoke" ON karaoke_recordings FOR SELECT USING (true);
 CREATE POLICY "allow_write_karaoke" ON karaoke_recordings FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
--- 5. 视频表
-CREATE TABLE IF NOT EXISTS videos (
-    id              BIGSERIAL PRIMARY KEY,
-    title           TEXT NOT NULL,
-    url             TEXT NOT NULL,          -- cos://videos/xxx.mp4 （私有桶签名访问）
-    thumbnail_url   TEXT,                   -- 兼容旧：dataURL 或 cos://xxx
-    thumbnail_key   TEXT,                   -- 新：缩略图 COS Key（如 videos_thumbs/xxx.jpg）
-    file_size       BIGINT,
-    duration        REAL,
-    uploader_email  TEXT,
-    created_at      TIMESTAMPTZ DEFAULT now()
-);
-DO $$ BEGIN ALTER TABLE videos ADD COLUMN IF NOT EXISTS thumbnail_key TEXT; EXCEPTION WHEN OTHERS THEN END $$;
-ALTER TABLE videos ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "allow_read_videos" ON videos FOR SELECT USING (true);
-CREATE POLICY "allow_write_videos" ON videos FOR ALL TO authenticated USING (true) WITH CHECK (true);
-
--- 6. 音乐表
+-- 5. 音乐表
 CREATE TABLE IF NOT EXISTS music (
     id              BIGSERIAL PRIMARY KEY,
     title           TEXT NOT NULL,
@@ -803,7 +721,40 @@ CREATE TABLE IF NOT EXISTS meals (
 ALTER TABLE meals ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "allow_read_meals" ON meals FOR SELECT USING (true);
 CREATE POLICY "allow_write_meals" ON meals FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE INDEX IF NOT EXISTS idx_meals_date ON meals (meal_date DESC, created_at DESC);`;
+CREATE INDEX IF NOT EXISTS idx_meals_date ON meals (meal_date DESC, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS meal_reactions (
+    id          BIGSERIAL PRIMARY KEY,
+    meal_id     BIGINT NOT NULL,                          -- 关联 meals.id
+    username    TEXT NOT NULL,                            -- 操作者邮箱（与 journal_likes 一致）
+    value       SMALLINT NOT NULL DEFAULT 1,              -- 1=赞 / -1=踩
+    created_at  TIMESTAMPTZ DEFAULT now(),
+    UNIQUE (meal_id, username)
+);
+ALTER TABLE meal_reactions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow_read_meal_reactions" ON meal_reactions FOR SELECT USING (true);
+CREATE POLICY "allow_write_meal_reactions" ON meal_reactions FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- 8. 定位共享表（每人一行，覆盖更新）
+CREATE TABLE IF NOT EXISTS locations (
+    id          BIGSERIAL PRIMARY KEY,
+    user_email  TEXT UNIQUE NOT NULL,                     -- 上报者邮箱
+    lat         DOUBLE PRECISION NOT NULL,                -- 纬度
+    lng         DOUBLE PRECISION NOT NULL,                -- 经度
+    accuracy    DOUBLE PRECISION,                         -- 定位精度（米）
+    address     TEXT,                                     -- 逆地理编码后的地址
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()        -- 最后更新时间
+);
+ALTER TABLE locations ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow_read_locations" ON locations FOR SELECT USING (true);
+CREATE POLICY "allow_write_locations" ON locations FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE INDEX IF NOT EXISTS idx_locations_updated ON locations (updated_at DESC);
+
+-- 开启 Realtime 推送（未开启时前端有 60s 轮询兜底）
+DO $$ BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE locations;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;`;
         document.getElementById('sqlBox').value = CREATE_SQL;
 
         // ===== 本地上传文件清单 =====
@@ -831,9 +782,8 @@ CREATE INDEX IF NOT EXISTS idx_meals_date ON meals (meal_date DESC, created_at D
             { path: 'js/game.js',            type: 'js', container: null, order: 21 },
             { path: 'js/game_liar.js',       type: 'js', container: null, order: 22 },
             { path: 'js/background.js',      type: 'js', container: null, order: 23 },
-            { path: 'js/ai_chat.js',         type: 'js', container: null, order: 24 },
+            { path: 'js/location.js',        type: 'js', container: null, order: 24 },
             { path: 'js/karaoke.js',         type: 'js', container: null, order: 25 },
-            { path: 'js/video.js',           type: 'js', container: null, order: 26 },
             { path: 'js/cloud.js',           type: 'js', container: null, order: 27 },
             { path: 'js/meals.js',           type: 'js', container: null, order: 28 },
             { path: 'js/pull_refresh.js',    type: 'js', container: null, order: 29 },
@@ -853,10 +803,6 @@ CREATE INDEX IF NOT EXISTS idx_meals_date ON meals (meal_date DESC, created_at D
             if (name === 'online') {
                 initMonacoEditor();
                 loadAssets();
-                // 恢复 AI 聊天记录
-                restoreAiChatUI();
-                // 预加载自动引用的 md 文件，供用户查看和手动取消
-                loadAutoMdFiles();
                 // 轮询确保 Monaco 就绪后刷新布局（处理首次加载延迟）
                 let layoutTries = 0;
                 const layoutInterval = setInterval(() => {
@@ -875,54 +821,8 @@ CREATE INDEX IF NOT EXISTS idx_meals_date ON meals (meal_date DESC, created_at D
         }
 
         // ======================================================
-        // 存储配置：腾讯 COS + OpenList 百度网盘
+        // 存储配置：OpenList 百度网盘
         // ======================================================
-
-        // —— 腾讯 COS ——
-        async function saveCosConfig() {
-            // 双重保险：即使按钮被绕过，未登录也不能写数据库（否则 RLS 报错信息容易让用户困惑）
-            if (!requireAuth()) return;
-            const secretId = document.getElementById('cosSecretIdInput').value.trim();
-            const secretKey = document.getElementById('cosSecretKeyInput').value.trim();
-            const bucket = document.getElementById('cosBucketInput').value.trim();
-            const region = document.getElementById('cosRegionInput').value.trim();
-            if (!secretId || !secretKey || !bucket || !region) { alert('请填写所有 COS 字段'); return; }
-            const configs = [
-                { key: 'cos_secret_id', value: secretId },
-                { key: 'cos_secret_key', value: secretKey },
-                { key: 'cos_bucket',     value: bucket },
-                { key: 'cos_region',     value: region }
-            ];
-            for (const c of configs) {
-                const { error } = await sb.from('app_config')
-                    .upsert({ config_key: c.key, config_value: c.value }, { onConflict: 'config_key' });
-                if (error) { alert('保存 COS 失败：' + error.message); return; }
-            }
-            window._cosSecretId  = secretId;
-            window._cosSecretKey = secretKey;
-            window._cosBucket    = bucket;
-            window._cosRegion    = region;
-            alert('✅ COS 配置已保存');
-        }
-
-        async function loadCosConfigForm() {
-            try {
-                const keys = ['cos_secret_id', 'cos_secret_key', 'cos_bucket', 'cos_region'];
-                const { data, error } = await sb.from('app_config')
-                    .select('config_key, config_value').in('config_key', keys);
-                if (error) throw error;
-                const map = {};
-                (data || []).forEach(r => map[r.config_key] = r.config_value);
-                window._cosSecretId  = map.cos_secret_id  || '';
-                window._cosSecretKey = map.cos_secret_key || '';
-                window._cosBucket    = map.cos_bucket     || '';
-                window._cosRegion    = map.cos_region     || '';
-                document.getElementById('cosSecretIdInput').value   = window._cosSecretId;
-                document.getElementById('cosSecretKeyInput').value  = window._cosSecretKey;
-                document.getElementById('cosBucketInput').value     = window._cosBucket;
-                document.getElementById('cosRegionInput').value     = window._cosRegion;
-            } catch (e) { console.warn('[Storage] 加载 COS 配置失败:', e); }
-        }
 
         // —— OpenList 百度网盘 ——
         // 解析挂载路径列表：换行/逗号/分号分隔，去重，统一以 / 开头
@@ -1043,9 +943,9 @@ CREATE INDEX IF NOT EXISTS idx_meals_date ON meals (meal_date DESC, created_at D
             }
         }
 
-        // —— 组合入口：进入「存储」Tab 时自动加载两份配置 ——
+        // —— 组合入口：进入「存储」Tab 时自动加载配置 ——
         async function loadStorageConfig() {
-            await Promise.all([loadCosConfigForm(), loadOpenListConfigForm()]);
+            await loadOpenListConfigForm();
         }
 
         // ===== 架构文档动态加载 =====
@@ -1492,388 +1392,6 @@ CREATE INDEX IF NOT EXISTS idx_meals_date ON meals (meal_date DESC, created_at D
         // 暴露到 window
         window.formatEditor = formatEditor;
 
-        // ===== AI 代码助手 =====
-        let aiCodeApiKey = '';
-        let aiCodeModel = 'glm-4.7-flash';
-        let aiCodeSending = false;
-        let aiReferencedFiles = []; // 用户手动引用的文件列表 [{file_path, content, type}]
-        let aiAutoMdFiles = []; // 自动加载的 md 文件列表 [{file_path, content}]
-
-        // 聊天记录持久化（localStorage）
-        const AI_HISTORY_KEY = 'ai_chat_history';
-        function loadAiHistory() {
-            try {
-                const saved = localStorage.getItem(AI_HISTORY_KEY);
-                return saved ? JSON.parse(saved) : [];
-            } catch (e) { return []; }
-        }
-        function saveAiHistory() {
-            try {
-                localStorage.setItem(AI_HISTORY_KEY, JSON.stringify(aiCodeHistory));
-            } catch (e) { console.warn('保存聊天记录失败:', e); }
-        }
-        let aiCodeHistory = loadAiHistory();
-
-        // 恢复聊天记录到界面
-        function restoreAiChatUI() {
-            if (aiCodeHistory.length === 0) return;
-            const msgs = document.getElementById('aiChatMsgs');
-            msgs.innerHTML = '';
-            aiCodeHistory.forEach(h => {
-                addAiMsg(h.role, h.content);
-            });
-        }
-
-        // 读取 AI API Key
-        async function loadAiCodeKey() {
-            if (aiCodeApiKey) return aiCodeApiKey;
-            const { data } = await sb.from('app_config').select('config_value,config_key').in('config_key', ['zhipu_api_key', 'zhipu_model']);
-            if (data) {
-                data.forEach(r => {
-                    if (r.config_key === 'zhipu_api_key') aiCodeApiKey = r.config_value;
-                    if (r.config_key === 'zhipu_model' && r.config_value) aiCodeModel = r.config_value;
-                });
-            }
-            return aiCodeApiKey;
-        }
-
-        // ===== 引用文件管理 =====
-        function toggleRefFile(filePath) {
-            const asset = currentAssets.find(a => a.file_path === filePath);
-            if (!asset) return;
-            
-            const idx = aiReferencedFiles.findIndex(f => f.file_path === filePath);
-            if (idx >= 0) {
-                // 移除
-                aiReferencedFiles.splice(idx, 1);
-            } else {
-                // 添加
-                aiReferencedFiles.push({
-                    file_path: asset.file_path,
-                    content: asset.content,
-                    type: asset.type
-                });
-            }
-            renderAssetList(); // 重新渲染资源列表
-            renderRefFiles();  // 重新渲染引用文件列表
-        }
-
-        function isFileReferenced(filePath) {
-            return aiReferencedFiles.some(f => f.file_path === filePath);
-        }
-
-        function removeRefFile(filePath) {
-            aiReferencedFiles = aiReferencedFiles.filter(f => f.file_path !== filePath);
-            renderAssetList();
-            renderRefFiles();
-        }
-
-        // 自动加载所有 md 文件到引用列表
-        async function loadAutoMdFiles() {
-            try {
-                const { data: mdFiles } = await sb.from('app_assets')
-                    .select('file_path, content')
-                    .eq('type', 'md')
-                    .eq('is_active', true);
-                aiAutoMdFiles = (mdFiles || []).map(f => ({
-                    file_path: f.file_path,
-                    content: f.content || ''
-                }));
-            } catch (e) {
-                console.warn('加载 md 文件失败:', e);
-                aiAutoMdFiles = [];
-            }
-            renderRefFiles();
-        }
-
-        // 从自动加载列表移除某个 md 文件
-        function removeAutoMdFile(filePath) {
-            aiAutoMdFiles = aiAutoMdFiles.filter(f => f.file_path !== filePath);
-            renderRefFiles();
-        }
-
-        // 清空所有引用文件（自动 + 手动）
-        function clearAllRefFiles() {
-            aiAutoMdFiles = [];
-            aiReferencedFiles = [];
-            renderAssetList();
-            renderRefFiles();
-        }
-
-        function renderRefFiles() {
-            const container = document.getElementById('aiRefFiles');
-            if (!container) return;
-
-            const total = aiAutoMdFiles.length + aiReferencedFiles.length;
-            if (total === 0) {
-                container.innerHTML = '<div class="text-xs text-gray-400 text-center py-1">📎 点击资源列表的「引用」按钮添加文件</div>';
-                container.classList.add('hidden');
-                return;
-            }
-
-            container.classList.remove('hidden');
-            let html = '<div class="text-xs text-gray-500 mb-1">📎 已引用 ' + total + ' 个文件（发送后自动清空）</div>';
-
-            // 自动加载的 md 文件
-            aiAutoMdFiles.forEach(f => {
-                html += `
-                    <div class="flex items-center justify-between bg-blue-50 rounded px-2 py-1 mb-1 text-xs">
-                        <span class="truncate flex-1"><span class="text-blue-500">[自动]</span> ${escapeHtml(f.file_path)}</span>
-                        <button onclick="removeAutoMdFile('${f.file_path}')" class="text-red-400 hover:text-red-600 ml-1" title="取消引用">
-                            <i class="fa fa-times"></i>
-                        </button>
-                    </div>`;
-            });
-
-            // 手动引用的文件
-            aiReferencedFiles.forEach(f => {
-                html += `
-                    <div class="flex items-center justify-between bg-rose-50 rounded px-2 py-1 mb-1 text-xs">
-                        <span class="truncate flex-1">${escapeHtml(f.file_path)}</span>
-                        <button onclick="removeRefFile('${f.file_path}')" class="text-red-400 hover:text-red-600 ml-1" title="取消引用">
-                            <i class="fa fa-times"></i>
-                        </button>
-                    </div>`;
-            });
-
-            container.innerHTML = html;
-        }
-
-        // 切换 AI 面板显示
-        function toggleAiPanel() {
-            const panel = document.getElementById('aiPanel');
-            if (panel.classList.contains('hidden')) {
-                panel.classList.remove('hidden');
-                panel.classList.add('flex');
-            } else {
-                panel.classList.add('hidden');
-                panel.classList.remove('flex');
-            }
-        }
-
-        // 快捷指令
-        function aiQuickCmd(cmd) {
-            document.getElementById('aiChatInput').value = cmd;
-            sendAiChat();
-        }
-
-        // 添加消息到聊天区
-        function addAiMsg(role, text, codeBlock) {
-            const msgs = document.getElementById('aiChatMsgs');
-            // 清除初始提示
-            if (msgs.children.length === 1 && msgs.children[0].classList.contains('text-center')) {
-                msgs.innerHTML = '';
-            }
-            const wrapper = document.createElement('div');
-            if (role === 'user') {
-                wrapper.className = 'bg-love/10 rounded-lg px-3 py-2 ml-4 text-xs text-gray-700';
-                wrapper.textContent = text;
-            } else {
-                wrapper.className = 'bg-gray-50 rounded-lg px-3 py-2 mr-4 text-xs text-gray-700';
-                wrapper.innerHTML = renderAiContent(text);
-            }
-            msgs.appendChild(wrapper);
-            msgs.scrollTop = msgs.scrollHeight;
-            return wrapper;
-        }
-
-        function renderAiContent(text) {
-            // 解析 markdown 代码块
-            const parts = text.split(/```(\w*)\n([\s\S]*?)```/);
-            let html = '';
-            for (let i = 0; i < parts.length; i++) {
-                if (i % 3 === 0 && parts[i].trim()) {
-                    html += `<p class="mb-1 whitespace-pre-wrap">${escapeHtml(parts[i].trim())}</p>`;
-                } else if (i % 3 === 2 && parts[i]) {
-                    const lang = parts[i - 1] || '';
-                    const code = parts[i];
-                    html += `<div class="my-2 border border-rose-200 rounded-lg overflow-hidden">
-                        <div class="flex items-center justify-between bg-rose-50 px-2 py-1">
-                            <span class="text-xs text-gray-500">${lang || 'code'}</span>
-                            <button onclick="applyAiCode(this)" class="text-xs text-love font-semibold hover:underline">应用到编辑器</button>
-                        </div>
-                        <pre class="bg-gray-800 text-gray-100 p-2 overflow-x-auto text-xs"><code>${escapeHtml(code)}</code></pre>
-                    </div>`;
-                }
-            }
-            // 处理未闭合的代码块（流式输出中）
-            if (html === '' && text.includes('```')) {
-                const idx = text.indexOf('```');
-                const before = text.substring(0, idx);
-                const codePart = text.substring(idx + 3);
-                if (before.trim()) html += `<p class="mb-1 whitespace-pre-wrap">${escapeHtml(before.trim())}</p>`;
-                html += `<div class="my-2 border border-rose-200 rounded-lg overflow-hidden">
-                    <div class="flex items-center justify-between bg-rose-50 px-2 py-1">
-                        <span class="text-xs text-gray-500">code</span>
-                        <button onclick="applyAiCode(this)" class="text-xs text-love font-semibold hover:underline">应用到编辑器</button>
-                    </div>
-                    <pre class="bg-gray-800 text-gray-100 p-2 overflow-x-auto text-xs"><code>${escapeHtml(codePart)}</code></pre>
-                </div>`;
-            }
-            return html || escapeHtml(text);
-        }
-
-        function escapeHtml(s) {
-            return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        }
-
-        // 应用 AI 返回的代码到编辑器
-        function applyAiCode(btn) {
-            const pre = btn.closest('.border-rose-200').querySelector('pre code');
-            const code = pre.textContent;
-            if (monoReady && monoEditor) {
-                monoEditor.setValue(code);
-                document.getElementById('saveStatus').textContent = '⚠️ 代码已应用，记得保存';
-                document.getElementById('saveStatus').className = 'text-sm text-orange-500 self-center';
-            }
-        }
-
-        // 发送 AI 聊天
-        async function sendAiChat() {
-            if (aiCodeSending) return;
-            const input = document.getElementById('aiChatInput');
-            const userMsg = input.value.trim();
-            if (!userMsg) return;
-
-            // 检查 API Key
-            await loadAiCodeKey();
-            if (!aiCodeApiKey) {
-                addAiMsg('assistant', '⚠️ 请先在主应用的「设置」页面配置智谱 AI API Key');
-                return;
-            }
-
-            input.value = '';
-            aiCodeSending = true;
-
-            // 用当前引用列表构造上下文（不在此处自动加载，发送后即清空）
-            let mdContext = '';
-            if (aiAutoMdFiles.length > 0) {
-                mdContext = '## 项目文档（请参考以下文档回答问题）\n\n';
-                aiAutoMdFiles.forEach(f => {
-                    mdContext += `### ${f.file_path}\n\`\`\`\n${(f.content || '').substring(0, 50000)}\n\`\`\`\n\n`;
-                });
-            }
-
-            // 用户手动引用的文件
-            let refContext = '';
-            if (aiReferencedFiles.length > 0) {
-                refContext = '\n## 用户引用的代码文件\n\n';
-                aiReferencedFiles.forEach(f => {
-                    refContext += `### ${f.file_path}\n\`\`\`${f.type}\n${f.content || ''}\n\`\`\`\n\n`;
-                });
-            }
-
-            const fullCtx = mdContext + refContext + `\n## 用户请求\n${userMsg}`;
-
-            addAiMsg('user', userMsg);
-
-            // loading
-            const loadingEl = addAiMsg('assistant', '思考中...');
-
-            // 构建对话历史
-            const messages = [{ role: 'system', content: '你是一个专业的编程助手，擅长阅读项目文档并帮助修改代码。请参考提供的项目文档和用户引用的代码文件，根据用户请求帮助修改、优化、解释代码。返回代码时请用 ```代码块``` 包裹，用户可以一键应用到编辑器。' }];
-            aiCodeHistory.forEach(h => messages.push(h));
-            messages.push({ role: 'user', content: fullCtx });
-
-            try {
-                const res = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': 'Bearer ' + aiCodeApiKey,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        model: aiCodeModel,
-                        messages: messages,
-                        temperature: 0.5,
-                        stream: true
-                    })
-                });
-
-                if (!res.ok) {
-                    const errData = await res.json().catch(() => ({}));
-                    throw new Error(errData.error?.message || `HTTP ${res.status}`);
-                }
-
-                // 流式读取
-                const reader = res.body.getReader();
-                const decoder = new TextDecoder();
-                let reply = '';
-                let buffer = '';
-                let firstChunk = true;
-
-                // 替换 loading 为流式消息容器
-                loadingEl.remove();
-                const streamEl = document.createElement('div');
-                streamEl.className = 'bg-gray-50 rounded-lg px-3 py-2 mr-4 text-xs text-gray-700';
-                document.getElementById('aiChatMsgs').appendChild(streamEl);
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-
-                    buffer += decoder.decode(value, { stream: true });
-                    const lines = buffer.split('\n');
-                    buffer = lines.pop(); // 保留最后不完整的行
-
-                    for (const line of lines) {
-                        const trimmed = line.trim();
-                        if (!trimmed || !trimmed.startsWith('data:')) continue;
-                        const data = trimmed.slice(5).trim();
-                        if (data === '[DONE]') continue;
-
-                        try {
-                            const json = JSON.parse(data);
-                            const delta = json.choices?.[0]?.delta?.content || '';
-                            if (delta) {
-                                if (firstChunk) { firstChunk = false; }
-                                reply += delta;
-                                // 实时渲染
-                                streamEl.innerHTML = renderAiContent(reply);
-                                document.getElementById('aiChatMsgs').scrollTop = document.getElementById('aiChatMsgs').scrollHeight;
-                            }
-                        } catch (e) { /* 忽略解析错误 */ }
-                    }
-                }
-
-                if (!reply) reply = '无回复';
-
-                // 保存到历史（只保存用户消息和回复，不保存完整上下文以节省 token）
-                aiCodeHistory.push({ role: 'user', content: userMsg });
-                aiCodeHistory.push({ role: 'assistant', content: reply });
-                // 限制历史长度
-                if (aiCodeHistory.length > 10) aiCodeHistory = aiCodeHistory.slice(-10);
-                // 持久化到 localStorage
-                saveAiHistory();
-            } catch (e) {
-                loadingEl.remove();
-                addAiMsg('assistant', '❌ 请求失败: ' + e.message);
-            } finally {
-                aiCodeSending = false;
-                // 本轮对话结束，自动清空所有引用文件
-                clearAllRefFiles();
-            }
-        }
-
-        // 暴露到 window
-        window.toggleAiPanel = toggleAiPanel;
-        window.aiQuickCmd = aiQuickCmd;
-        window.sendAiChat = sendAiChat;
-        window.applyAiCode = applyAiCode;
-        window.toggleRefFile = toggleRefFile;
-        // 清空聊天记录
-        function clearAiChat() {
-            if (aiCodeHistory.length === 0) return;
-            if (!confirm('确认清空所有聊天记录？')) return;
-            aiCodeHistory = [];
-            saveAiHistory();
-            document.getElementById('aiChatMsgs').innerHTML = '<div class="text-center text-gray-400 text-xs py-4"><i class="fa fa-comments block mb-1"></i>自动加载项目文档，可手动引用代码文件</div>';
-        }
-
-        window.removeRefFile = removeRefFile;
-        window.removeAutoMdFile = removeAutoMdFile;
-        window.clearAiChat = clearAiChat;
-
         // ===== 全部下载为 ZIP =====
         // 动态加载脚本（加载 UMD 库时临时禁用 AMD，避免与 Monaco 的 define 冲突）
         function loadScript(url, disableAmd) {
@@ -2117,7 +1635,6 @@ CREATE INDEX IF NOT EXISTS idx_meals_date ON meals (meal_date DESC, created_at D
                 return;
             }
             listEl.innerHTML = currentAssets.map(a => {
-                const ref = isFileReferenced(a.file_path);
                 return `
                 <div class="asset-item ${a.file_path === currentPath ? 'active' : ''} flex items-center justify-between px-3 py-2 rounded-lg text-sm group">
                     <div class="flex items-center gap-2 min-w-0 flex-1 cursor-pointer" onclick="editAsset('${a.file_path}')">
@@ -2125,11 +1642,6 @@ CREATE INDEX IF NOT EXISTS idx_meals_date ON meals (meal_date DESC, created_at D
                         <span class="truncate">${a.file_path}</span>
                     </div>
                     <div class="flex items-center gap-1 flex-shrink-0">
-                        <button onclick="event.stopPropagation();toggleRefFile('${a.file_path}')" 
-                            title="${ref ? '取消引用' : '引用此文件到 AI'}"
-                            class="text-xs px-1.5 py-0.5 rounded transition ${ref ? 'bg-love text-white' : 'bg-gray-100 text-gray-500 hover:bg-rose-100 hover:text-love'}">
-                            ${ref ? '✓' : '📎'}
-                        </button>
                         <span class="text-xs ${a.is_active ? 'text-green-500' : 'text-gray-400'}">${a.is_active ? '●' : '○'}</span>
                     </div>
                 </div>`;

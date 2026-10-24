@@ -65,6 +65,8 @@
         document.getElementById("refreshBtn").classList.add("hidden");
         document.getElementById("bellPanel").classList.add("hidden");
         if (window.notificationChannel) { sb.removeChannel(window.notificationChannel); window.notificationChannel = null; }
+        // 停止定位共享并清理订阅
+        if (window.stopLocationSharing) window.stopLocationSharing();
         window.notifications = []; window.unreadCount = 0;
         // 新增：只隐藏 mao 和 dog 宠物（不再隐藏 husky/cat，因为它们不使用 GIF 动画）
         document.getElementById("maoPet").classList.add("hidden");
@@ -94,16 +96,6 @@
         if (map.emailjs_public_key) { EMAILJS_PUBLIC_KEY = map.emailjs_public_key; window.EMAILJS_PUBLIC_KEY = map.emailjs_public_key; }
         // 邮件通知开关（localStorage 本地记忆，无记录默认开启）
         window._notifyEmailEnabled = localStorage.getItem('notify_email_enabled') !== '0';
-        // AI 聊天配置（供 ai_chat.js 使用）
-        if (map.zhipu_api_key) window._aiApiKey = map.zhipu_api_key;
-        if (map.zhipu_model) window._aiModel = map.zhipu_model;
-        if (map.zhipu_system_prompt) window._aiSystemPrompt = map.zhipu_system_prompt;
-        if (map.zhipu_web_search) window._aiWebSearch = map.zhipu_web_search === "true";
-        // 腾讯 COS 配置（供 video.js 使用）
-        if (map.cos_secret_id) window._cosSecretId = map.cos_secret_id;
-        if (map.cos_secret_key) window._cosSecretKey = map.cos_secret_key;
-        if (map.cos_bucket) window._cosBucket = map.cos_bucket;
-        if (map.cos_region) window._cosRegion = map.cos_region;
         // 设置当前用户邮箱（供 calendar/game/journal 等模块使用）
         const { data: { session } } = await sb.auth.getSession();
         if (session?.user?.email) {
@@ -169,6 +161,10 @@
         document.getElementById("refreshBtn").classList.remove("hidden");
         // 首页默认子 Tab 初始化
         initHomePage();
+        // 定位：登录后自动开始共享位置（先加载高德配置）
+        initStorageGlobals().then(() => {
+            if (window.startLocationSharing) window.startLocationSharing();
+        });
         // 恢复上次打开的页面（下拉刷新后保持页面位置）
         const lastPage = localStorage.getItem('_lastPage');
         if (lastPage && lastPage !== 'home') {
@@ -180,7 +176,7 @@
         }
     }
 
-    // 首页初始化（天气 + 通知 + 人物 + 宠物，相册/留言/AI/音乐 走子Tab懒加载）
+    // 首页初始化（天气 + 通知 + 人物 + 宠物，相册/一日三餐/留言/日志/音乐（含K歌）/网盘 走子Tab懒加载）
     function initHomePage() {
         if (_pageInited.home) return;
         _pageInited.home = true;
@@ -217,20 +213,20 @@
     }
 
     // ======================================================
-    // 全局存储配置加载（COS + OpenList）
+    // 全局存储配置加载（OpenList）
     // —— 直接从 app_config 表读取并赋值到 window.*，
-    //    保证网盘/视频等使用方无需经过设置页即可拿到最新值
+    //    保证网盘等使用方无需经过设置页即可拿到最新值
     // ======================================================
     let _storageGlobalsLoaded = false;
     async function initStorageGlobals({ force = false } = {}) {
         if (_storageGlobalsLoaded && !force) return;
         try {
             const keys = [
-                // 腾讯 COS（4 key）
-                'cos_secret_id', 'cos_secret_key', 'cos_bucket', 'cos_region',
                 // OpenList 百度网盘（6 key）
                 'openlist_base_url', 'openlist_username', 'openlist_password',
-                'openlist_mount_path', 'openlist_mount_paths', 'openlist_as_task'
+                'openlist_mount_path', 'openlist_mount_paths', 'openlist_as_task',
+                // 高德地图定位（2 key）
+                'amap_key', 'amap_security_code'
             ];
             if (!window.sb) { console.warn('[Storage] sb 未就绪，跳过加载'); return; }
             const { data, error } = await window.sb
@@ -239,17 +235,17 @@
             const map = {};
             (data || []).forEach(r => map[r.config_key] = r.config_value);
 
-            // 赋值到 window 全局变量（与 cloud.js / video.js 使用的变量名一致）
-            window._cosSecretId    = map.cos_secret_id    || '';
-            window._cosSecretKey   = map.cos_secret_key   || '';
-            window._cosBucket      = map.cos_bucket       || '';
-            window._cosRegion      = map.cos_region       || '';
+            // 赋值到 window 全局变量（供 cloud.js 使用）
             window._openlistBaseUrl  = map.openlist_base_url  || '';
             window._openlistUsername = map.openlist_username || '';
             window._openlistPassword = map.openlist_password || '';
             window._openlistMountPath= map.openlist_mount_path|| '';
             window._openlistMountPaths = map.openlist_mount_paths || map.openlist_mount_path || '';
             window._openlistAsTask   = map.openlist_as_task === '1';
+
+            // 高德地图定位
+            window._amapKey = map.amap_key || '';
+            window._amapSecurityCode = map.amap_security_code || '';
             _storageGlobalsLoaded = true;
         } catch (e) {
             console.warn('[Storage] 加载全局配置失败:', e);
@@ -267,8 +263,8 @@
         // 先拿最新的全局值（确保即使设置页无表单也能填到 window.*）
         initStorageGlobals({ force: true }).then(() => {
             // 再让旧 loader 把值填到表单里（如果表单存在）
-            if (window.loadCosConfigForm) window.loadCosConfigForm();
             if (window.loadOpenListConfigForm) window.loadOpenListConfigForm();
+            if (window.loadLocationConfigForm) window.loadLocationConfigForm();
         });
     }
 
@@ -360,6 +356,11 @@
     function switchSubTab(sub) {
         // 防御：空子 tab 名直接返回，避免清空所有内容
         if (!sub) return;
+        // 已删除的旧子 Tab：视频/AI 回落相册，K歌 并入音乐
+        if (sub === 'video' || sub === 'ai') sub = 'gallery';
+        const openKaraoke = sub === 'karaoke';
+        if (openKaraoke) sub = 'music';
+        if (openKaraoke) window._karaokeExpanded = true;
 
         // 切换按钮高亮
         document.querySelectorAll('.sub-tab').forEach(btn => {
@@ -371,6 +372,22 @@
         document.querySelectorAll('.sub-tab-content').forEach(el => {
             el.classList.toggle('hidden', el.id !== targetId);
         });
+        // K歌面板挂在音乐 Tab 下，展开状态时与音乐面板同时显示
+        if (sub === 'music') {
+            const expanded = !!window._karaokeExpanded;
+            const chev = document.getElementById('karaokeToggleChevron');
+            const row = document.getElementById('karaokeToggle');
+            if (chev) chev.style.transform = expanded ? 'rotate(180deg)' : '';
+            if (row) row.classList.toggle('expanded', expanded);
+            if (expanded) {
+                const ks = document.getElementById('subTab-karaoke');
+                if (ks) ks.classList.remove('hidden');
+                if (openKaraoke && window.initKaraoke && !window._karaokeInitDone) {
+                    window._karaokeInitDone = true;
+                    window.initKaraoke();
+                }
+            }
+        }
 
         // 记住当前子 Tab，刷新后恢复
         localStorage.setItem('_lastSubTab', sub);
@@ -390,22 +407,9 @@
             if (jd) jd.value = today;
             if (window.loadJournal) window.loadJournal();
         }
-        if (sub === 'ai' && !_subTabInited.ai) {
-            _subTabInited.ai = true;
-            if (window.initAiChat) window.initAiChat();
-        }
         if (sub === 'music' && !_subTabInited.music) {
             _subTabInited.music = true;
             if (window.loadMusicList) window.loadMusicList();
-        }
-        if (sub === 'karaoke' && !_subTabInited.karaoke) {
-            _subTabInited.karaoke = true;
-            if (window.initKaraoke) window.initKaraoke();
-        }
-        if (sub === 'video' && !_subTabInited.video) {
-            _subTabInited.video = true;
-            if (window.initVideoPage) window.initVideoPage();
-            else if (window.loadVideoList) window.loadVideoList();
         }
         if (sub === 'meals' && !_subTabInited.meals) {
             // 仅在初始化函数存在时才标记，避免 meals.js 未加载时永久跳过
@@ -421,6 +425,8 @@
                 window.initCloudPage();
             }
         }
+        // 定位：模块内部自带幂等初始化，每次进入刷新一次
+        if (sub === 'location' && window.refreshLocations) window.refreshLocations();
     }
 
     //相恋天数

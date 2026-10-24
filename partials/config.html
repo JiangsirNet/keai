@@ -63,6 +63,28 @@
         <p id="notifyEmailHint" class="text-xs text-gray-400 mt-3">开启后，留言/日志/照片等通知会通过 EmailJS 发送邮件提醒对方。</p>
     </div>
 
+    <!-- 定位设置 -->
+    <div class="bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow mt-6">
+        <h2 class="text-xl font-bold text-love flex items-center mb-2">
+            <i class="fa fa-map-marker mr-2"></i>定位设置
+        </h2>
+        <p class="text-sm text-gray-500 mb-4">高德开放平台「Web端 (JS API)」的 Key 与安全密钥，用于地图显示和地址解析</p>
+        <div class="space-y-3">
+            <input id="amapKeyInput" placeholder="高德 Web端(JS API) Key"
+                class="w-full border border-rose-200 rounded-lg p-2 outline-none focus:border-love">
+            <input id="amapSecInput" placeholder="安全密钥 securityJsCode"
+                class="w-full border border-rose-200 rounded-lg p-2 outline-none focus:border-love">
+            <div class="flex items-center gap-3 flex-wrap">
+                <button onclick="saveLocationConfig()"
+                    class="bg-love hover:bg-loveDark text-white px-5 py-2 rounded-lg text-sm transition">
+                    <i class="fa fa-save"></i> 保存
+                </button>
+                <span id="amapSaveStatus" class="text-sm text-gray-400"></span>
+            </div>
+        </div>
+        <p class="text-xs text-gray-400 mt-3">保存后刷新页面生效；高德控制台需为 Key 绑定当前访问域名。定位需要 HTTPS 环境。</p>
+    </div>
+
     <!-- 背景设置 -->
     <div class="bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow mt-6">
         <h2 class="text-xl font-bold text-love flex items-center mb-2">

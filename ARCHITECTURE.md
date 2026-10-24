@@ -4,7 +4,7 @@
 
 ## 一、项目概述
 
-情侣空间是一个双人互动 Web 应用，功能包括：相册、视频（腾讯 COS 私有桶）、网盘（OpenList 接入百度网盘等，支持多挂载路径切换，浏览/上传任意文件（可多选）/删除）、留言、日志、日历打卡、跳一跳游戏（iframe 内嵌 + 分数入库 + 情侣排行榜）、骗子酒馆、Live2D 风格人物形象、宠物动画、现代音乐播放器（封面/歌词/播放模式）、K 歌房（录音+混音+作品库）、天气组件、背景图自定义、AI 标签页（嵌入豆包网页版）、下拉刷新、资源本地缓存等。
+情侣空间是一个双人互动 Web 应用，功能包括：相册、一日三餐、网盘（OpenList 接入百度网盘等，支持多挂载路径切换，浏览/上传任意文件（可多选）/删除）、留言、日志、日历打卡、定位共享（高德地图，登录后自动上报，展示对方实时位置与最后更新位置）、跳一跳游戏（iframe 内嵌 + 分数入库 + 情侣排行榜）、骗子酒馆、Live2D 风格人物形象、宠物动画、现代音乐播放器（封面/歌词/播放模式，内含可折叠 K 歌房）、天气组件、背景图自定义、下拉刷新、资源本地缓存等。
 
 ## 二、文件结构
 
@@ -21,15 +21,15 @@ upload.html             — 资源管理工具（本地开发用，6个Tab）
 
 ```
 styles.css              — 基础样式 + 相册 + 留言 + 音乐 + 天气 + 下拉刷新（type=css, order=0）
-styles_layout.css       — 日历 + BGM + 显示设置 + 骗子酒馆 + 语音 + 宠物 + 视频卡片 + K歌播放器 + 删除按钮（type=css, order=0）
+styles_layout.css       — 日历 + BGM + 显示设置 + 骗子酒馆 + 语音 + 宠物 + K歌播放器 + 删除按钮（type=css, order=0）
 styles_mobile.css       — 导航栏 + Live2D 人物 + 手机端适配（type=css, order=0）
 partials/               — HTML 片段
 ├── login.html          — 登录面板
-├── preview.html        — 大图预览弹窗 + 视频预览弹窗
-├── home.html           — 首页（相册/一日三餐/视频/留言/日志/AI/音乐/K歌/网盘）
+├── preview.html        — 大图预览弹窗
+├── home.html           — 首页（相册/一日三餐/定位/留言/日志/音乐（含K歌）/网盘）
 ├── journal.html        — 日志 + 日历打卡 + 纪念日
 ├── game.html           — 游戏页
-└── config.html         — 设置页（含腾讯 COS 配置）
+└── config.html         — 设置页
 js/                     — JS 模块
 ├── config_page.js      — 人物话语管理 + 通知邮件开关
 ├── notifications.js    — 通知系统（sendNotification）
@@ -40,16 +40,15 @@ js/                     — JS 模块
 ├── characters.js       — 男生 Live2D 人物形象
 ├── characters_girl.js  — 女生 Live2D 人物形象
 ├── home.js             — 首页逻辑（相册/留言）
-├── video.js            — 视频 Tab（腾讯 COS 私有桶上传/签名播放/缩略图/删除）
 ├── cloud.js            — 网盘 Tab（OpenList 多挂载浏览/上传任意文件（多选）/视频图片音频预览/删除）
 ├── meals.js            — 一日三餐（拍照上传饭菜：餐次/日期/备注/好吃评分，按日期分组 + 分页）
+├── location.js         — 定位共享（高德地图 JS API：地图展示、地址解析、登录后自动上报、Realtime 订阅）
 ├── karaoke.js          — K 歌房（选歌/歌词/录音/混音/作品库独立播放器；录音用 AudioWorklet 独立线程采集+软限幅，老浏览器回退 ScriptProcessor）
 ├── journal.js          — 日志逻辑
 ├── calendar.js         — 日历/打卡/纪念日
 ├── game.js             — 跳一跳（iframe 加载 Jump-master，postMessage 收分数入库 + 情侣排行榜）
 ├── game_liar.js        — 骗子酒馆
 ├── background.js       — 背景图设置
-├── ai_chat.js          — ⚠️ 已废弃（智谱 AI 聊天，不再被 loader.js 加载，文件保留备用）
 ├── pull_refresh.js     — 下拉刷新（橡皮条）
 └── auth.js             — 认证 + 页面初始化（必须最后加载）
 ARCHITECTURE.md         — 本架构文档（type=md, 供 upload.html 渲染用）
@@ -95,14 +94,14 @@ ARCHITECTURE.md         — 本架构文档（type=md, 供 upload.html 渲染用
 ### 加载顺序
 
 ```
-CSS (0) → HTML (1-6) → JS (10-26)
+CSS (0) → HTML (1-6) → JS (10-30)
 ```
 
 | 类型 | load_order 范围 | 说明 |
 |---|---|---|
 | `css` | 0 | 所有样式最先加载（按 file_path 排序），确保页面渲染时样式已就绪 |
 | `html` | 1-6 | 全局容器(1-2) → 各页面容器(3-6) |
-| `js` | 10-26 | 功能模块(10-25) → auth.js(26) |
+| `js` | 10-30 | 功能模块(10-28) → pull_refresh.js(29) → auth.js(30) |
 | `md` | 99 | 仅供 upload.html 渲染，不参与页面加载 |
 
 ### JS 加载顺序（依赖关系）
@@ -111,13 +110,13 @@ CSS (0) → HTML (1-6) → JS (10-26)
 config_page.js (10) → notifications.js (11) → weather.js (12) → audio.js (13)
 → music.js (14) → pets.js (15) → characters.js (16) → characters_girl.js (17)
 → home.js (18) → journal.js (19) → calendar.js (20) → game.js (21) → game_liar.js (22)
-→ background.js (23) → video.js (24) → karaoke.js (25) → cloud.js (27)
+→ background.js (23) → location.js (24) → karaoke.js (25) → cloud.js (27)
 → meals.js (28) → pull_refresh.js (29) → auth.js (30)
 ```
 
 > **关键**：`auth.js` 必须最后加载，因为它的 `initPage()` 会调用所有模块的初始化函数。
-> **注**：`ai_chat.js` 已废弃，loader.js 不再加载（AI 标签页改为 iframe 嵌入豆包网页版）。
-> **注**：`video.js` 和 `karaoke.js` 共享 home.html 页面，懒加载初始化（首次切到对应子 Tab 才 init）。
+> **注**：`karaoke.js` 与音乐共用 home.html 的音乐子 Tab，展开 K 歌折叠面板时才初始化。
+> **注**：`location.js` 登录后自动开始上报位置；地图与逆地理编码在首次进入「定位」子 Tab 时才加载（节省流量）。
 
 ## 四、数据库表结构
 
@@ -176,16 +175,16 @@ config_page.js (10) → notifications.js (11) → weather.js (12) → audio.js (
 
 | 表名 | 用途 | 关键字段 |
 |---|---|---|
-| `app_config` | 全局配置（人物名、API Key、背景图、AI配置、COS配置等） | `config_key`, `config_value` |
+| `app_config` | 全局配置（人物名、API Key、背景图、OpenList 配置等） | `config_key`, `config_value` |
 | `profiles` | 用户信息 | `email`, `boy_name`, `girl_name` 等 |
 | `messages` | 留言 | `content`, `author_email`, `likes` |
 | `gallery` | 相册 | `image_url`, `uploader_email` |
-| `videos` | 视频（腾讯 COS 私有桶） | `title`, `url`(存 `cos://key`), `thumbnail_key`, `thumbnail_url`(兼容), `duration`, `uploader_email` |
 | `journals` | 日志 | `title`, `content`, `author_email` |
 | `calendar_checkins` | 日历打卡 | `check_date`, `user_email` |
 | `anniversaries` | 纪念日 | `date`, `title` |
 | `music` | 音乐 | `title`, `url`, `uploader_email`, `cover_url`(可选), `lyrics`(可选) |
 | `karaoke_recordings` | K 歌录音作品 | `title`, `url`, `singer_name`, `song_title`, `uploader_email` |
+| `locations` | 定位共享（每人一行，按 `user_email` 覆盖更新） | `user_email`(唯一), `lat`, `lng`, `accuracy`, `address`, `updated_at` |
 | `rps_games` | 猜拳游戏记录（已弃用，情侣对战已移除，表可保留） | `player_email`, `choice` |
 | `game_scores` | 小游戏分数（通用，game 字段区分游戏） | `game`('jump'), `user_id`, `nickname`, `score` |
 
@@ -355,7 +354,7 @@ CREATE POLICY "allow_auth_write_xxx" ON favorites FOR ALL TO authenticated USING
 | Tab | 功能 |
 |---|---|
 | 本地上传 | 读取本地 FILES 数组列出的文件（含 styles.css），批量 fetch + upsert 到 app_assets 表，自动更新版本号 |
-| 在线管理 | 三栏布局：资源列表 + Monaco 编辑器 + AI 代码助手。支持编辑/保存/删除/新增、历史版本备份与还原、复制/下载、全部下载（ZIP）。AI 助手自动引用 md 文档、手动引用代码文件、流式输出、发送后自动清空引用 |
+| 在线管理 | 两栏布局：资源列表 + Monaco 编辑器。支持编辑/保存/删除/新增、历史版本备份与还原、复制/下载、全部下载（ZIP） |
 | 建表 SQL | 包含所有表的建表 SQL + RLS 策略 + app_containers 初始数据。支持复制/下载 |
 | 架构文档 | 从数据库读取 `ARCHITECTURE.md` 记录 → 用 marked.js 实时渲染 Markdown → 可在线编辑并保存回数据库。支持复制/下载 |
 | 容器配置 | 管理 app_containers 表：新增/编辑/删除容器，控制导航栏和页面布局。使用模态框表单，不用 prompt |
@@ -408,20 +407,15 @@ GRANT EXECUTE ON FUNCTION exec_ddl(TEXT) TO authenticated;
 | `window.boyDbQuotes` | Array | 男生话语列表（数据库） |
 | `window.girlDbQuotes` | Array | 女生话语列表（数据库） |
 | `window._defaultPage` | string | 默认页面名（容器表第1个 page 类容器的 page_name） |
-| `window._aiApiKey` | string | 智谱 AI API Key |
-| `window._aiModel` | string | 智谱 AI 模型名 |
-| `window._aiSystemPrompt` | string | 智谱 AI 系统提示词 |
 | `window._assetsVersion` | string | 资源版本号（用于缓存对比） |
-| `window._cosSecretId` | string | 腾讯 COS SecretId（视频上传用） |
-| `window._cosSecretKey` | string | 腾讯 COS SecretKey（视频上传用） |
-| `window._cosBucket` | string | 腾讯 COS 存储桶名（如 `xxx-1300000000`） |
-| `window._cosRegion` | string | 腾讯 COS 地域（如 `ap-guangzhou`） |
 | `window._openlistBaseUrl` | string | OpenList 服务地址（网盘用） |
 | `window._openlistUsername` | string | OpenList 登录账号 |
 | `window._openlistPassword` | string | OpenList 登录密码 |
 | `window._openlistMountPath` | string | 默认网盘挂载路径（第一个挂载） |
 | `window._openlistMountPaths` | string | 网盘挂载路径列表（换行/逗号分隔，如 `/baidu\n/quark`） |
 | `window._openlistAsTask` | boolean | 网盘上传是否用异步任务模式 |
+| `window._amapKey` | string | 高德 Web端(JS API) Key（定位用） |
+| `window._amapSecurityCode` | string | 高德安全密钥 securityJsCode（定位用） |
 | `window._notifyEmailEnabled` | boolean | 发送通知时是否同时发邮件（localStorage 键 `notify_email_enabled`，仅本机生效，无记录默认 true） |
 
 ### 全局函数参考
@@ -436,12 +430,14 @@ GRANT EXECUTE ON FUNCTION exec_ddl(TEXT) TO authenticated;
 | `window.togglePlayMode()` | music.js | 切换播放模式（列表循环/单曲循环/随机） |
 | `window.togglePlaylist()` | music.js | 折叠/展开播放列表 |
 | `window.toggleLyricsView()` | music.js | 显示/隐藏歌词区 |
-| `window.uploadVideo(input)` | video.js | 上传视频到腾讯 COS 私有桶（自动生成缩略图） |
-| `window.playVideoByKey(info)` | video.js | 通过 Key 生成签名 URL 后播放视频 |
-| `window.deleteVideo(id, url, thumbKey)` | video.js | 删除视频（同时删 COS 视频文件 + 缩略图） |
-| `window.loadVideoList(page)` | video.js | 加载视频列表（分页，每页6个，自动签名） |
-| `window.saveCosConfig()` | video.js | 保存腾讯 COS 配置到 app_config 表 |
-| `window.initVideoPage()` | video.js | 视频子 Tab 首次进入时初始化（加载 COS 配置 + 视频列表） |
+| `window.toggleKaraokeSection()` | karaoke.js | 展开/收起音乐 Tab 内的 K 歌折叠面板（首次展开时才初始化） |
+| `window.initLocationPage()` | location.js | 初始化定位页（加载地图、读取位置、订阅 Realtime；幂等） |
+| `window.startLocationSharing()` | location.js | 开始共享本机位置（watchPosition） |
+| `window.stopLocationSharing()` | location.js | 停止共享并清理订阅/监听（登出时调用） |
+| `window.toggleLocationSharing()` | location.js | 开始/停止共享切换 |
+| `window.shareMyLocationOnce()` | location.js | 立即获取并上报一次位置 |
+| `window.refreshLocations()` | location.js | 重新读取双方位置 |
+| `window.saveLocationConfig()` | location.js | 保存高德 Key / 安全密钥到 app_config |
 | `window.karaokeTogglePlay()` | karaoke.js | 伴奏播放/暂停 |
 | `window.karaokeToggleRecord()` | karaoke.js | 开始/停止录音 |
 | `window.mixAndExport()` | karaoke.js | 合成伴奏+人声导出 MP3 |
@@ -473,49 +469,6 @@ GRANT EXECUTE ON FUNCTION exec_ddl(TEXT) TO authenticated;
 | `window.loadMeals(keepPage)` | meals.js | 加载三餐列表（分组后渲染，`keepPage` 为真时保持当前页码） |
 | `window.deleteMeal(id, deleteUrl)` | meals.js | 删除三餐照片（同时尝试删 ImgBB 远程图片） |
 
-> ⚠️ 表中 `window.toggleAiSettings` / `sendAiMessage` / `clearAiChat` / `saveAiAllOptions` 已废弃（ai_chat.js 不再加载）。
-
-## 十四、AI 标签页（嵌入豆包网页版）
-
-### 功能概述
-
-首页「AI」子 Tab 通过 iframe 直接嵌入豆包网页版（`https://www.doubao.com/chat/`），用户无需配置 API Key 即可使用。
-
-### 实现方式
-
-- **HTML**：`partials/home.html` 的 `#subTab-ai` 内放 `<iframe>` 加载豆包
-- **JS**：无需专属 JS 模块（原 `js/ai_chat.js` 已废弃，loader.js 不再加载）
-- **降级方案**：右上角"新窗口打开"按钮（紫蓝渐变）跳转豆包官网；iframe 加载中显示 loading 动画；底部小字提示用户空白时改用新窗口
-
-### iframe 参数
-
-```html
-<iframe src="https://www.doubao.com/chat/"
-        sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
-        allow="microphone; camera; clipboard-write"
-        referrerpolicy="no-referrer"></iframe>
-```
-
-### 已知限制
-
-- 豆包官网可能设置 `X-Frame-Options: SAMEORIGIN` 或 CSP `frame-ancestors`，导致 iframe 被拦截
-- 被拦截时浏览器显示空白或"拒绝连接"，用户需点击"新窗口打开"使用完整功能
-- 跨域无法共享登录态，用户首次需在新窗口登录豆包
-
-### ⚠️ 废弃说明：智谱 AI 聊天
-
-原「智谱 AI 聊天助手」已从设置页移除，相关代码保留但停用：
-
-| 资源 | 状态 |
-|---|---|
-| `js/ai_chat.js` | ⚠️ 保留但 loader.js 不加载（load_order=24 已移除）|
-| `partials/home.html` 中的 AI 设置面板/聊天框 | ❌ 已删除，替换为 iframe |
-| `app_config` 表 `zhipu_api_key` / `zhipu_model` / `zhipu_system_prompt` | 保留但暂未使用 |
-| `window._aiApiKey` / `window._aiModel` / `window._aiSystemPrompt` | 仍由 auth.js loadConfig() 读取，供未来恢复使用 |
-| `window.toggleAiSettings` / `sendAiMessage` / `clearAiChat` / `saveAiAllOptions` | ❌ 不再存在 |
-
-> 如需恢复智谱 AI 接入：在 loader.js 的 LOCAL_FILES 中恢复 `ai_chat.js` 条目（order=24），并在 home.html 中恢复原 AI 聊天 UI。
-> 智谱 GLM-4 系列支持 `web_search` 工具实现联网搜索（详见 [官方文档](https://docs.bigmodel.cn/cn/guide/tools/web-search)），每次搜索约增加 1000 tokens 消耗。
 
 ## 十五、现代音乐播放器
 
@@ -577,73 +530,11 @@ GRANT EXECUTE ON FUNCTION exec_ddl(TEXT) TO authenticated;
 - **播放模式按钮**：`mpModeBtn`，3 种模式循环切换；单曲循环用 `<i class="fa fa-repeat">` + "1" 角标叠加（FontAwesome 4 无 `fa-repeat-1`）
 - **删除原浮动按钮**：旧版 `.music-toggle` / `.music-panel` 浮动按钮样式已从 styles.css 和 styles_mobile.css 中移除（musicToggle/musicPanel 元素已不存在）
 
-## 十五点五、视频 Tab（腾讯 COS 私有桶）
+## 十五点六、K 歌房（已合并进音乐 Tab）
 
 ### 功能特性
 
-- **上传视频**：选择视频文件 → 上传到腾讯 COS 私有桶 → 自动截取第一帧生成缩略图上传到 `videos_thumbs/` → 写入 `videos` 表
-- **签名访问**：私有桶模式下，所有视频和缩略图访问都通过 COS SDK `getObjectUrl` 生成 30 分钟有效的临时签名 URL
-- **分页浏览**：每页 6 个，支持上一页/下一页
-- **播放预览**：点击视频卡片 → 弹窗播放（带签名 URL）
-- **删除同步**：删除数据库记录 + 同时删除 COS 视频文件和缩略图文件
-- **懒加载**：首次切到视频子 Tab 才初始化（`initVideoPage()`）
-
-### 文件结构
-
-| 文件 | 作用 |
-|---|---|
-| `partials/home.html` `#subTab-video` | 视频 Tab UI（上传按钮 + 进度条 + 视频网格 + 分页器） |
-| `partials/config.html` | 腾讯 COS 配置表单（SecretId/SecretKey/Bucket/Region） |
-| `partials/preview.html` `#videoPreviewModal` | 视频播放弹窗 |
-| `styles_layout.css` `.video-card` / `.video-thumb` 等 | 视频卡片样式（蓝色播放遮罩、时长标签、删除图标） |
-| `js/video.js` | 上传/签名/播放/删除/配置保存逻辑 |
-
-### 数据库字段（videos 表）
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|---|---|
-| `id` | bigserial | ✅ | 主键 |
-| `title` | text | ✅ | 视频标题（取文件名去扩展名） |
-| `url` | text | ✅ | 存储 `cos://videos/xxx.mp4`（仅 Key，不存完整 URL） |
-| `thumbnail_url` | text | ❌ | 兼容字段：老数据存 base64 或 `cos://...` |
-| `thumbnail_key` | text | ❌ | 新字段：缩略图 COS Key（如 `videos_thumbs/xxx.jpg`） |
-| `file_size` | bigint | ❌ | 文件大小（字节） |
-| `duration` | real | ❌ | 视频时长（秒） |
-| `uploader_email` | text | ❌ | 上传者邮箱（用于判断删除权限） |
-| `created_at` | timestamptz | ✅ | 创建时间 |
-
-> **增量升级 SQL**（已有数据库执行）：
-> ```sql
-> DO $$ BEGIN ALTER TABLE videos ADD COLUMN IF NOT EXISTS thumbnail_key TEXT; EXCEPTION WHEN OTHERS THEN END $$;
-> ```
-
-### COS 私有桶配置
-
-在设置页（`partials/config.html`）填写腾讯 COS 配置并保存到 `app_config` 表：
-
-| config_key | 说明 |
-|---|---|
-| `cos_secret_id` | 腾讯云 API SecretId |
-| `cos_secret_key` | 腾讯云 API SecretKey |
-| `cos_bucket` | 存储桶名（如 `xxx-1300000000`） |
-| `cos_region` | 地域（如 `ap-guangzhou`） |
-
-`auth.js` 登录后读取这些配置到 `window._cosSecretId` 等全局变量。
-
-### 关键实现细节
-
-- **动态加载 COS SDK**：`loadCosSdk()` 通过 script 标签注入 `cos-js-sdk-v5.min.js`，避免增加初始包体积
-- **签名 URL 生成**：`getSignedUrl(key)` 调用 `cos.getObjectUrl({Sign: true, Expires: 1800})`，30 分钟有效期
-- **URL 格式约定**：数据库 `url` 字段存 `cos://videos/xxx.mp4`，`extractCosKey()` 解析为 `videos/xxx.mp4`；兼容老的完整 URL 格式
-- **缩略图生成**：用 `<video>` 元素加载文件 → `onseeked` 时用 canvas 截图 → `toBlob` 转 JPEG → 上传到 COS
-- **上传进度**：`cos.putObject` 的 `onProgress` 回调更新进度条
-- **CORS 要求**：腾讯 COS 控制台需配置跨域规则（Methods: GET/PUT/POST/DELETE/HEAD/OPTIONS）
-
-## 十五点六、K 歌房
-
-### 功能特性
-
-- **选歌**：从 `music` 表读取歌曲列表，点击选歌后加载歌词
+- **入口**：音乐 Tab 播放列表下方的「情侣 K 歌房」折叠条，点击展开/收起（首次展开才初始化）
 - **歌词同步**：支持 LRC 时间戳格式，自动高亮当前行 + 滚动
 - **录音**：优先 **AudioWorklet**（独立音频线程采集 PCM + tanh 软限幅防削波），不支持时回退 ScriptProcessorNode（缓冲 16384）；统一开启 AEC/降噪/AGC
 - **实时音量条**：录音时显示音量电平（AnalyserNode）
@@ -807,6 +698,7 @@ GRANT EXECUTE ON FUNCTION exec_ddl(TEXT) TO authenticated;
 - **备注 + 好吃评分**：备注可选；评分 1-5 星（再点同一颗星可取消）
 - **展示**：按日期分组倒序（今天 / 昨天 / 8月18日），每页 7 天，配上一页 / 下一页分页
 - **上传者标识**：每张卡片左上角显示性别符号 —— 用 `uploader_email` 与 `CONFIG.boyEmail` / `girlEmail` 比对，男方蓝底 ♂（`fa fa-mars`）、女方粉底 ♀（`fa fa-venus`），鼠标悬停显示昵称
+- **赞 / 踩**：卡片星星右侧的 👍 / 👎（`meal_reactions` 表）。一人一条记录只保留一个反应 —— 再点同一个 = 取消，点另一个 = 切换；点「赞」会给对方发通知（`sendNotification('like', ...)`，站内铃铛 + 邮件），「踩」不发通知
 - **懒加载**：首次切到该子 Tab 才初始化（`initMealsPage()`）
 
 ### 文件结构
@@ -833,6 +725,18 @@ GRANT EXECUTE ON FUNCTION exec_ddl(TEXT) TO authenticated;
 | `uploader_email` | text | ❌ | 上传者邮箱 |
 | `created_at` | timestamptz | ✅ | 创建时间 |
 
+### 数据库字段（meal_reactions 表）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `id` | bigserial | ✅ | 主键 |
+| `meal_id` | bigint | ✅ | 关联 `meals.id` |
+| `username` | text | ✅ | 操作者邮箱（沿用 `journal_likes.username` 的约定） |
+| `value` | smallint | ✅ | 1 = 赞，-1 = 踩 |
+| `created_at` | timestamptz | ✅ | 创建时间 |
+
+> 唯一约束 `(meal_id, username)` 保证一人一条、赞踩互斥。
+
 > **增量升级 SQL**（已有数据库执行）：
 > ```sql
 > CREATE TABLE IF NOT EXISTS meals (
@@ -850,6 +754,18 @@ GRANT EXECUTE ON FUNCTION exec_ddl(TEXT) TO authenticated;
 > CREATE POLICY "allow_read_meals" ON meals FOR SELECT USING (true);
 > CREATE POLICY "allow_write_meals" ON meals FOR ALL TO authenticated USING (true) WITH CHECK (true);
 > CREATE INDEX IF NOT EXISTS idx_meals_date ON meals (meal_date DESC, created_at DESC);
+>
+> CREATE TABLE IF NOT EXISTS meal_reactions (
+>     id          BIGSERIAL PRIMARY KEY,
+>     meal_id     BIGINT NOT NULL,
+>     username    TEXT NOT NULL,
+>     value       SMALLINT NOT NULL DEFAULT 1,
+>     created_at  TIMESTAMPTZ DEFAULT now(),
+>     UNIQUE (meal_id, username)
+> );
+> ALTER TABLE meal_reactions ENABLE ROW LEVEL SECURITY;
+> CREATE POLICY "allow_read_meal_reactions" ON meal_reactions FOR SELECT USING (true);
+> CREATE POLICY "allow_write_meal_reactions" ON meal_reactions FOR ALL TO authenticated USING (true) WITH CHECK (true);
 > ```
 
 ### 关键实现细节
@@ -860,6 +776,65 @@ GRANT EXECUTE ON FUNCTION exec_ddl(TEXT) TO authenticated;
 - **评分交互**：在 `#mealStars` 容器上用事件委托（容器只绑一次），避免每次重建星星都重新绑定
 - **弹窗必须放在子 Tab 面板之外**：`#mealModal` 是所有 `.sub-tab-content` 面板的兄弟节点（直接挂在 `page-home` 下）。一旦塞进 `#subTab-cloud` 这类面板内部，切到「一日三餐」时祖先带 `.hidden`（`display:none`），弹窗即使加上 `flex` 也静默不可见
 - **防注入**：备注/餐次文本渲染前过 `escapeHtml()`
+- **赞/踩存储**：独立表 `meal_reactions`（`meal_id` + `username` + `value`），沿用日志点赞 `journal_likes` 的「邮箱做操作者」约定，而不是在 `meals` 上加列 —— 加列没法存多人的反应
+- **赞/踩加载**：`loadMeals()` 拉完 meals 后用一次 `.in('meal_id', ids)` 把本批记录的 reaction 一并取回挂到 `item.reactions`，渲染时本地汇总，不产生 N+1 查询
+- **赞/踩切换**：先查自己那行 —— 再点同一个 value 则删除（取消），点另一个则 `update`，没有则 `insert`；写库成功后才更新本地 `item.reactions` 并重渲染，失败弹 `alert` 不改本地状态
+
+---
+
+## 十五点十一、定位（高德地图）
+
+### 功能特性
+
+- **登录自动共享**：`auth.js` 的 `initPage()` 登录后调用 `startLocationSharing()`，用 `navigator.geolocation.watchPosition` 持续获取位置
+- **位置展示**：首页「定位」子 Tab，上方高德地图（TA 的心形标记 + 自己的标记），下方两张卡片（TA 的位置 / 我的位置）
+- **实时 vs 最后更新**：`updated_at` 在 2 分钟内视为「实时」，否则显示「离线 + 最后更新于 x 分钟前」；地图标记保留在最后一次坐标
+- **地址解析**：有高德 Key 时用 `AMap.Geocoder` 逆地理编码，地址随位置一起写入 `locations` 表
+- **实时推送**：Supabase Realtime 订阅 `locations` 表；未开启 Realtime 时 60s 轮询兜底
+
+### 文件结构
+
+| 文件 | 内容 |
+|---|---|
+| `partials/home.html` `#subTab-location` | 定位页 UI（地图容器、双方位置卡片、立即更新/停止共享/刷新按钮） |
+| `js/location.js` | 高德脚本懒加载、位置上报、Realtime 订阅、轮询兜底、地址解析 |
+| `styles_layout.css` `.loc-*` | 定位页样式（地图、卡片、标记、按钮） |
+| `styles_mobile.css` | 移动端：地图高度 210px、卡片单列 |
+
+### 配置（app_config 表）
+
+| config_key | 说明 |
+|---|---|
+| `amap_key` | 高德开放平台「Web端(JS API)」Key |
+| `amap_security_code` | 安全密钥 securityJsCode |
+
+在「设置 → 定位设置」填写并保存，刷新页面生效。高德控制台需把访问域名加入 Key 白名单。
+
+### 数据库字段（locations 表）
+
+| 字段 | 说明 |
+|---|---|
+| `user_email` | 上报者邮箱（唯一，upsert 覆盖） |
+| `lat` / `lng` | 纬度 / 经度（GCJ-02，高德坐标系） |
+| `accuracy` | 定位精度（米） |
+| `address` | 逆地理编码地址 |
+| `updated_at` | 最后更新时间 |
+
+### 关键实现细节
+
+- **上报节流**：20 秒内且位移 < 50 米不重复写库，避免频繁请求
+- **坐标系**：浏览器 `navigator.geolocation` 返回 WGS-84，高德地图使用 GCJ-02；在浏览器 API 下偏差通常可接受，如需精确纠偏可改用 `AMap.Geolocation` 插件
+- **HTTPS**：`navigator.geolocation` 要求安全上下文（HTTPS 或 localhost），`isSecureContext === false` 时直接提示
+- **权限失败**：`code === 1`（拒绝）/ 2（信号不可用）/ 3（超时）分别提示，并提供「立即更新」重试入口
+- **节省流量**：高德 JS API 只在首次进入「定位」子 Tab 时加载；未配置 Key 时只显示坐标文字，不加载地图
+- **Realtime 建表 SQL**：
+
+```sql
+DO $$ BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE locations;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+```
 
 ---
 
@@ -879,33 +854,12 @@ GRANT EXECUTE ON FUNCTION exec_ddl(TEXT) TO authenticated;
 | 模块 | 文件 | 每页数量 | 分页器 ID |
 |---|---|---|---|
 | 相册 | `js/home.js` | 6 张 | `galleryPager` |
-| 视频 | `js/video.js` | 6 个 | `videoPager` |
 | 留言 | `js/home.js` | 5 条 | `messagePager` |
 | 日志 | `js/journal.js` | 5 条 | `journalPager` |
 
 - 分页器样式：`[上一页] 1 / 3 [下一页]`，首尾页禁用对应按钮
 - 删除当前页最后一项时自动修正页码
 - 分页函数通过 `window.xxxPrevPage` / `window.xxxNextPage` 暴露给 onclick
-
-## 十八、upload.html AI 代码助手
-
-### 功能
-
-在「在线管理」Tab 右侧面板，集成智谱 AI 代码助手：
-- **自动引用**：切到 Tab 时预加载所有 md 文件作为上下文
-- **手动引用**：资源列表中点 📎 按钮引用代码文件
-- **流式输出**：与设置页 AI 助手相同的流式读取机制
-- **代码应用**：AI 回复中的代码块有「应用到编辑器」按钮
-- **发送后清空**：每轮对话发送后自动清空所有引用文件
-
-### 引用机制
-
-| 引用类型 | 标识 | 行为 |
-|---|---|---|
-| 自动引用（md） | 🔵 蓝底 `[自动]` | 切 Tab 时预加载，可点 × 取消 |
-| 手动引用（代码） | 🩷 粉底 | 点 📎 按钮添加，可点 × 取消 |
-
-> 发送对话后，所有引用（自动 + 手动）全部清空。下次切 Tab 时重新预加载 md 文件。
 
 ## 十九、upload.html 资源版本备份
 

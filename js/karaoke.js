@@ -1666,6 +1666,24 @@ registerProcessor('recorder-processor', RecorderProcessor);
     window.deleteKaraokeRecording = deleteKaraokeRecording;
     window.loadKaraokeRecordings = loadRecordings;
     window.initKaraoke = initKaraoke;
+
+    // K歌折叠面板（合并进音乐 Tab）：首次展开时才初始化
+    function toggleKaraokeSection() {
+        const panel = document.getElementById('subTab-karaoke');
+        if (!panel) return;
+        const willOpen = panel.classList.contains('hidden');
+        panel.classList.toggle('hidden', !willOpen);
+        window._karaokeExpanded = willOpen;
+        const chev = document.getElementById('karaokeToggleChevron');
+        if (chev) chev.style.transform = willOpen ? 'rotate(180deg)' : '';
+        const row = document.getElementById('karaokeToggle');
+        if (row) row.classList.toggle('expanded', willOpen);
+        if (willOpen && !window._karaokeInitDone) {
+            window._karaokeInitDone = true;
+            initKaraoke();
+        }
+    }
+    window.toggleKaraokeSection = toggleKaraokeSection;
     window.karaokePbTogglePlay = karaokePbTogglePlay;
     window.karaokePbSeek = karaokePbSeek;
     window.toggleRecPlay = toggleRecPlay;
