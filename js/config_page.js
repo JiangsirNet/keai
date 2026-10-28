@@ -98,6 +98,22 @@ window.addQuote = addQuote;
 window.deleteQuote = deleteQuote;
 
 // =====================================================
+// 设置页：长条按钮折叠面板（一次只展开一个）
+// =====================================================
+
+function toggleSettingsSection(key) {
+    document.querySelectorAll('#page-config .settings-item').forEach(item => {
+        const panel = item.querySelector('.settings-panel');
+        if (!panel) return;
+        const open = item.dataset.settings === key && panel.classList.contains('hidden');
+        panel.classList.toggle('hidden', !open);
+        item.classList.toggle('open', open);
+    });
+}
+
+window.toggleSettingsSection = toggleSettingsSection;
+
+// =====================================================
 // OpenList / 百度网盘配置（支持多挂载路径）
 // =====================================================
 

@@ -22,10 +22,44 @@ function fmtCalDate(d) {
     return `${y}-${m}-${day}`;
 }
 
+let calModalInited = false;
+
 function initCalendar() {
+    calModalInited = true;
     calSelectedDate = fmtCalDate(new Date());
     document.getElementById("calSelectedDate").innerText = calSelectedDate;
     refreshCalendar();
+}
+
+// 右上角日历按钮：打开弹窗，首次打开时才初始化
+function openCalendarModal() {
+    const modal = document.getElementById("calendarModal");
+    if (!modal) return;
+    modal.classList.remove("hidden");
+    if (!calModalInited) initCalendar();
+    else refreshCalendar();
+}
+
+function closeCalendarModal() {
+    const modal = document.getElementById("calendarModal");
+    if (modal) modal.classList.add("hidden");
+}
+
+// 当天未签到时自动打开日历（每天只自动弹一次）
+async function autoOpenCalendarIfNotCheckedIn() {
+    const me = window.myRpsEmail || "";
+    if (!me) return;
+    const todayStr = fmtCalDate(new Date());
+    if (localStorage.getItem("cal_auto_prompt_date") === todayStr) return;
+    try {
+        const { data, error } = await window.sb.from("checkins")
+            .select("id").eq("date", todayStr).eq("username", me).limit(1);
+        if (error) throw error;
+        localStorage.setItem("cal_auto_prompt_date", todayStr);
+        if (!data || data.length === 0) openCalendarModal();
+    } catch (e) {
+        console.warn("[Calendar] 检查今日打卡失败:", e);
+    }
 }
 
 async function refreshCalendar() {
@@ -491,6 +525,9 @@ window.calMemos = calMemos;
 window.CAL_MONTHS = CAL_MONTHS;
 window.fmtCalDate = fmtCalDate;
 window.initCalendar = initCalendar;
+window.openCalendarModal = openCalendarModal;
+window.closeCalendarModal = closeCalendarModal;
+window.autoOpenCalendarIfNotCheckedIn = autoOpenCalendarIfNotCheckedIn;
 window.refreshCalendar = refreshCalendar;
 window.calPrevMonth = calPrevMonth;
 window.calNextMonth = calNextMonth;

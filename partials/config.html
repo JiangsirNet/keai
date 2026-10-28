@@ -1,111 +1,147 @@
-<!-- 设置页：人物互动配置 -->
+<!-- 设置页：长条按钮 + 折叠面板 -->
 <div id="page-config" class="page-content hidden">
-    <div class="bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow">
-        <h2 class="text-xl font-bold text-love flex items-center mb-2">
-            <i class="fa fa-cog mr-2"></i>人物互动配置
-        </h2>
-        <p id="quoteConfigTitle" class="text-sm text-gray-500 mb-4">点击人物时说的话从这里管理</p>
-
-        <div id="quoteTabWrap" class="flex gap-2 mb-4">
-            <button id="quoteTabBoy" onclick="switchQuoteTab('boy')" class="flex-1 py-2 rounded-lg bg-love text-white font-semibold transition">男生</button>
-            <button id="quoteTabGirl" onclick="switchQuoteTab('girl')" class="flex-1 py-2 rounded-lg bg-rose-100 text-love font-semibold transition">女生</button>
-        </div>
-
-        <div class="flex gap-2 mb-4">
-            <input id="quoteInput" placeholder="输入想说的话..." maxlength="50"
-                class="flex-1 border border-rose-200 rounded-lg p-2 outline-none focus:border-love">
-            <button onclick="addQuote()" class="bg-love hover:bg-loveDark text-white px-5 py-2 rounded-lg transition">添加</button>
-        </div>
-
-        <div id="quoteList" class="space-y-2 max-h-[400px] overflow-y-auto">
-            <div class="text-center text-gray-400 py-6">加载中...</div>
-        </div>
-        <p class="text-xs text-gray-400 mt-3">提示：数据库为空时，点击人物会使用默认话语。</p>
-    </div>
-
-    <div class="bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow mt-6">
-        <h2 class="text-xl font-bold text-love flex items-center mb-2">
-            <i class="fa fa-eye mr-2"></i>显示设置
-        </h2>
-        <p class="text-sm text-gray-500 mb-4">选择要在页面上显示的宠物与人物（设置会自动记忆）</p>
-        <div class="space-y-2">
-            <div class="display-toggle">
-                <span class="toggle-label"><i class="fa fa-male text-blue-400"></i>男生人物</span>
-                <div class="toggle-switch on" id="toggleBoy" onclick="toggleDisplay('boy')"></div>
-            </div>
-            <div class="display-toggle">
-                <span class="toggle-label"><i class="fa fa-female text-pink-400"></i>女生人物</span>
-                <div class="toggle-switch on" id="toggleGirl" onclick="toggleDisplay('girl')"></div>
-            </div>
-            <div class="display-toggle">
-                <span class="toggle-label"><i class="fa fa-paw text-pink-400"></i>猫猫宠物</span>
-                <div class="toggle-switch on" id="toggleMao" onclick="toggleDisplay('mao')"></div>
-            </div>
-            <div class="display-toggle">
-                <span class="toggle-label"><i class="fa fa-paw text-green-400"></i>狗狗宠物</span>
-                <div class="toggle-switch on" id="toggleDog" onclick="toggleDisplay('dog')"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 通知设置 -->
-    <div class="bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow mt-6">
-        <h2 class="text-xl font-bold text-love flex items-center mb-2">
-            <i class="fa fa-bell mr-2"></i>通知设置
-        </h2>
-        <p class="text-sm text-gray-500 mb-4">控制发送通知时是否同时给对方发送邮件</p>
-        <div class="space-y-2">
-            <div class="display-toggle">
-                <span class="toggle-label"><i class="fa fa-envelope text-rose-400"></i>通知同时发送邮件</span>
-                <div class="toggle-switch on" id="toggleNotifyEmail" onclick="toggleNotifyEmail()"></div>
-            </div>
-        </div>
-        <p id="notifyEmailHint" class="text-xs text-gray-400 mt-3">开启后，留言/日志/照片等通知会通过 EmailJS 发送邮件提醒对方。</p>
-    </div>
-
-    <!-- 定位设置 -->
-    <div class="bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow mt-6">
-        <h2 class="text-xl font-bold text-love flex items-center mb-2">
-            <i class="fa fa-map-marker mr-2"></i>定位设置
-        </h2>
-        <p class="text-sm text-gray-500 mb-4">高德开放平台「Web端 (JS API)」的 Key 与安全密钥，用于地图显示和地址解析</p>
-        <div class="space-y-3">
-            <input id="amapKeyInput" placeholder="高德 Web端(JS API) Key"
-                class="w-full border border-rose-200 rounded-lg p-2 outline-none focus:border-love">
-            <input id="amapSecInput" placeholder="安全密钥 securityJsCode"
-                class="w-full border border-rose-200 rounded-lg p-2 outline-none focus:border-love">
-            <div class="flex items-center gap-3 flex-wrap">
-                <button onclick="saveLocationConfig()"
-                    class="bg-love hover:bg-loveDark text-white px-5 py-2 rounded-lg text-sm transition">
-                    <i class="fa fa-save"></i> 保存
-                </button>
-                <span id="amapSaveStatus" class="text-sm text-gray-400"></span>
-            </div>
-        </div>
-        <p class="text-xs text-gray-400 mt-3">保存后刷新页面生效；高德控制台需为 Key 绑定当前访问域名。定位需要 HTTPS 环境。</p>
-    </div>
-
-    <!-- 背景设置 -->
-    <div class="bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow mt-6">
-        <h2 class="text-xl font-bold text-love flex items-center mb-2">
-            <i class="fa fa-picture-o mr-2"></i>背景设置
-        </h2>
-        <p class="text-sm text-gray-500 mb-4">上传图片设置网页背景（两人共享）</p>
-        <div class="flex gap-3 items-center flex-wrap">
-            <input type="file" id="bgFileInput" accept="image/*" class="hidden">
-            <button onclick="document.getElementById('bgFileInput').click()" class="bg-love text-white px-4 py-2 rounded-lg text-sm hover:bg-loveDark transition">
-                <i class="fa fa-upload"></i> 选择背景图
+    <div class="settings-list">
+        <!-- 人物互动配置 -->
+        <div class="settings-item" data-settings="quotes">
+            <button type="button" class="settings-bar" onclick="toggleSettingsSection('quotes')">
+                <span class="settings-bar-icon"><i class="fa fa-comments"></i></span>
+                <span class="settings-bar-body">
+                    <span class="settings-bar-title">人物互动配置</span>
+                    <span class="settings-bar-sub">管理点击人物时说的话</span>
+                </span>
+                <i class="fa fa-chevron-down settings-bar-chevron"></i>
             </button>
-            <button onclick="clearBackground()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-300 transition">
-                <i class="fa fa-times"></i> 恢复默认
-            </button>
-            <span id="bgStatus" class="text-sm text-gray-400"></span>
+            <div class="settings-panel hidden">
+                <p id="quoteConfigTitle" class="text-sm text-gray-500 mb-4">点击人物时说的话从这里管理</p>
+
+                <div id="quoteTabWrap" class="flex gap-2 mb-4">
+                    <button id="quoteTabBoy" onclick="switchQuoteTab('boy')" class="flex-1 py-2 rounded-lg bg-love text-white font-semibold transition">男生</button>
+                    <button id="quoteTabGirl" onclick="switchQuoteTab('girl')" class="flex-1 py-2 rounded-lg bg-rose-100 text-love font-semibold transition">女生</button>
+                </div>
+
+                <div class="flex gap-2 mb-4">
+                    <input id="quoteInput" placeholder="输入想说的话..." maxlength="50"
+                        class="flex-1 border border-rose-200 rounded-lg p-2 outline-none focus:border-love">
+                    <button onclick="addQuote()" class="bg-love hover:bg-loveDark text-white px-5 py-2 rounded-lg transition">添加</button>
+                </div>
+
+                <div id="quoteList" class="space-y-2 max-h-[400px] overflow-y-auto">
+                    <div class="text-center text-gray-400 py-6">加载中...</div>
+                </div>
+                <p class="text-xs text-gray-400 mt-3">提示：数据库为空时，点击人物会使用默认话语。</p>
+            </div>
         </div>
-        <div id="bgPreview" class="mt-3"></div>
+
+        <!-- 显示设置 -->
+        <div class="settings-item" data-settings="display">
+            <button type="button" class="settings-bar" onclick="toggleSettingsSection('display')">
+                <span class="settings-bar-icon"><i class="fa fa-eye"></i></span>
+                <span class="settings-bar-body">
+                    <span class="settings-bar-title">显示设置</span>
+                    <span class="settings-bar-sub">选择要在页面上显示的宠物与人物</span>
+                </span>
+                <i class="fa fa-chevron-down settings-bar-chevron"></i>
+            </button>
+            <div class="settings-panel hidden">
+                <div class="space-y-2">
+                    <div class="display-toggle">
+                        <span class="toggle-label"><i class="fa fa-male text-blue-400"></i>男生人物</span>
+                        <div class="toggle-switch on" id="toggleBoy" onclick="toggleDisplay('boy')"></div>
+                    </div>
+                    <div class="display-toggle">
+                        <span class="toggle-label"><i class="fa fa-female text-pink-400"></i>女生人物</span>
+                        <div class="toggle-switch on" id="toggleGirl" onclick="toggleDisplay('girl')"></div>
+                    </div>
+                    <div class="display-toggle">
+                        <span class="toggle-label"><i class="fa fa-paw text-pink-400"></i>猫猫宠物</span>
+                        <div class="toggle-switch on" id="toggleMao" onclick="toggleDisplay('mao')"></div>
+                    </div>
+                    <div class="display-toggle">
+                        <span class="toggle-label"><i class="fa fa-paw text-green-400"></i>狗狗宠物</span>
+                        <div class="toggle-switch on" id="toggleDog" onclick="toggleDisplay('dog')"></div>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-400 mt-3">设置会自动记忆，仅本机生效。</p>
+            </div>
+        </div>
+
+        <!-- 通知设置 -->
+        <div class="settings-item" data-settings="notify">
+            <button type="button" class="settings-bar" onclick="toggleSettingsSection('notify')">
+                <span class="settings-bar-icon"><i class="fa fa-bell"></i></span>
+                <span class="settings-bar-body">
+                    <span class="settings-bar-title">通知设置</span>
+                    <span class="settings-bar-sub">控制通知时是否同时发送邮件</span>
+                </span>
+                <i class="fa fa-chevron-down settings-bar-chevron"></i>
+            </button>
+            <div class="settings-panel hidden">
+                <div class="space-y-2">
+                    <div class="display-toggle">
+                        <span class="toggle-label"><i class="fa fa-envelope text-rose-400"></i>通知同时发送邮件</span>
+                        <div class="toggle-switch on" id="toggleNotifyEmail" onclick="toggleNotifyEmail()"></div>
+                    </div>
+                </div>
+                <p id="notifyEmailHint" class="text-xs text-gray-400 mt-3">开启后，留言/日志/照片等通知会通过 EmailJS 发送邮件提醒对方。</p>
+            </div>
+        </div>
+
+        <!-- 定位设置 -->
+        <div class="settings-item" data-settings="location">
+            <button type="button" class="settings-bar" onclick="toggleSettingsSection('location')">
+                <span class="settings-bar-icon"><i class="fa fa-map-marker"></i></span>
+                <span class="settings-bar-body">
+                    <span class="settings-bar-title">定位设置</span>
+                    <span class="settings-bar-sub">高德地图 Key 与安全密钥</span>
+                </span>
+                <i class="fa fa-chevron-down settings-bar-chevron"></i>
+            </button>
+            <div class="settings-panel hidden">
+                <div class="space-y-3">
+                    <input id="amapKeyInput" placeholder="高德 Web端(JS API) Key"
+                        class="w-full border border-rose-200 rounded-lg p-2 outline-none focus:border-love">
+                    <input id="amapSecInput" placeholder="安全密钥 securityJsCode"
+                        class="w-full border border-rose-200 rounded-lg p-2 outline-none focus:border-love">
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <button onclick="saveLocationConfig()"
+                            class="bg-love hover:bg-loveDark text-white px-5 py-2 rounded-lg text-sm transition">
+                            <i class="fa fa-save"></i> 保存
+                        </button>
+                        <span id="amapSaveStatus" class="text-sm text-gray-400"></span>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-400 mt-3">保存后刷新页面生效；高德控制台需为 Key 绑定当前访问域名。定位需要 HTTPS 环境。</p>
+            </div>
+        </div>
+
+        <!-- 背景设置 -->
+        <div class="settings-item" data-settings="background">
+            <button type="button" class="settings-bar" onclick="toggleSettingsSection('background')">
+                <span class="settings-bar-icon"><i class="fa fa-picture-o"></i></span>
+                <span class="settings-bar-body">
+                    <span class="settings-bar-title">背景设置</span>
+                    <span class="settings-bar-sub">上传图片设置网页背景（两人共享）</span>
+                </span>
+                <i class="fa fa-chevron-down settings-bar-chevron"></i>
+            </button>
+            <div class="settings-panel hidden">
+                <div class="flex gap-3 items-center flex-wrap">
+                    <input type="file" id="bgFileInput" accept="image/*" class="hidden">
+                    <button onclick="document.getElementById('bgFileInput').click()" class="bg-love text-white px-4 py-2 rounded-lg text-sm hover:bg-loveDark transition">
+                        <i class="fa fa-upload"></i> 选择背景图
+                    </button>
+                    <button onclick="clearBackground()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-300 transition">
+                        <i class="fa fa-times"></i> 恢复默认
+                    </button>
+                    <span id="bgStatus" class="text-sm text-gray-400"></span>
+                </div>
+                <div id="bgPreview" class="mt-3"></div>
+            </div>
+        </div>
     </div>
 
     <!-- 退出登录 -->
-    <div class="bg-white rounded-2xl shadow p-5 mb-4 text-center">
+    <div class="bg-white rounded-2xl shadow p-5 mt-6 text-center">
         <button onclick="logout()" class="px-6 py-2 bg-gray-100 hover:bg-red-50 text-gray-600 hover:text-red-500 rounded-lg text-sm font-semibold transition">
             <i class="fa fa-sign-out mr-1"></i> 退出登录
         </button>

@@ -320,9 +320,28 @@
         font-size: 15px !important;
     }
 
-    /* 刷新按钮：跟随铃铛左移（12 + 38 + 8） */
-    .refresh-toggle {
+    /* 日历按钮：跟随铃铛左移（12 + 38 + 8） */
+    .calendar-toggle {
         right: 58px !important;
+    }
+
+    /* 刷新按钮：定位在日历左侧（58 + 38 + 8） */
+    .refresh-toggle {
+        right: 104px !important;
+    }
+
+    .calendar-modal {
+        padding: 8px !important;
+    }
+    .calendar-modal-inner {
+        max-height: 92dvh !important;
+        padding: 16px !important;
+        border-radius: 16px !important;
+    }
+    .cal-cell {
+        min-height: 46px !important;
+        padding: 3px 1px 14px !important;
+        font-size: 12px !important;
     }
 
     .bell-panel {

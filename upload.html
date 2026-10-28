@@ -755,7 +755,23 @@ CREATE INDEX IF NOT EXISTS idx_locations_updated ON locations (updated_at DESC);
 DO $$ BEGIN
     ALTER PUBLICATION supabase_realtime ADD TABLE locations;
 EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;`;
+END $$;
+
+-- 9. 历史行程轨迹表（移动超过 1km 或每 1 小时自动记录一次）
+CREATE TABLE IF NOT EXISTS trip_history (
+    id          BIGSERIAL PRIMARY KEY,
+    user_email  TEXT NOT NULL,                            -- 记录者邮箱
+    lat         DOUBLE PRECISION NOT NULL,                -- 纬度
+    lng         DOUBLE PRECISION NOT NULL,                -- 经度
+    accuracy    DOUBLE PRECISION,                         -- 定位精度（米）
+    address     TEXT,                                     -- 逆地理编码后的地址
+    recorded_at TIMESTAMPTZ NOT NULL DEFAULT now()        -- 记录时间
+);
+ALTER TABLE trip_history ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow_read_trip_history" ON trip_history FOR SELECT USING (true);
+CREATE POLICY "allow_write_trip_history" ON trip_history FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE INDEX IF NOT EXISTS idx_trip_history_time ON trip_history (recorded_at DESC);
+CREATE INDEX IF NOT EXISTS idx_trip_history_user_time ON trip_history (user_email, recorded_at DESC);`;
         document.getElementById('sqlBox').value = CREATE_SQL;
 
         // ===== 本地上传文件清单 =====

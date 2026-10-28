@@ -63,6 +63,8 @@
         document.getElementById("weatherWidget").classList.add("hidden");
         document.getElementById("bellToggle").classList.add("hidden");
         document.getElementById("refreshBtn").classList.add("hidden");
+        if (document.getElementById("calendarBtn")) document.getElementById("calendarBtn").classList.add("hidden");
+        if (document.getElementById("calendarModal")) document.getElementById("calendarModal").classList.add("hidden");
         document.getElementById("bellPanel").classList.add("hidden");
         if (window.notificationChannel) { sb.removeChannel(window.notificationChannel); window.notificationChannel = null; }
         // 停止定位共享并清理订阅
@@ -159,8 +161,13 @@
         document.getElementById("weatherWidget").classList.remove("hidden");
         document.getElementById("bellToggle").classList.remove("hidden");
         document.getElementById("refreshBtn").classList.remove("hidden");
+        if (document.getElementById("calendarBtn")) document.getElementById("calendarBtn").classList.remove("hidden");
         // 首页默认子 Tab 初始化
         initHomePage();
+        // 当天未签到 → 自动弹出日历（延迟等页面渲染完成）
+        setTimeout(() => {
+            if (window.autoOpenCalendarIfNotCheckedIn) window.autoOpenCalendarIfNotCheckedIn();
+        }, 800);
         // 定位：登录后自动开始共享位置（先加载高德配置）
         initStorageGlobals().then(() => {
             if (window.startLocationSharing) window.startLocationSharing();
@@ -196,12 +203,11 @@
         window.loadMessages();
     }
 
-    // 日历页初始化
+    // 行程页初始化（实时定位 + 历史行程）
     function initJournalPage() {
-        if (_pageInited.journal) return;
         _pageInited.journal = true;
-        if (window.initCalendar) window.initCalendar();
-        window.refreshCalendar();
+        if (window.refreshLocations) window.refreshLocations();
+        if (window.loadTripHistory) window.loadTripHistory();
     }
 
     // 游戏页初始化
@@ -355,14 +361,14 @@
     function switchSubTab(sub) {
         // 防御：空子 tab 名直接返回，避免清空所有内容
         if (!sub) return;
-        // 已删除的旧子 Tab：视频/AI 回落相册，K歌 并入音乐
-        if (sub === 'video' || sub === 'ai') sub = 'gallery';
+        // 已删除的旧子 Tab：视频/AI 回落相册；定位已移至行程页，回落到相册
+        if (sub === 'video' || sub === 'ai' || sub === 'location') sub = 'gallery';
         const openKaraoke = sub === 'karaoke';
         if (openKaraoke) sub = 'music';
         if (openKaraoke) window._karaokeExpanded = true;
 
-        // 切换按钮高亮
-        document.querySelectorAll('.sub-tab').forEach(btn => {
+        // 切换按钮高亮（仅首页子 Tab，行程页有独立的 trip-tab）
+        document.querySelectorAll('.sub-tab[data-sub]').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.sub === sub);
         });
 
@@ -424,9 +430,21 @@
                 window.initCloudPage();
             }
         }
-        // 定位：模块内部自带幂等初始化，每次进入刷新一次
-        if (sub === 'location' && window.refreshLocations) window.refreshLocations();
     }
+
+    // 行程页内子 Tab 切换
+    function switchTripTab(tab) {
+        if (!tab) return;
+        document.querySelectorAll('#page-journal .trip-tab').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.trip === tab);
+        });
+        document.querySelectorAll('#page-journal .trip-tab-content').forEach(el => {
+            el.classList.toggle('hidden', el.id !== 'tripTab-' + tab);
+        });
+        if (tab === 'location' && window.refreshLocations) window.refreshLocations();
+        if (tab === 'history' && window.loadTripHistory) window.loadTripHistory();
+    }
+    window.switchTripTab = switchTripTab;
 
     //相恋天数
     function calcLoveDay() {

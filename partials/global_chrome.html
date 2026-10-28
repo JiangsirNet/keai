@@ -38,7 +38,12 @@
     <span class="w-city" id="wCity">定位中</span>
 </div>
 
-<!-- 刷新按钮（通知铃铛左侧） -->
+<!-- 日历按钮（刷新按钮与通知铃铛之间） -->
+<button id="calendarBtn" class="bell-toggle calendar-toggle hidden" onclick="openCalendarModal()" title="日历">
+    <i class="fa fa-calendar"></i>
+</button>
+
+<!-- 刷新按钮（日历按钮左侧） -->
 <button id="refreshBtn" class="bell-toggle refresh-toggle hidden" onclick="location.reload()" title="刷新页面">
     <i class="fa fa-refresh"></i>
 </button>
@@ -59,3 +64,99 @@
 </div>
 
 <audio id="musicAudio" ontimeupdate="updateProgress()" onended="onMusicEnded()"></audio>
+
+<!-- 日历弹窗（右上角日历按钮打开） -->
+<div id="calendarModal" class="calendar-modal hidden" onclick="if(event.target===this)closeCalendarModal()">
+    <div class="calendar-modal-inner">
+        <div class="flex items-center justify-between mb-3">
+            <h3 class="text-lg font-bold text-love flex items-center">
+                <i class="fa fa-calendar-check-o mr-2"></i>日历打卡
+            </h3>
+            <button onclick="closeCalendarModal()" class="text-gray-400 hover:text-love text-2xl leading-none">&times;</button>
+        </div>
+
+        <button onclick="openAnnivModal()" class="w-full mb-4 text-sm bg-love text-white px-4 py-2 rounded-full hover:bg-loveDark transition flex items-center justify-center gap-1">
+            <i class="fa fa-heart"></i> 重要纪念日
+        </button>
+
+        <div class="flex items-center justify-between mb-3">
+            <button onclick="calPrevMonth()" class="w-9 h-9 rounded-full bg-rose-50 text-love hover:bg-rose-100 transition">
+                <i class="fa fa-chevron-left"></i>
+            </button>
+            <div id="calTitle" class="text-lg font-bold text-love">-</div>
+            <button onclick="calNextMonth()" class="w-9 h-9 rounded-full bg-rose-50 text-love hover:bg-rose-100 transition">
+                <i class="fa fa-chevron-right"></i>
+            </button>
+        </div>
+
+        <div class="cal-grid mb-1">
+            <div class="cal-head">日</div>
+            <div class="cal-head">一</div>
+            <div class="cal-head">二</div>
+            <div class="cal-head">三</div>
+            <div class="cal-head">四</div>
+            <div class="cal-head">五</div>
+            <div class="cal-head">六</div>
+        </div>
+        <div id="calGrid" class="cal-grid"></div>
+
+        <div class="cal-legend">
+            <span><i class="cal-dot boy" style="display:inline-block"></i>他打卡</span>
+            <span><i class="cal-dot girl" style="display:inline-block"></i>她打卡</span>
+            <span><i class="cal-dot todo" style="display:inline-block"></i>代办</span>
+            <span><i class="cal-dot memo" style="display:inline-block"></i>纪念日</span>
+        </div>
+
+        <div class="mt-5 pt-4 border-t border-rose-100">
+            <div class="flex items-center justify-between mb-3">
+                <div>
+                    <p class="text-sm text-gray-500">已选日期</p>
+                    <p id="calSelectedDate" class="text-base font-bold text-love">-</p>
+                </div>
+                <button id="checkinBtn" onclick="toggleCheckin()"
+                    class="bg-love text-white px-5 py-2 rounded-full hover:bg-loveDark transition flex items-center gap-2">
+                    <i class="fa fa-check-circle"></i><span id="checkinBtnText">打卡</span>
+                </button>
+            </div>
+
+            <div id="calEventList" class="mb-3"></div>
+
+            <div class="mb-2 flex items-center gap-2">
+                <input id="todoInput" placeholder="添加当日代办事项，回车提交" maxlength="60"
+                    class="flex-1 border border-rose-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-love"
+                    onkeydown="if(event.key==='Enter')addTodo()">
+                <button onclick="addTodo()" class="bg-love text-white px-4 py-2 rounded-lg text-sm hover:bg-loveDark transition">添加</button>
+            </div>
+            <div id="todoList" class="max-h-[200px] overflow-y-auto pr-1">
+                <div class="text-center text-gray-400 text-sm py-2">选择日期查看代办</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 重要纪念日弹窗 -->
+<div id="annivModal" class="anniv-modal hidden" onclick="if(event.target===this)closeAnnivModal()">
+    <div class="anniv-modal-inner">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-bold text-love flex items-center">
+                <i class="fa fa-heart mr-2"></i>重要纪念日
+            </h3>
+            <button onclick="closeAnnivModal()" class="text-gray-400 hover:text-love text-2xl leading-none">&times;</button>
+        </div>
+        <div id="annivList" class="mb-3">
+            <div class="text-center text-gray-400 py-4">加载中...</div>
+        </div>
+        <div class="mt-4 pt-4 border-t border-rose-100">
+            <p class="text-sm font-bold text-love mb-2"><i class="fa fa-plus-circle mr-1"></i>新增纪念日</p>
+            <input id="annivTitle" placeholder="纪念日名称（如：第一次约会）" maxlength="30"
+                class="w-full border border-rose-200 rounded-lg p-2 mb-2 text-sm outline-none focus:border-love">
+            <input id="annivDate" type="date" class="w-full border border-rose-200 rounded-lg p-2 mb-2 text-sm outline-none focus:border-love">
+            <label class="flex items-center gap-2 mb-1 text-sm text-gray-600 cursor-pointer select-none">
+                <input type="checkbox" id="annivLunar" class="w-4 h-4 accent-pink-500" onchange="onAnnivLunarChange()">
+                <span>农历日期（输入的月日按农历解释，每年自动换算为公历显示）</span>
+            </label>
+            <p id="annivLunarHint" class="hidden text-xs text-purple-500 mb-2 ml-6">例：选 8月15日 = 农历八月十五（中秋节），日历会在当年农历八月十五对应的公历日显示</p>
+            <button onclick="addAnniv()" class="w-full bg-love text-white py-2 rounded-lg text-sm hover:bg-loveDark transition">保存纪念日</button>
+        </div>
+    </div>
+</div>

@@ -50,7 +50,7 @@
         { container_id: 'loginPanelContainer', page_name: '', nav_label: '', nav_icon: '', sort_order: 1, placement: 'global', is_active: true },
         { container_id: 'previewModalContainer', page_name: '', nav_label: '', nav_icon: '', sort_order: 2, placement: 'global', is_active: true },
         { container_id: 'pageHomeContainer', page_name: 'home', nav_label: '首页', nav_icon: '🏠', sort_order: 3, placement: 'page', is_active: true },
-        { container_id: 'pageJournalContainer', page_name: 'journal', nav_label: '日历', nav_icon: '📅', sort_order: 4, placement: 'page', is_active: true },
+        { container_id: 'pageJournalContainer', page_name: 'journal', nav_label: '行程', nav_icon: '🧭', sort_order: 4, placement: 'page', is_active: true },
         { container_id: 'pageGameContainer', page_name: 'game', nav_label: '游戏', nav_icon: '🎮', sort_order: 5, placement: 'page', is_active: true },
         { container_id: 'pageConfigContainer', page_name: 'config', nav_label: '设置', nav_icon: '⚙️', sort_order: 6, placement: 'page', is_active: true },
     ];

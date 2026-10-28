@@ -13,6 +13,8 @@
     const WRITE_MIN_DISTANCE = 50;       // 或移动超过 50m 才上报
     const ONLINE_WINDOW = 2 * 60 * 1000; // 2 分钟内更新视为实时
     const POLL_INTERVAL = 60000;         // Realtime 不可用时的兜底轮询
+    const TRIP_MIN_DISTANCE = 1000;      // 历史行程：移动超过 1km 记录一次
+    const TRIP_MIN_INTERVAL = 60 * 60 * 1000; // 或每 1 小时记录一次
 
     let map = null;
     let geocoder = null;
@@ -34,6 +36,14 @@
     let locChannel = null;
     let pollTimer = null;
     let pageInited = false;
+
+    let lastTripPoint = null;           // { lat, lng, at } 最近一条历史行程
+    let tripSeedPromise = null;
+    let tripHistoryAvailable = true;
+    let tripRecording = false;
+    let tripBackfilling = false;
+    let partnerGeocodeBusy = false;
+    let partnerGeocodeKey = '';
 
     // ===== 小工具 =====
     function lower(s) { return String(s || '').toLowerCase(); }
@@ -152,6 +162,10 @@
         }
         if (!geocoder && window.AMap.Geocoder) {
             geocoder = new window.AMap.Geocoder({ radius: 500 });
+            geocodePartnerAddress();
+            // 历史行程 Tab 可见时，地图加载完后再补一次缺失地址
+            const histPanel = document.getElementById('tripTab-history');
+            if (histPanel && !histPanel.classList.contains('hidden')) loadTripHistory();
         }
         if (map) return;
         el.innerHTML = '';
@@ -225,6 +239,204 @@
         });
     }
 
+    // 对方位置缺少地址时，用本机地图服务补一次逆地理编码并回写
+    async function geocodePartnerAddress() {
+        if (!partnerRow || !geocoder || partnerGeocodeBusy || partnerRow.address) return;
+        const key = `${partnerRow.lng},${partnerRow.lat}`;
+        if (partnerGeocodeKey === key) return;
+        partnerGeocodeBusy = true;
+        partnerGeocodeKey = key;
+        try {
+            const addr = await reverseGeocode(Number(partnerRow.lat), Number(partnerRow.lng));
+            if (!addr) return;
+            partnerRow.address = addr;
+            render();
+            if (partnerRow.user_email && sb) {
+                const { error } = await sb.from('locations')
+                    .update({ address: addr })
+                    .eq('user_email', partnerRow.user_email);
+                if (error) console.warn('[Location] 回写对方地址失败:', error.message);
+            }
+        } catch (e) {
+            console.warn('[Location] 对方地址解析失败:', e && e.message);
+        } finally {
+            partnerGeocodeBusy = false;
+        }
+    }
+
+    // ===== 历史行程（自动记录 + 列表） =====
+    function escHtml(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function userLabel(email) {
+        const cfg = window.CONFIG || {};
+        if (lower(email) === lower(cfg.boyEmail)) return '男生';
+        if (lower(email) === lower(cfg.girlEmail)) return '女生';
+        return email || '未知';
+    }
+
+    function fmtHm(ts) {
+        const d = validDate(ts);
+        return d ? `${pad2(d.getHours())}:${pad2(d.getMinutes())}` : '';
+    }
+
+    function tripDateTitle(d) {
+        const now = new Date();
+        const base = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        const diffDays = Math.round((today - base) / 86400000);
+        if (diffDays === 0) return '今天';
+        if (diffDays === 1) return '昨天';
+        const week = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][d.getDay()];
+        return `${d.getMonth() + 1}月${d.getDate()}日 ${week}`;
+    }
+
+    async function seedLastTripPoint() {
+        const email = window.myRpsEmail;
+        if (!email || !sb || !tripHistoryAvailable) return;
+        try {
+            const { data, error } = await sb.from('trip_history')
+                .select('lat,lng,recorded_at')
+                .eq('user_email', email)
+                .order('recorded_at', { ascending: false })
+                .limit(1);
+            if (error) throw error;
+            if (data && data[0]) {
+                lastTripPoint = {
+                    lat: Number(data[0].lat),
+                    lng: Number(data[0].lng),
+                    at: new Date(data[0].recorded_at).getTime() || Date.now()
+                };
+            }
+        } catch (e) {
+            tripHistoryAvailable = false;
+            console.warn('[Trip] 历史行程表不可用，请先执行建表 SQL:', e && e.message);
+        }
+    }
+
+    function ensureTripSeed() {
+        if (!tripSeedPromise) tripSeedPromise = seedLastTripPoint();
+        return tripSeedPromise;
+    }
+
+    async function recordTripPoint(lat, lng, accuracy, address) {
+        const email = window.myRpsEmail;
+        if (!email || !sb || !tripHistoryAvailable || tripRecording) return;
+        tripRecording = true;
+        try {
+            await ensureTripSeed();
+            if (!tripHistoryAvailable) return;
+            const now = Date.now();
+            if (lastTripPoint) {
+                const moved = distanceMeters(lastTripPoint, { lat: lat, lng: lng });
+                if (moved < TRIP_MIN_DISTANCE && now - lastTripPoint.at < TRIP_MIN_INTERVAL) return;
+            }
+            let addr = address;
+            if (!addr && geocoder) addr = await reverseGeocode(lat, lng);
+            const { error } = await sb.from('trip_history').insert({
+                user_email: email,
+                lat: lat,
+                lng: lng,
+                accuracy: accuracy || null,
+                address: addr || null
+            });
+            if (error) throw error;
+            lastTripPoint = { lat: lat, lng: lng, at: now };
+            const panel = document.getElementById('tripTab-history');
+            if (panel && !panel.classList.contains('hidden')) loadTripHistory();
+        } catch (e) {
+            console.warn('[Trip] 记录历史行程失败:', e && e.message);
+        } finally {
+            tripRecording = false;
+        }
+    }
+
+    function renderTripHistory(rows) {
+        const box = document.getElementById('tripHistoryList');
+        if (!box) return;
+        if (!rows.length) {
+            box.innerHTML = '<div class="text-center text-gray-400 py-6 text-sm">暂无历史行程，移动后会自动记录</div>';
+            return;
+        }
+        const groups = new Map();
+        rows.forEach(r => {
+            const d = validDate(r.recorded_at);
+            if (!d) return;
+            const key = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+            if (!groups.has(key)) groups.set(key, { date: d, items: [] });
+            groups.get(key).items.push(r);
+        });
+        let html = '';
+        groups.forEach(g => {
+            html += `<div class="trip-day"><div class="trip-day-title"><i class="fa fa-calendar"></i>${escHtml(tripDateTitle(g.date))}</div>`;
+            g.items.forEach(r => {
+                const addr = r.address || `${Number(r.lat).toFixed(5)}, ${Number(r.lng).toFixed(5)}`;
+                const label = userLabel(r.user_email);
+                const cls = isSelf(r.user_email) ? 'self' : 'partner';
+                const amapUrl = 'https://uri.amap.com/marker?position=' +
+                    encodeURIComponent(`${r.lng},${r.lat}`) + '&name=' + encodeURIComponent(addr);
+                html += '<div class="trip-item">' +
+                    `<span class="trip-marker ${cls}"></span>` +
+                    '<div class="trip-info">' +
+                    `<a class="trip-addr" href="${amapUrl}" target="_blank" rel="noopener">${escHtml(addr)}</a>` +
+                    `<div class="trip-meta"><span>${fmtHm(r.recorded_at)}</span>` +
+                    `<span class="trip-user ${cls}">${escHtml(label)}</span></div>` +
+                    '</div></div>';
+            });
+            html += '</div>';
+        });
+        box.innerHTML = html;
+    }
+
+    // 历史记录缺少地址时，用本机地图服务补全并回写数据库（每次最多补 10 条）
+    async function backfillTripAddresses(rows) {
+        if (!geocoder || !sb || tripBackfilling) return;
+        const missing = rows.filter(r => !r.address && isFinite(Number(r.lat)) && isFinite(Number(r.lng))).slice(0, 10);
+        if (!missing.length) return;
+        tripBackfilling = true;
+        let changed = false;
+        try {
+            for (const r of missing) {
+                const addr = await reverseGeocode(Number(r.lat), Number(r.lng));
+                if (!addr) continue;
+                r.address = addr;
+                changed = true;
+                sb.from('trip_history').update({ address: addr }).eq('id', r.id)
+                    .then(({ error }) => {
+                        if (error) console.warn('[Trip] 回写历史地址失败:', error.message);
+                    });
+            }
+        } finally {
+            tripBackfilling = false;
+        }
+        if (changed) renderTripHistory(rows);
+    }
+
+    async function loadTripHistory() {
+        const box = document.getElementById('tripHistoryList');
+        if (!box || !sb) return;
+        if (!tripHistoryAvailable) {
+            box.innerHTML = '<div class="text-center text-gray-400 py-6 text-sm">请先执行 trip_history 建表 SQL</div>';
+            return;
+        }
+        try {
+            const { data, error } = await sb.from('trip_history')
+                .select('id,user_email,lat,lng,accuracy,address,recorded_at')
+                .order('recorded_at', { ascending: false })
+                .limit(200);
+            if (error) throw error;
+            renderTripHistory(data || []);
+            backfillTripAddresses(data || []);
+        } catch (e) {
+            tripHistoryAvailable = false;
+            box.innerHTML = '<div class="text-center text-gray-400 py-6 text-sm">加载失败：请先执行 trip_history 建表 SQL</div>';
+            console.warn('[Trip] 加载历史行程失败:', e && e.message);
+        }
+    }
+
     // ===== 位置上报 =====
     async function saveLocation(lat, lng, accuracy) {
         const email = window.myRpsEmail;
@@ -249,6 +461,8 @@
             if (data && data[0]) selfRow = data[0];
             lastPos = { lat: lat, lng: lng };
             render();
+            // 自动写入历史行程（按距离/时间阈值节流）
+            recordTripPoint(lat, lng, accuracy, payload.address);
         } catch (e) {
             console.warn('[Location] 位置上报失败:', e && e.message);
             setHint('位置上报失败：' + ((e && e.message) || '未知错误') + '（请确认已执行 locations 建表 SQL）');
@@ -463,6 +677,7 @@
         updateStatusLine();
         updateShareBtn();
         updateMarkers();
+        geocodePartnerAddress();
     }
 
     function updateStatusLine() {
@@ -577,6 +792,13 @@
         selfRow = null;
         partnerRow = null;
         pageInited = false;
+        lastTripPoint = null;
+        tripSeedPromise = null;
+        tripHistoryAvailable = true;
+        tripRecording = false;
+        tripBackfilling = false;
+        partnerGeocodeBusy = false;
+        partnerGeocodeKey = '';
         render();
     }
 
@@ -595,4 +817,5 @@
     };
     window.loadLocationConfigForm = loadLocationConfigForm;
     window.saveLocationConfig = saveLocationConfig;
+    window.loadTripHistory = loadTripHistory;
 })();

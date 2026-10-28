@@ -1,4 +1,4 @@
-<!-- 首页（含子Tab：相册/一日三餐/定位/留言/日志/音乐（含K歌）/网盘） -->
+<!-- 首页（含子Tab：相册/一日三餐/留言/日志/音乐（含K歌）/网盘） -->
 <div id="page-home" class="page-content hidden">
     <!-- 恋爱计时器 -->
     <div class="bg-white/80 backdrop-blur rounded-3xl p-6 md:p-10 card-shadow text-center mb-6">
@@ -31,9 +31,6 @@
         </button>
         <button onclick="switchSubTab('cloud')" class="sub-tab" data-sub="cloud">
             <i class="fa fa-cloud"></i> 网盘
-        </button>
-        <button onclick="switchSubTab('location')" class="sub-tab" data-sub="location">
-            <i class="fa fa-map-marker"></i> 定位
         </button>
     </div>
 
@@ -73,59 +70,6 @@
                 <div class="text-center text-gray-400 py-10">加载中...</div>
             </div>
             <div id="mealPager" class="flex items-center justify-center gap-4 mt-4"></div>
-        </div>
-    </div>
-
-    <!-- ===== 子Tab：定位（高德地图） ===== -->
-    <div id="subTab-location" class="sub-tab-content hidden">
-        <div class="bg-white/80 backdrop-blur rounded-3xl p-6 card-shadow">
-            <h2 class="text-xl font-bold text-love flex items-center mb-2">
-                <i class="fa fa-map-marker mr-2"></i>我们的位置
-            </h2>
-            <div class="loc-status" id="locStatus">
-                <span class="dot"></span>
-                <span id="locStatusText">正在准备定位...</span>
-            </div>
-
-            <div class="loc-map" id="locMap"></div>
-
-            <div class="loc-cards">
-                <div class="loc-card">
-                    <div class="loc-card-head">
-                        <span class="loc-card-title"><i class="fa fa-heart"></i> TA 的位置</span>
-                        <span class="loc-badge" id="locPartnerBadge">未知</span>
-                    </div>
-                    <div class="loc-addr" id="locPartnerAddr">暂无共享位置</div>
-                    <div class="loc-meta" id="locPartnerMeta"></div>
-                </div>
-                <div class="loc-card">
-                    <div class="loc-card-head">
-                        <span class="loc-card-title"><i class="fa fa-map-marker"></i> 我的位置</span>
-                        <span class="loc-badge" id="locSelfBadge">未开启</span>
-                    </div>
-                    <div class="loc-addr" id="locSelfAddr">等待定位授权...</div>
-                    <div class="loc-meta" id="locSelfMeta"></div>
-                </div>
-            </div>
-
-            <div class="loc-actions">
-                <button class="loc-btn loc-btn-primary" onclick="window.shareMyLocationOnce()">
-                    <i class="fa fa-location-arrow"></i> 立即更新
-                </button>
-                <button class="loc-btn loc-btn-ghost" id="locShareBtn" onclick="window.toggleLocationSharing()">
-                    <i class="fa fa-pause"></i> 停止共享
-                </button>
-                <button class="loc-btn loc-btn-ghost" onclick="window.refreshLocations()">
-                    <i class="fa fa-refresh"></i> 刷新
-                </button>
-                <a class="loc-btn loc-btn-ghost hidden" id="locPartnerNav" target="_blank" rel="noopener">
-                    <i class="fa fa-external-link"></i> 高德查看
-                </a>
-            </div>
-
-            <p class="loc-hint" id="locHint">
-                登录后会自动共享你的位置；对方打开页面即可看到你的实时位置，离线时显示最后更新的位置。
-            </p>
         </div>
     </div>
 
