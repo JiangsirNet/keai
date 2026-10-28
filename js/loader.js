@@ -35,7 +35,6 @@
         { path: 'js/journal.js',         type: 'js', container: null, order: 19 },
         { path: 'js/calendar.js',        type: 'js', container: null, order: 20 },
         { path: 'js/game.js',            type: 'js', container: null, order: 21 },
-        { path: 'js/game_liar.js',       type: 'js', container: null, order: 22 },
         { path: 'js/background.js',      type: 'js', container: null, order: 23 },
         { path: 'js/location.js',        type: 'js', container: null, order: 24 },
         { path: 'js/karaoke.js',         type: 'js', container: null, order: 25 },

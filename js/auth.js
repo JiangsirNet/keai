@@ -209,7 +209,6 @@
         if (_pageInited.game) return;
         _pageInited.game = true;
         window.initJumpGame();
-        window.syncLbBgmBtn();
     }
 
     // ======================================================

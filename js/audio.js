@@ -81,9 +81,6 @@ function scheduleBgm() {
 
 function toggleBgm() {
     initAudio();
-    const btn = document.getElementById("lbSfxToggle");
-    if (!btn) return;
-    const icon = btn.querySelector("i");
     if (!bgmPlaying) {
         bgmPlaying = true;
         window.bgmPlaying = true;
@@ -92,16 +89,18 @@ function toggleBgm() {
         bgmNextNoteTime = audioCtx.currentTime + 0.1;
         bgmNextBassTime = audioCtx.currentTime + 0.1;
         scheduleBgm();
-        icon.className = "fa fa-volume-up";
-        btn.classList.add("text-love");
-        btn.classList.remove("text-gray-400");
     } else {
         bgmPlaying = false;
         window.bgmPlaying = false;
         clearTimeout(bgmTimer);
-        icon.className = "fa fa-volume-off";
-        btn.classList.remove("text-love");
-        btn.classList.add("text-gray-400");
+    }
+    // 同步按钮图标（若按钮存在）
+    const btn = document.getElementById("lbSfxToggle");
+    if (btn) {
+        const icon = btn.querySelector("i");
+        if (icon) icon.className = bgmPlaying ? "fa fa-volume-up" : "fa fa-volume-off";
+        btn.classList.toggle("text-love", bgmPlaying);
+        btn.classList.toggle("text-gray-400", !bgmPlaying);
     }
 }
 

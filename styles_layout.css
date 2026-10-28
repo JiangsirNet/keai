@@ -1328,7 +1328,7 @@
     border-radius: 0 !important;
     border: none !important;
     margin: 0 !important;
-    padding: 0 !important;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left) !important;
     width: 100vw !important;
     height: 100vh !important;
     max-width: 100vw !important;
@@ -1359,7 +1359,7 @@
     border-radius: 0 !important;
     border: none !important;
     margin: 0 !important;
-    padding: 0 !important;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left) !important;
     background: #000 !important;
 }
 .jump-fake-fullscreen iframe {
@@ -1370,8 +1370,8 @@
 /* 伪全屏时的浮动退出按钮（父工具栏被遮挡时的退出入口） */
 .jump-fake-fs-exit {
     position: fixed;
-    top: 12px;
-    right: 12px;
+    top: calc(12px + env(safe-area-inset-top));
+    right: calc(12px + env(safe-area-inset-right));
     z-index: 100000;
     width: 44px;
     height: 44px;

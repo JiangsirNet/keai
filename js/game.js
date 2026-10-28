@@ -1,8 +1,6 @@
 /**
- * 游戏模块（跳一跳 + 飞机大战）
+ * 游戏模块（跳一跳）
  * 跳一跳：iframe 加载 Jump-master，postMessage 收分数入库 game_scores(game='jump')，展示情侣排行榜。
- * 飞机大战：直接跳转到 plane-master 独立页面，分数由该页面自行入库 game_scores(game='plane')；本页仅负责展示情侣排行榜。
- * 同时负责初始化骗子酒馆（game_liar.js 的 lbInit 依赖 window.myRpsEmail）。
  */
 
 (function() {
@@ -21,10 +19,8 @@ function initJumpGame() {
     sb.auth.getUser().then(({ data: { user } }) => {
         myUserId = user?.id || "";
         myEmail = (user?.email || "").toLowerCase();
-        window.myRpsEmail = myEmail; // 骗子酒馆依赖
         const isGirl = myEmail === (CONFIG.girlEmail || "").toLowerCase();
         myNickname = isGirl ? CONFIG.girlName : CONFIG.boyName;
-        window.lbInit();
         loadBoard("jump");
     });
 }
@@ -274,7 +270,7 @@ function refreshCurrentBoard() {
     loadBoard(_currentBoard);
 }
 
-// 游戏 Tab 切换（跳一跳 / 飞机大战）
+// 游戏 Tab 切换（当前仅跳一跳）
 function switchGameTab(game) {
     document.querySelectorAll(".game-tab").forEach(btn => {
         const isActive = btn.dataset.game === game;
@@ -287,27 +283,9 @@ function switchGameTab(game) {
             btn.style.color = "#6b7280";
         }
     });
-    const jumpPanel = document.getElementById("jumpGamePanel");
-    const planePanel = document.getElementById("planeGamePanel");
-    if (jumpPanel) jumpPanel.classList.toggle("hidden", game !== "jump");
-    if (planePanel) planePanel.classList.toggle("hidden", game !== "plane");
-}
-
-// 骗子酒馆折叠
-function toggleLiarPanel() {
-    const panel = document.getElementById("liarPanel");
-    const arrow = document.getElementById("liarArrow");
-    if (!panel) return;
-    const isHidden = panel.classList.contains("hidden");
-    panel.classList.toggle("hidden");
-    if (arrow) arrow.style.transform = isHidden ? "rotate(180deg)" : "";
 }
 
 async function loadJumpLeaderboard() { return loadBoard("jump"); }
-async function loadPlaneLeaderboard() { return loadBoard("plane"); }
-
-// 飞机大战已改为直接跳转 plane-master 独立页面，
-// 分数入库 + 通知逻辑移至 plane-master/js/score.js；本页仅保留排行榜展示。
 
 // ===== 更新游戏：清除 Service Worker 缓存的游戏资源并重新加载最新版本 =====
 let _gameToastEl = null, _gameToastTimer = null;
@@ -383,11 +361,9 @@ window.initJumpGame = initJumpGame;
 window.jumpTogglePlay = jumpTogglePlay;
 window.jumpToggleFullscreen = jumpToggleFullscreen;
 window.loadJumpLeaderboard = loadJumpLeaderboard;
-window.loadPlaneLeaderboard = loadPlaneLeaderboard;
 window.switchBoardTab = switchBoardTab;
 window.refreshCurrentBoard = refreshCurrentBoard;
 window.switchGameTab = switchGameTab;
-window.toggleLiarPanel = toggleLiarPanel;
 window.refreshGameCache = refreshGameCache;
 
 // 初始化 Tab 样式
