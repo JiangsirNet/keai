@@ -24,6 +24,7 @@ styles.css              — 基础样式 + 相册 + 留言 + 音乐 + 天气 + �
 styles_layout.css       — 日历 + BGM + 显示设置 + 骗子酒馆 + 语音 + 宠物 + K歌播放器 + 删除按钮（type=css, order=0）
 styles_mobile.css       — 导航栏 + Live2D 人物 + 手机端适配（type=css, order=0）
 partials/               — HTML 片段
+├── global_chrome.html  — 全局 UI 外壳（宠物/天气/通知铃铛/刷新按钮/下拉刷新指示器/音乐audio）
 ├── login.html          — 登录面板
 ├── preview.html        — 大图预览弹窗
 ├── home.html           — 首页（相册/一日三餐/定位/留言/日志/音乐（含K歌）/网盘）
@@ -100,7 +101,7 @@ CSS (0) → HTML (1-6) → JS (10-30)
 | 类型 | load_order 范围 | 说明 |
 |---|---|---|
 | `css` | 0 | 所有样式最先加载（按 file_path 排序），确保页面渲染时样式已就绪 |
-| `html` | 1-6 | 全局容器(1-2) → 各页面容器(3-6) |
+| `html` | 0-6 | 全局 UI 外壳(0) → 全局容器(1-2) → 各页面容器(3-6) |
 | `js` | 10-30 | 功能模块(10-28) → pull_refresh.js(29) → auth.js(30) |
 | `md` | 99 | 仅供 upload.html 渲染，不参与页面加载 |
 
@@ -136,7 +137,7 @@ config_page.js (10) → notifications.js (11) → weather.js (12) → audio.js (
 
 初始默认数据：
 ```
-(placement=global) loginPanelContainer, previewModalContainer
+(placement=global) globalChromeContainer, loginPanelContainer, previewModalContainer
 (placement=page)   pageHomeContainer🏠 → pageJournalContainer📖 → pageGameContainer🎮 → pageConfigContainer⚙️
 ```
 
@@ -655,7 +656,7 @@ GRANT EXECUTE ON FUNCTION exec_ddl(TEXT) TO authenticated;
 
 | 文件 | 作用 |
 |---|---|
-| `index.html` | 宠物容器（`#huskyPet` / `#catPet` / `#maoPet`） |
+| `partials/global_chrome.html` | 宠物容器（`#boyPet` / `#girlPet` / `#maoPet` / `#dogPet`） |
 | `js/pets.js` | 三只宠物的动画、拖拽、点击、抱抱逻辑 |
 | `styles_layout.css` `.husky-pet` / `.cat-pet` / `.mao-pet` | 宠物样式与动画 |
 | `styles_mobile.css` | 移动端宠物尺寸适配 |
@@ -841,7 +842,7 @@ END $$;
 ## 十六、下拉刷新（橡皮条）
 
 - **文件**：`js/pull_refresh.js`（load_order=29）
-- **HTML**：`index.html` 中的 `#pullRefreshIndicator` 元素
+- **HTML**：`partials/global_chrome.html` 中的 `#pullRefreshIndicator` 元素
 - **CSS**：`styles.css` 中的 `.pull-refresh-indicator` 样式
 - **触发条件**：页面在顶部（`scrollY === 0`）时手指下拉超过 70px
 - **排除元素**：拖拽人物/宠物（`.boy-pet, .girl-pet, .husky-pet, .cat-pet, .mao-pet`）时不触发

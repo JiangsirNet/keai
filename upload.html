@@ -666,6 +666,7 @@ CREATE POLICY "allow_auth_write_containers" ON app_containers FOR ALL TO authent
 
 -- 3. 初始容器数据
 INSERT INTO app_containers (container_id, page_name, nav_label, nav_icon, sort_order, placement) VALUES
+('globalChromeContainer', NULL,    NULL,    NULL, 0, 'global'),
 ('loginPanelContainer',  NULL,     NULL,    NULL, 1, 'global'),
 ('previewModalContainer', NULL,    NULL,    NULL, 2, 'global'),
 ('pageHomeContainer',    'home',   '首页',  '🏠', 1, 'page'),
@@ -762,6 +763,7 @@ END $$;`;
             { path: 'styles.css',           type: 'css',  container: null, order: 0 },
             { path: 'styles_layout.css',    type: 'css',  container: null, order: 0 },
             { path: 'styles_mobile.css',    type: 'css',  container: null, order: 0 },
+            { path: 'partials/global_chrome.html', type: 'html', container: 'globalChromeContainer', order: 0 },
             { path: 'partials/login.html',   type: 'html', container: 'loginPanelContainer',   order: 1 },
             { path: 'partials/preview.html', type: 'html', container: 'previewModalContainer', order: 2 },
             { path: 'partials/home.html',    type: 'html', container: 'pageHomeContainer',     order: 3 },

@@ -528,17 +528,3 @@
         bottom: 76px !important;
     }
 }
-
-/* ===== 定位（高德地图）移动端适配 ===== */
-@media (max-width: 767px) {
-    .loc-map {
-        height: 210px;
-    }
-    .loc-cards {
-        grid-template-columns: 1fr;
-    }
-    .loc-btn {
-        padding: 8px 14px;
-        font-size: 12px;
-    }
-}

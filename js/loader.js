@@ -16,6 +16,7 @@
         { path: 'styles.css',           type: 'css',  container: null, order: 0 },
         { path: 'styles_layout.css',    type: 'css',  container: null, order: 0 },
         { path: 'styles_mobile.css',    type: 'css',  container: null, order: 0 },
+        { path: 'partials/global_chrome.html', type: 'html', container: 'globalChromeContainer', order: 0 },
         { path: 'partials/login.html',   type: 'html', container: 'loginPanelContainer',   order: 1 },
         { path: 'partials/preview.html', type: 'html', container: 'previewModalContainer', order: 2 },
         { path: 'partials/home.html',    type: 'html', container: 'pageHomeContainer',     order: 3 },
@@ -46,6 +47,7 @@
 
     // ---- 本地容器配置 ----
     const LOCAL_CONTAINERS = [
+        { container_id: 'globalChromeContainer', page_name: '', nav_label: '', nav_icon: '', sort_order: 0, placement: 'global', is_active: true },
         { container_id: 'loginPanelContainer', page_name: '', nav_label: '', nav_icon: '', sort_order: 1, placement: 'global', is_active: true },
         { container_id: 'previewModalContainer', page_name: '', nav_label: '', nav_icon: '', sort_order: 2, placement: 'global', is_active: true },
         { container_id: 'pageHomeContainer', page_name: 'home', nav_label: '首页', nav_icon: '🏠', sort_order: 3, placement: 'page', is_active: true },

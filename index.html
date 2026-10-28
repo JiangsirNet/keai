@@ -38,68 +38,10 @@
 
 <body>
     <div id="appLoading"><i class="fa fa-spinner fa-spin"></i> 加载中...</div>
-    <div id="heartBox"></div>
-
-    <!-- 男生 Live2D 风格互动形象 -->
-    <div id="boyPet" class="boy-pet hidden" onmousedown="startDragBoy(event)" ontouchstart="startDragBoy(event)">
-        <div class="boy-bubble" id="boyBubble"></div>
-        <canvas id="boyCanvas" width="240" height="320"></canvas>
-    </div>
-
-    <!-- 女生 Live2D 风格互动形象 -->
-    <div id="girlPet" class="girl-pet hidden" onmousedown="startDragGirl(event)" ontouchstart="startDragGirl(event)">
-        <div class="girl-bubble" id="girlBubble"></div>
-        <canvas id="girlCanvas" width="240" height="320"></canvas>
-    </div>
-
-    <!-- 猫咪宠物（GIF 动图） -->
-    <div id="maoPet" class="mao-pet hidden">
-        <div class="mao-bubble" id="maoBubble"></div>
-        <img id="maoImg" src="images/猫-待机.gif" alt="猫" />
-    </div>
-
-    <!-- 狗宠物（GIF 动图） -->
-    <div id="dogPet" class="mao-pet hidden">
-        <div class="mao-bubble" id="dogBubble"></div>
-        <img id="dogImg" src="images/狗待机.gif" alt="狗" />
-    </div>
-
-    <!-- 下拉刷新指示器（微信风格圆形） -->
-    <div id="pullRefreshIndicator" class="pull-refresh-indicator">
-        <i class="fa fa-refresh" id="pullRefreshIcon"></i>
-    </div>
-
-    <!-- 天气组件（左上角）-->
-    <div id="weatherWidget" class="weather-widget hidden" onclick="showWeatherDetail()">
-        <span class="w-icon" id="wIcon">⏳</span>
-        <span class="w-temp" id="wTemp">--</span>
-        <span class="w-city" id="wCity">定位中</span>
-    </div>
-
-    <!-- 刷新按钮（通知铃铛左侧） -->
-    <button id="refreshBtn" class="bell-toggle refresh-toggle hidden" onclick="location.reload()" title="刷新页面">
-        <i class="fa fa-refresh"></i>
-    </button>
-
-    <!-- 通知铃铛（最右边） -->
-    <button id="bellToggle" class="bell-toggle hidden" onclick="toggleBellPanel()">
-        <i class="fa fa-bell"></i>
-        <span class="bell-badge hidden" id="bellBadge">0</span>
-    </button>
-    <div id="bellPanel" class="bell-panel hidden">
-        <div class="bell-panel-header">
-            <span>消息通知</span>
-            <button onclick="clearAllNotifications()" class="bell-clear-btn">清空</button>
-        </div>
-        <div id="bellList" class="bell-list">
-            <div class="text-center text-gray-400 py-4 text-xs">暂无通知</div>
-        </div>
-    </div>
-    <audio id="musicAudio" ontimeupdate="updateProgress()" onended="onMusicEnded()"></audio>
 
     <!-- ===== 以下容器和导航由 loader.js 从数据库动态生成 ===== -->
 
-    <!-- 全局容器（登录面板、弹窗等） -->
+    <!-- 全局容器（全局 UI 外壳、登录面板、弹窗等） -->
     <div id="globalContainers"></div>
 
     <!-- 主页面 -->
