@@ -7,7 +7,7 @@
  * - Supabase API / 上传请求（POST/PUT/DELETE）：不拦截，直接放行
  */
 
-const CACHE_VERSION = 'couple-v2';
+const CACHE_VERSION = 'couple-v1';
 const CORE_ASSETS = [
     './',
     './index.html',

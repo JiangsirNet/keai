@@ -15,7 +15,6 @@ body {
     min-height: 100vh;
     font-family: "Microsoft Yahei", sans-serif;
     overflow-x: hidden;
-    padding-top: env(safe-area-inset-top);
 }
 
 .heart {
@@ -1308,7 +1307,7 @@ body {
 
 .bell-toggle {
     position: fixed;
-    top: calc(20px + env(safe-area-inset-top));
+    top: 20px;
     right: 20px;
     z-index: 99;
     width: 44px;
@@ -1350,7 +1349,7 @@ body {
 }
 .bell-panel {
     position: fixed;
-    top: calc(72px + env(safe-area-inset-top));
+    top: 72px;
     right: 20px;
     z-index: 100;
     width: 320px;
@@ -1411,7 +1410,7 @@ body {
 /* 天气组件 */
 .weather-widget {
     position: fixed;
-    top: calc(20px + env(safe-area-inset-top));
+    top: 20px;
     left: 20px;
     z-index: 98;
     display: flex;
