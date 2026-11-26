@@ -311,6 +311,7 @@ function playMusic(index) {
 
     updateCover(item);
     parseLyrics(item.lyrics);
+    syncMediaSession('play');
     loadMusicList();
 }
 
@@ -323,6 +324,7 @@ function pauseMusicAudio() {
     const btnEl = document.getElementById("mpPlayBtn");
     if (coverEl) coverEl.classList.remove("playing");
     if (btnEl) btnEl.innerHTML = '<i class="fa fa-play"></i>';
+    syncMediaSession('pause');
 }
 
 function updateCover(item) {
@@ -419,10 +421,12 @@ function togglePlay() {
         audio.play();
         document.getElementById("mpCover").classList.add("playing");
         document.getElementById("mpPlayBtn").innerHTML = '<i class="fa fa-pause"></i>';
+        syncMediaSession('play');
     } else {
         audio.pause();
         document.getElementById("mpCover").classList.remove("playing");
         document.getElementById("mpPlayBtn").innerHTML = '<i class="fa fa-play"></i>';
+        syncMediaSession('pause');
     }
 }
 
@@ -495,6 +499,7 @@ function updateProgress() {
     document.getElementById("mpCurrent").innerText = formatTime(audio.currentTime);
     document.getElementById("mpDuration").innerText = formatTime(audio.duration);
     updateLyrics();
+    updateMediaPosition();
 }
 
 function seekMusic(e) {
@@ -503,6 +508,7 @@ function seekMusic(e) {
     const rect = e.currentTarget.getBoundingClientRect();
     const percent = (e.clientX - rect.left) / rect.width;
     audio.currentTime = Math.max(0, Math.min(1, percent)) * audio.duration;
+    updateMediaPosition();
 }
 
 function onMusicEnded() {
@@ -530,6 +536,210 @@ function formatTime(s) {
     } else {
         document.addEventListener("DOMContentLoaded", updatePlayModeBtn);
     }
+})();
+
+/* ================== 系统媒体控制（MediaSession，音乐通知栏）==================
+ * 通过 MediaSession API 在系统媒体控制中心（Windows 媒体浮层 / 安卓通知与锁屏 /
+ * macOS Now Playing）展示歌曲名、封面，并支持播放/暂停、上一首/下一首、拖动进度。
+ */
+function _msSupported() {
+    return typeof navigator !== 'undefined' && 'mediaSession' in navigator;
+}
+
+function _msSetAction(action, handler) {
+    try { navigator.mediaSession.setActionHandler(action, handler); } catch (_) {}
+}
+
+function updateMediaMetadata(item) {
+    if (!_msSupported()) return;
+    if (!item) { navigator.mediaSession.metadata = null; return; }
+    try {
+        navigator.mediaSession.metadata = new MediaMetadata({
+            title: item.title || '未知歌曲',
+            artist: '情侣空间',
+            album: '共享音乐',
+            artwork: item.cover_url ? [{ src: item.cover_url }] : []
+        });
+    } catch (_) {}
+}
+
+/** 同步系统媒体控制中心的进度（供拖动进度条与系统进度展示用） */
+function updateMediaPosition() {
+    if (!_msSupported() || !navigator.mediaSession.setPositionState) return;
+    const audio = document.getElementById('musicAudio');
+    if (!audio || !isFinite(audio.duration) || audio.duration <= 0) return;
+    try {
+        navigator.mediaSession.setPositionState({
+            duration: audio.duration,
+            playbackRate: audio.playbackRate || 1,
+            position: Math.min(Math.max(audio.currentTime, 0), audio.duration)
+        });
+    } catch (_) {}
+}
+
+/* ================== Notification API 保底 ==================
+ * MediaSession 不可用的环境（部分浏览器/系统不展示媒体控件）退回系统通知，
+ * 点击通知同样可跳到音乐页。
+ */
+let _musicNotification = null;
+
+function _notifSupported() {
+    return typeof window !== 'undefined' && 'Notification' in window;
+}
+
+function _isMobile() {
+    return typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+}
+
+function _openMusicPage() {
+    try {
+        if (window.showPage) window.showPage('home');
+        if (window.switchSubTab) window.switchSubTab('music');
+    } catch (_) {}
+}
+
+function _showMusicNotification(title, body, iconUrl) {
+    if (!_notifSupported() || Notification.permission !== 'granted') return;
+    const options = {
+        body: body,
+        tag: 'music-now-playing',
+        renotify: false,
+        silent: true
+    };
+    if (iconUrl) options.icon = iconUrl;
+
+    // 桌面降级：页面内 new Notification（点击跳音乐页）
+    const _desktopFallback = () => {
+        try {
+            if (_musicNotification) { try { _musicNotification.close(); } catch (_) {} _musicNotification = null; }
+            _musicNotification = new Notification(title, options);
+            _musicNotification.onclick = () => {
+                window.focus();
+                _openMusicPage();
+                try { _musicNotification && _musicNotification.close(); } catch (_) {}
+            };
+        } catch (_) {}
+    };
+
+    // 手机端必须走 Service Worker showNotification 才会显示在通知栏
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.ready.then(reg => {
+            try { reg.showNotification(title, options); } catch (_) { _desktopFallback(); }
+        }).catch(_desktopFallback);
+    } else {
+        _desktopFallback();
+    }
+}
+
+/** 系统通知保底（state: 'play' | 'pause' | 'stop'）
+ * - 桌面 + MediaSession：用系统媒体控件，不弹通知
+ * - 移动端 / 不支持 MediaSession：弹通知（手机端走 Service Worker，确保通知栏可见）
+ */
+function _notifyMusicFallback(state) {
+    if (!_notifSupported()) return;
+    if (_msSupported() && !_isMobile()) return;
+
+    if (state === 'stop') {
+        if (_musicNotification) {
+            try { _musicNotification.close(); } catch (_) {}
+            _musicNotification = null;
+        }
+        return;
+    }
+
+    const item = musicList[currentMusicIndex];
+    if (!item) return;
+
+    const isPlay = state !== 'pause';
+    const fire = () => _showMusicNotification(
+        isPlay ? '🎵 正在播放' : '⏸ 已暂停',
+        item.title || '未知歌曲',
+        isPlay ? (item.cover_url || '') : ''
+    );
+
+    if (Notification.permission === 'granted') {
+        fire();
+    } else if (Notification.permission === 'default') {
+        // 仅在用户操作触发的调用链中申请权限
+        Promise.resolve(Notification.requestPermission())
+            .then(p => { if (p === 'granted') fire(); })
+            .catch(() => {});
+    }
+}
+
+/** 播放/暂停/停止时同步 MediaSession（state: 'play' | 'pause' | 'stop'） */
+function syncMediaSession(state) {
+    // Notification API 保底：MediaSession 不可用时才弹，避免重复
+    _notifyMusicFallback(state);
+
+    if (!_msSupported()) return;
+    if (state === 'stop') {
+        navigator.mediaSession.playbackState = 'none';
+        return;
+    }
+    const item = musicList[currentMusicIndex];
+    if (!item) return;
+    updateMediaMetadata(item);
+    navigator.mediaSession.playbackState = state === 'pause' ? 'paused' : 'playing';
+    if (state !== 'pause') {
+        updateMediaPosition();
+        // 音频元数据可能稍后才就绪，延迟再补一次时长
+        setTimeout(updateMediaPosition, 500);
+    }
+}
+
+// 绑定音频原生事件 + 系统媒体按键（只注册一次）
+(function initMediaSessionHandlers() {
+    // 无论是否支持 MediaSession，都监听 audio 原生事件同步状态
+    // （覆盖自动连播 / 系统暂停 / K歌抢占等所有场景，比手动调用更可靠）
+    const _audio = document.getElementById('musicAudio');
+    if (_audio) {
+        _audio.addEventListener('play', () => syncMediaSession('play'));
+        _audio.addEventListener('pause', () => {
+            // 自然结束由 onended 处理，这里避免重复
+            if (!_audio.ended) syncMediaSession('pause');
+        });
+        _audio.addEventListener('loadedmetadata', () => updateMediaPosition());
+    }
+
+    // 监听 Service Worker 通知点击 → 跳音乐页（手机端 SW 通知走这里）
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('message', (e) => {
+            if (e.data && e.data.type === 'openMusic') {
+                window.focus();
+                _openMusicPage();
+            }
+        });
+    }
+
+    if (!_msSupported()) return;
+
+    _msSetAction('play', () => {
+        const audio = document.getElementById('musicAudio');
+        if (!audio) return;
+        if (currentMusicIndex === -1 && musicList.length > 0) playMusic(0);
+        else if (audio.paused) togglePlay();
+    });
+    _msSetAction('pause', () => {
+        const audio = document.getElementById('musicAudio');
+        if (audio && !audio.paused) togglePlay();
+    });
+    _msSetAction('previoustrack', () => { if (musicList.length) prevMusic(); });
+    _msSetAction('nexttrack', () => { if (musicList.length) nextMusic(); });
+    _msSetAction('seekto', (d) => {
+        const audio = document.getElementById('musicAudio');
+        if (!audio || d.seekTime == null || !isFinite(audio.duration)) return;
+        audio.currentTime = Math.max(0, Math.min(d.seekTime, audio.duration));
+        updateMediaPosition();
+    });
+    _msSetAction('seekbackward', (d) => {
+        const audio = document.getElementById('musicAudio');
+        if (audio) audio.currentTime = Math.max(0, audio.currentTime - ((d && d.seekOffset) || 10));
+    });
+    _msSetAction('seekforward', (d) => {
+        const audio = document.getElementById('musicAudio');
+        if (audio) audio.currentTime = Math.min(audio.duration || Infinity, audio.currentTime + ((d && d.seekOffset) || 10));
+    });
 })();
 
 window.musicList = musicList;

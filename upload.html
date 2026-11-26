@@ -1333,15 +1333,13 @@ CREATE INDEX IF NOT EXISTS idx_trip_history_user_time ON trip_history (user_emai
                     document.getElementById('editorCursor').textContent = `Ln ${e.position.lineNumber}, Col ${e.position.column}`;
                 });
 
-                // 实时字符数统计
+                // 实时字符数统计（不设上限）
                 monoEditor.onDidChangeModelContent(() => {
                     const count = monoEditor.getValue().length;
-                    const type = document.getElementById('metaType')?.value || 'js';
-                    const max = type === 'md' ? 50000 : 50000;
                     const el = document.getElementById('editorCharCount');
                     if (el) {
-                        el.textContent = `${count} / ${max} 字符`;
-                        el.className = count > max ? 'text-red-500 font-semibold' : 'text-gray-400';
+                        el.textContent = `${count} 字符`;
+                        el.className = 'text-gray-400';
                     }
                 });
 
@@ -1681,13 +1679,12 @@ CREATE INDEX IF NOT EXISTS idx_trip_history_user_time ON trip_history (user_emai
             document.getElementById('metaActive').checked = asset.is_active;
             setEditorLang(asset.type);
             setEditorValue(asset.content || '');
-            // 更新字符数显示
+            // 更新字符数显示（不设上限）
             const _count = (asset.content || '').length;
-            const _max = asset.type === 'md' ? 50000 : 50000;
             const _el = document.getElementById('editorCharCount');
             if (_el) {
-                _el.textContent = `${_count} / ${_max} 字符`;
-                _el.className = _count > _max ? 'text-red-500 font-semibold' : 'text-gray-400';
+                _el.textContent = `${_count} 字符`;
+                _el.className = 'text-gray-400';
             }
             document.getElementById('saveBtn').disabled = false;
             document.getElementById('deleteBtn').disabled = false;
@@ -1706,14 +1703,6 @@ CREATE INDEX IF NOT EXISTS idx_trip_history_user_time ON trip_history (user_emai
             const container = document.getElementById('metaContainer').value || null;
             const order = parseInt(document.getElementById('metaOrder').value) || 99;
             const active = document.getElementById('metaActive').checked;
-
-            // 字符数限制：代码文件 20000，md 文件 50000
-            const maxChars = type === 'md' ? 50000 : 50000;
-            if (content.length > maxChars) {
-                document.getElementById('saveStatus').textContent = `❌ 内容超限：${content.length} 字符，最大允许 ${maxChars} 字符`;
-                document.getElementById('saveStatus').className = 'text-sm text-red-500 self-center';
-                return;
-            }
 
             document.getElementById('saveStatus').textContent = '保存中...';
 
