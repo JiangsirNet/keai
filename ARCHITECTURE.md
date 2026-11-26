@@ -4,7 +4,7 @@
 
 ## 一、项目概述
 
-情侣空间是一个双人互动 Web 应用，功能包括：相册、一日三餐、网盘（OpenList 接入百度网盘等，支持多挂载路径切换，浏览/上传任意文件（可多选）/删除）、留言、日志、日历打卡、定位共享（高德地图，登录后自动上报，展示对方实时位置与最后更新位置）、跳一跳游戏（iframe 内嵌 + 分数入库 + 情侣排行榜）、骗子酒馆、Live2D 风格人物形象、宠物动画、现代音乐播放器（封面/歌词/播放模式，内含可折叠 K 歌房）、天气组件、背景图自定义、下拉刷新、资源本地缓存等。
+情侣空间是一个双人互动 Web 应用，功能包括：相册、一日三餐、网盘（OpenList 接入百度网盘等，支持多挂载路径切换，浏览/上传任意文件（可多选）/删除）、留言、日志、日历打卡（右上角弹窗式，含打卡/待办/纪念日，当天未签到自动弹出）、行程模块（实时定位共享 + 历史行程自动记录，高德地图逆地理编码）、跳一跳游戏（iframe 内嵌 + 分数入库 + 情侣排行榜）、骗子酒馆、Live2D 风格人物形象、宠物动画、现代音乐播放器（封面/歌词/播放模式，内含可折叠 K 歌房）、天气组件、背景图自定义、长条按钮折叠面板式设置页、下拉刷新、资源本地缓存等。
 
 ## 二、文件结构
 
@@ -21,18 +21,18 @@ upload.html             — 资源管理工具（本地开发用，6个Tab）
 
 ```
 styles.css              — 基础样式 + 相册 + 留言 + 音乐 + 天气 + 下拉刷新（type=css, order=0）
-styles_layout.css       — 日历 + BGM + 显示设置 + 骗子酒馆 + 语音 + 宠物 + K歌播放器 + 删除按钮（type=css, order=0）
+styles_layout.css       — 日历弹窗 + BGM + 折叠面板式设置页 + 骗子酒馆 + 语音 + 宠物 + K歌播放器 + 定位卡片 + 历史行程时间线 + 删除按钮（type=css, order=0）
 styles_mobile.css       — 导航栏 + Live2D 人物 + 手机端适配（type=css, order=0）
 partials/               — HTML 片段
-├── global_chrome.html  — 全局 UI 外壳（宠物/天气/通知铃铛/刷新按钮/下拉刷新指示器/音乐audio）
+├── global_chrome.html  — 全局 UI 外壳（宠物/天气/日历按钮/通知铃铛/刷新按钮/日历弹窗/纪念日弹窗/下拉刷新指示器/音乐audio）
 ├── login.html          — 登录面板
 ├── preview.html        — 大图预览弹窗
-├── home.html           — 首页（相册/一日三餐/定位/留言/日志/音乐（含K歌）/网盘）
-├── journal.html        — 日志 + 日历打卡 + 纪念日
+├── home.html           — 首页（相册/一日三餐/留言/日志/音乐（含K歌）/网盘）
+├── journal.html        — 行程页（子Tab：实时定位 + 历史行程；原日历功能已移至右上角弹窗）
 ├── game.html           — 游戏页
-└── config.html         — 设置页
+└── config.html         — 设置页（长条按钮 + 手风琴折叠面板结构）
 js/                     — JS 模块
-├── config_page.js      — 人物话语管理 + 通知邮件开关
+├── config_page.js      — 人物话语管理 + 通知邮件开关 + 手风琴折叠面板切换（toggleSettingsSection）+ OpenList 配置表单
 ├── notifications.js    — 通知系统（sendNotification）
 ├── weather.js          — 天气组件
 ├── audio.js            — BGM / 音效
@@ -43,15 +43,15 @@ js/                     — JS 模块
 ├── home.js             — 首页逻辑（相册/留言）
 ├── cloud.js            — 网盘 Tab（OpenList 多挂载浏览/上传任意文件（多选）/视频图片音频预览/删除）
 ├── meals.js            — 一日三餐（拍照上传饭菜：餐次/日期/备注/好吃评分，按日期分组 + 分页）
-├── location.js         — 定位共享（高德地图 JS API：地图展示、地址解析、登录后自动上报、Realtime 订阅）
+├── location.js         — 定位共享（高德地图 JS API：地图展示、实时位置上报、历史行程自动记录、逆地理编码地址解析与补全、Realtime 订阅）
 ├── karaoke.js          — K 歌房（选歌/歌词/录音/混音/作品库独立播放器；录音用 AudioWorklet 独立线程采集+软限幅，老浏览器回退 ScriptProcessor）
-├── journal.js          — 日志逻辑
-├── calendar.js         — 日历/打卡/纪念日
+├── journal.js          — 日志逻辑（首页「日志」子Tab的发布/分页/点赞）
+├── calendar.js         — 日历弹窗（打卡/待办/纪念日；右上角按钮打开，当天未签到自动弹出，每天一次）
 ├── game.js             — 跳一跳（iframe 加载 Jump-master，postMessage 收分数入库 + 情侣排行榜）
 ├── game_liar.js        — 骗子酒馆
 ├── background.js       — 背景图设置
 ├── pull_refresh.js     — 下拉刷新（橡皮条）
-└── auth.js             — 认证 + 页面初始化（必须最后加载）
+└── auth.js             — 认证 + 页面初始化（必须最后加载）+ 行程页子Tab切换（switchTripTab）
 ARCHITECTURE.md         — 本架构文档（type=md, 供 upload.html 渲染用）
 ```
 
@@ -117,7 +117,8 @@ config_page.js (10) → notifications.js (11) → weather.js (12) → audio.js (
 
 > **关键**：`auth.js` 必须最后加载，因为它的 `initPage()` 会调用所有模块的初始化函数。
 > **注**：`karaoke.js` 与音乐共用 home.html 的音乐子 Tab，展开 K 歌折叠面板时才初始化。
-> **注**：`location.js` 登录后自动开始上报位置；地图与逆地理编码在首次进入「定位」子 Tab 时才加载（节省流量）。
+> **注**：`location.js` 登录后自动开始上报位置；地图、逆地理编码、历史行程加载在首次进入「行程」页对应子Tab时才初始化（节省流量）。
+> **注**：`calendar.js` 日历功能不占页面Tab，通过 `global_chrome.html` 中右上角弹窗展示，`auth.js` 登录后自动检查当天签到状态并按需弹出。
 
 ## 四、数据库表结构
 
@@ -138,7 +139,7 @@ config_page.js (10) → notifications.js (11) → weather.js (12) → audio.js (
 初始默认数据：
 ```
 (placement=global) globalChromeContainer, loginPanelContainer, previewModalContainer
-(placement=page)   pageHomeContainer🏠 → pageJournalContainer📖 → pageGameContainer🎮 → pageConfigContainer⚙️
+(placement=page)   pageHomeContainer🏠 → pageJournalContainer🧭(行程) → pageGameContainer🎮 → pageConfigContainer⚙️
 ```
 
 ### `app_assets`（资源表）
@@ -186,6 +187,7 @@ config_page.js (10) → notifications.js (11) → weather.js (12) → audio.js (
 | `music` | 音乐 | `title`, `url`, `uploader_email`, `cover_url`(可选), `lyrics`(可选) |
 | `karaoke_recordings` | K 歌录音作品 | `title`, `url`, `singer_name`, `song_title`, `uploader_email` |
 | `locations` | 定位共享（每人一行，按 `user_email` 覆盖更新） | `user_email`(唯一), `lat`, `lng`, `accuracy`, `address`, `updated_at` |
+| `trip_history` | 历史行程轨迹（移动超 1km 或每 1h 自动记录一次，可多条） | `id`, `user_email`, `lat`, `lng`, `accuracy`, `address`, `recorded_at` |
 | `rps_games` | 猜拳游戏记录（已弃用，情侣对战已移除，表可保留） | `player_email`, `choice` |
 | `game_scores` | 小游戏分数（通用，game 字段区分游戏） | `game`('jump'), `user_id`, `nickname`, `score` |
 
@@ -205,6 +207,27 @@ create policy "game_scores 公开读" on game_scores for select using (true);
 create policy "game_scores 认证写" on game_scores for insert to authenticated with check (auth.uid() = user_id);
 create index if not exists idx_game_scores_board on game_scores (game, score desc);
 ```
+
+**trip_history 建表 SQL（历史行程轨迹表，需在 Supabase SQL Editor 执行）**：
+
+```sql
+create table if not exists trip_history (
+  id          bigserial primary key,
+  user_email  text not null,
+  lat         double precision not null,
+  lng         double precision not null,
+  accuracy    double precision,
+  address     text,
+  recorded_at timestamptz not null default now()
+);
+alter table trip_history enable row level security;
+create policy "allow_read_trip_history" on trip_history for select using (true);
+create policy "allow_write_trip_history" on trip_history for all to authenticated using (true) with check (true);
+create index if not exists idx_trip_history_time on trip_history (recorded_at desc);
+create index if not exists idx_trip_history_user_time on trip_history (user_email, recorded_at desc);
+```
+
+> **地址补全机制**：`locations.address` 或 `trip_history.address` 缺失时，由当前查看方的高德 `AMap.Geocoder` 自动逆地理编码解析并回写数据库（无需双方都配置 Key）。新位置记录写入后自动补全地址；打开历史行程页时自动批量补全已有缺地址记录。
 
 ### RLS 策略规则
 
@@ -432,13 +455,19 @@ GRANT EXECUTE ON FUNCTION exec_ddl(TEXT) TO authenticated;
 | `window.togglePlaylist()` | music.js | 折叠/展开播放列表 |
 | `window.toggleLyricsView()` | music.js | 显示/隐藏歌词区 |
 | `window.toggleKaraokeSection()` | karaoke.js | 展开/收起音乐 Tab 内的 K 歌折叠面板（首次展开时才初始化） |
-| `window.initLocationPage()` | location.js | 初始化定位页（加载地图、读取位置、订阅 Realtime；幂等） |
+| `window.initLocationPage()` | location.js | 初始化定位页（加载地图、读取位置、订阅 Realtime；幂等），行程页实时定位子Tab首次进入时调用 |
 | `window.startLocationSharing()` | location.js | 开始共享本机位置（watchPosition） |
 | `window.stopLocationSharing()` | location.js | 停止共享并清理订阅/监听（登出时调用） |
 | `window.toggleLocationSharing()` | location.js | 开始/停止共享切换 |
 | `window.shareMyLocationOnce()` | location.js | 立即获取并上报一次位置 |
-| `window.refreshLocations()` | location.js | 重新读取双方位置 |
+| `window.refreshLocations()` | location.js | 重新读取双方位置（含对方地址自动补全） |
+| `window.loadTripHistory()` | location.js | 加载历史行程列表（含缺地址记录自动批量补全） |
 | `window.saveLocationConfig()` | location.js | 保存高德 Key / 安全密钥到 app_config |
+| `window.switchTripTab(tab)` | auth.js | 行程页子Tab切换（'location' 实时定位 / 'history' 历史行程） |
+| `window.openCalendarModal()` | calendar.js | 打开右上角日历弹窗 |
+| `window.closeCalendarModal()` | calendar.js | 关闭日历弹窗 |
+| `window.autoOpenCalendarIfNotCheckedIn()` | calendar.js | 检查当天签到状态，未签到则自动弹出日历弹窗（每天仅一次，localStorage 记录） |
+| `window.toggleSettingsSection(key)` | config_page.js | 设置页手风琴折叠面板切换（同一时间仅展开一个） |
 | `window.karaokeTogglePlay()` | karaoke.js | 伴奏播放/暂停 |
 | `window.karaokeToggleRecord()` | karaoke.js | 开始/停止录音 |
 | `window.mixAndExport()` | karaoke.js | 合成伴奏+人声导出 MP3 |
@@ -783,24 +812,64 @@ GRANT EXECUTE ON FUNCTION exec_ddl(TEXT) TO authenticated;
 
 ---
 
-## 十五点十一、定位（高德地图）
+## 十五点十一、行程模块（高德地图 · 实时定位 + 历史行程）
 
-### 功能特性
+### 功能概述
 
-- **登录自动共享**：`auth.js` 的 `initPage()` 登录后调用 `startLocationSharing()`，用 `navigator.geolocation.watchPosition` 持续获取位置
-- **位置展示**：首页「定位」子 Tab，上方高德地图（TA 的心形标记 + 自己的标记），下方两张卡片（TA 的位置 / 我的位置）
-- **实时 vs 最后更新**：`updated_at` 在 2 分钟内视为「实时」，否则显示「离线 + 最后更新于 x 分钟前」；地图标记保留在最后一次坐标
-- **地址解析**：有高德 Key 时用 `AMap.Geocoder` 逆地理编码，地址随位置一起写入 `locations` 表
-- **实时推送**：Supabase Realtime 订阅 `locations` 表；未开启 Realtime 时 60s 轮询兜底
+行程模块是导航栏中的独立页面「行程 🧭」，包含两个子 Tab：
+
+| 子 Tab | 功能 |
+|---|---|
+| **实时定位** | 高德地图展示双方位置、双方位置卡片（含逆地理编码地址）、立即更新/停止共享/刷新操作；登录后自动持续共享本机位置 |
+| **历史行程** | 自动记录历史轨迹点（移动超 1km 或每 1 小时一条），按日期分组倒序展示，含地址信息 |
+
+> **日历功能迁移**：原「日历 📅」导航标签已移除，日历（打卡/待办/纪念日）改为全局弹窗形式，位于页面右上角刷新按钮与通知铃铛之间。
 
 ### 文件结构
 
 | 文件 | 内容 |
 |---|---|
-| `partials/home.html` `#subTab-location` | 定位页 UI（地图容器、双方位置卡片、立即更新/停止共享/刷新按钮） |
-| `js/location.js` | 高德脚本懒加载、位置上报、Realtime 订阅、轮询兜底、地址解析 |
-| `styles_layout.css` `.loc-*` | 定位页样式（地图、卡片、标记、按钮） |
-| `styles_mobile.css` | 移动端：地图高度 210px、卡片单列 |
+| `partials/journal.html` | 行程页整体结构（子Tab栏 + 实时定位面板 `#tripTab-location` + 历史行程面板 `#tripTab-history`） |
+| `js/location.js` | 高德脚本懒加载、地图展示、实时位置上报、历史行程自动记录、地址逆地理编码与批量补全、Realtime 订阅、轮询兜底 |
+| `js/auth.js` | `switchTripTab(tab)` 行程页子Tab切换；登录后自动刷新定位 + 加载历史行程 |
+| `styles_layout.css` `.loc-*` / `.trip-history-*` | 定位卡片、历史行程时间线样式 |
+| `styles_mobile.css` | 移动端：地图高度、卡片单列 |
+| `partials/global_chrome.html` | 日历按钮 `#calendarBtn`（刷新按钮与通知铃铛之间）、日历弹窗 `#calendarModal`、纪念日弹窗 |
+| `js/calendar.js` | 日历弹窗逻辑（打卡/待办/纪念日/自动签到检查） |
+
+### 实时定位
+
+#### 功能特性
+
+- **登录自动共享**：`auth.js` 的 `initPage()` 登录后调用 `startLocationSharing()`，用 `navigator.geolocation.watchPosition` 持续获取位置
+- **位置展示**：行程页「实时定位」子Tab，上方高德地图（TA 的心形标记 + 自己的标记），下方两张卡片（TA 的位置 / 我的位置）
+- **实时 vs 最后更新**：`updated_at` 在 2 分钟内视为「实时」，否则显示「离线 + 最后更新于 x 分钟前」；地图标记保留在最后一次坐标
+- **地址解析**：有高德 Key 时用 `AMap.Geocoder` 逆地理编码，地址随位置一起写入 `locations` 表
+- **对方地址补全**：查看方打开行程页时，若对方位置缺 `address`，自动用本机高德 Geocoder 解析并回写数据库
+- **实时推送**：Supabase Realtime 订阅 `locations` 表；未开启 Realtime 时 60s 轮询兜底
+
+#### 上报节流（locations 表）
+
+20 秒内且位移 < 50 米不重复写库，避免频繁请求。
+
+### 历史行程
+
+#### 自动记录机制
+
+每次上报位置时，除写入 `locations` 表外，同时判断是否需要写入 `trip_history` 表。满足以下**任一**条件即记录一条：
+
+- 距上一条行程记录 **时间间隔 ≥ 1 小时**
+- 距上一条行程记录 **直线距离 ≥ 1 公里**
+
+#### 地址补全机制
+
+- **新记录**：写入 `trip_history` 时自动用高德 Geocoder 逆地理编码补全 `address` 字段
+- **旧记录补全**：打开「历史行程」子Tab时，自动批量扫描 `address` 为空的记录，解析并回写数据库
+- **降级兜底**：未配置高德 Key 时跳过地址解析，仅记录坐标
+
+#### 展示
+
+按 `recorded_at` 倒序，以时间线形式分组展示（今天 / 昨天 / 具体日期），每条记录显示地址、坐标、时间。
 
 ### 配置（app_config 表）
 
@@ -815,19 +884,30 @@ GRANT EXECUTE ON FUNCTION exec_ddl(TEXT) TO authenticated;
 
 | 字段 | 说明 |
 |---|---|
-| `user_email` | 上报者邮箱（唯一，upsert 覆盖） |
+| `user_email` | 上报者邮箱（唯一，upsert 覆盖更新） |
 | `lat` / `lng` | 纬度 / 经度（GCJ-02，高德坐标系） |
 | `accuracy` | 定位精度（米） |
-| `address` | 逆地理编码地址 |
+| `address` | 逆地理编码地址（缺失时由查看方高德服务自动补全并回写） |
 | `updated_at` | 最后更新时间 |
+
+### 数据库字段（trip_history 表）
+
+| 字段 | 说明 |
+|---|---|
+| `id` | 自增主键 |
+| `user_email` | 记录者邮箱（可多条，每人独立轨迹） |
+| `lat` / `lng` | 纬度 / 经度（GCJ-02） |
+| `accuracy` | 定位精度（米） |
+| `address` | 逆地理编码地址（缺失时自动补全） |
+| `recorded_at` | 记录时间 |
 
 ### 关键实现细节
 
-- **上报节流**：20 秒内且位移 < 50 米不重复写库，避免频繁请求
 - **坐标系**：浏览器 `navigator.geolocation` 返回 WGS-84，高德地图使用 GCJ-02；在浏览器 API 下偏差通常可接受，如需精确纠偏可改用 `AMap.Geolocation` 插件
 - **HTTPS**：`navigator.geolocation` 要求安全上下文（HTTPS 或 localhost），`isSecureContext === false` 时直接提示
 - **权限失败**：`code === 1`（拒绝）/ 2（信号不可用）/ 3（超时）分别提示，并提供「立即更新」重试入口
-- **节省流量**：高德 JS API 只在首次进入「定位」子 Tab 时加载；未配置 Key 时只显示坐标文字，不加载地图
+- **节省流量**：高德 JS API 只在首次进入行程页对应子Tab时加载；未配置 Key 时只显示坐标文字，不加载地图
+- **行程表缺失降级**：`trip_history` 表未创建时，历史行程页显示降级提示，不影响实时定位功能
 - **Realtime 建表 SQL**：
 
 ```sql
@@ -838,6 +918,70 @@ END $$;
 ```
 
 ---
+
+## 十五点十二、设置页（手风琴折叠面板）
+
+### 功能特性
+
+设置页采用**长条按钮 + 手风琴折叠面板**结构，同一时间仅展开一个设置项，其余自动收起。点击长条按钮切换对应内容区域的显示。
+
+### 设置项
+
+| 按钮标识 key | 说明 | 内容 |
+|---|---|---|
+| `quotes` | 人物互动配置 | 添加/删除男生·女生互动话语（`character_quotes` 表） |
+| `display` | 显示设置 | 宠物（哈士奇/暹罗猫/猫猫）显示开关、背景图设置 |
+| `notification` | 通知设置 | 通知邮件开关（localStorage 本机生效） |
+| `location` | 定位设置 | 高德 Key / 安全密钥填写保存 |
+| `openlist` | 网盘设置 | OpenList 多挂载配置（baseURL/账号/密码/挂载路径） |
+
+### 文件结构
+
+| 文件 | 作用 |
+|---|---|
+| `partials/config.html` | 设置页整体结构（长条按钮行 + 各面板内容区） |
+| `js/config_page.js` | `toggleSettingsSection(key)` 手风琴切换；各面板内的表单保存逻辑 |
+| `styles_layout.css` `.settings-btn` / `.settings-panel` | 长条按钮样式、折叠面板过渡动画 |
+
+### 关键实现
+
+- **手风琴逻辑**：`toggleSettingsSection(key)` 找到所有 `.settings-panel` 元素统一加 `.hidden`，仅展开 `key` 对应面板；按钮样式同步切换高亮态
+- **默认展开**：首次进入时展开第一个设置项（人物互动配置）
+- **表单保存**：每个面板内的保存按钮直接调用对应 JS 函数写 `app_config` / `character_quotes` 表
+
+## 十五点十三、日历弹窗
+
+### 功能特性
+
+日历功能已从独立页面迁移为右上角弹窗形式。
+
+- **入口按钮**：`global_chrome.html` 中 `#calendarBtn`，位于刷新按钮左侧、通知铃铛右侧
+- **弹窗内容**：完整日历网格（当月日期 + 打卡标记 + 待办 + 纪念日）
+- **自动弹出**：登录后检查当天签到状态，未签到则自动弹出日历弹窗（每天仅一次，localStorage 记录当天日期防重复）
+- **关闭方式**：点击右上角 × 按钮 / 点击弹窗外部遮罩层
+
+### 文件结构
+
+| 文件 | 作用 |
+|---|---|
+| `partials/global_chrome.html` | `#calendarBtn` 按钮 + `#calendarModal` 弹窗容器 + 纪念日弹窗 |
+| `js/calendar.js` | 日历渲染、打卡切换、待办增删、纪念日管理、弹窗开关、自动签到检查 |
+
+### 全局函数
+
+| 函数 | 说明 |
+|---|---|
+| `openCalendarModal()` | 打开日历弹窗（同步渲染最新月份数据） |
+| `closeCalendarModal()` | 关闭日历弹窗 |
+| `autoOpenCalendarIfNotCheckedIn()` | 登录后调用，检查当天是否签到；未签到且今日未自动弹过则弹出 |
+
+### 数据库表（日历相关）
+
+| 表名 | 用途 |
+|---|---|
+| `checkins` | 打卡记录（`date`, `username`） |
+| `todos` | 待办事项（`id`, `date`, `content`, `done`, `username`） |
+| `memorial_day` | 纪念日（`date`, `title`, `is_lunar` 支持农历） |
 
 ## 十六、下拉刷新（橡皮条）
 

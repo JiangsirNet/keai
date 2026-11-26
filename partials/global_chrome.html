@@ -65,6 +65,9 @@
 
 <audio id="musicAudio" ontimeupdate="updateProgress()" onended="onMusicEnded()"></audio>
 
+<!-- 全局相机拍照入口（底部导航栏中间按钮触发） -->
+<input type="file" id="cameraFileInput" accept="image/jpeg,image/png,image/webp" capture="environment" style="display:none" onchange="window._cameraFileSelected && window._cameraFileSelected(this)">
+
 <!-- 日历弹窗（右上角日历按钮打开） -->
 <div id="calendarModal" class="calendar-modal hidden" onclick="if(event.target===this)closeCalendarModal()">
     <div class="calendar-modal-inner">

@@ -467,4 +467,20 @@
     window.mealPrevPage = () => { mealPage--; renderMeals(); };
     window.mealNextPage = () => { mealPage++; renderMeals(); };
 
+    window.triggerCameraPhoto = function() {
+        const input = document.getElementById('cameraFileInput');
+        if (input) input.click();
+    };
+
+    window._cameraFileSelected = function(input) {
+        const file = input.files[0];
+        input.value = '';
+        if (!file) return;
+        window.showPage('home');
+        setTimeout(() => {
+            if (window.switchSubTab) window.switchSubTab('meals');
+            mealFileSelected({ files: [file] });
+        }, 80);
+    };
+
 })();

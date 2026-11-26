@@ -65,6 +65,10 @@
         if (pageWrap) pageWrap.innerHTML = '';
 
         let firstPage = '';
+        const pageContainers = (containers || []).filter(c => c.placement === 'page' && c.nav_label);
+        const midIndex = Math.ceil(pageContainers.length / 2);
+
+        let navBtnIndex = 0;
         (containers || []).forEach(c => {
             if (c.placement === 'global' && globalWrap) {
                 const div = document.createElement('div');
@@ -72,6 +76,16 @@
                 globalWrap.appendChild(div);
             } else if (c.placement === 'page') {
                 if (navBar && c.nav_label) {
+                    if (navBtnIndex === midIndex) {
+                        const cameraBtn = document.createElement('button');
+                        cameraBtn.className = 'nav-camera-btn';
+                        cameraBtn.onclick = () => window.triggerCameraPhoto && window.triggerCameraPhoto();
+                        cameraBtn.title = '拍照';
+                        cameraBtn.innerHTML = `<i class="fa fa-camera"></i>`;
+                        navBar.appendChild(cameraBtn);
+                    }
+                    navBtnIndex++;
+
                     const btn = document.createElement('button');
                     btn.className = 'nav-btn';
                     btn.dataset.page = c.page_name;
@@ -87,6 +101,16 @@
                 }
             }
         });
+
+        if (navBtnIndex <= midIndex) {
+            const cameraBtn = document.createElement('button');
+            cameraBtn.className = 'nav-camera-btn';
+            cameraBtn.onclick = () => window.triggerCameraPhoto && window.triggerCameraPhoto();
+            cameraBtn.title = '拍照';
+            cameraBtn.innerHTML = `<i class="fa fa-camera"></i>`;
+            navBar.appendChild(cameraBtn);
+        }
+
         window._defaultPage = firstPage || 'home';
     }
 

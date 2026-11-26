@@ -14,8 +14,18 @@
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    position: relative;
 }
 .sub-tab-bar::-webkit-scrollbar { display: none; }
+.sub-tab-bar .sub-tab-indicator {
+    position: absolute;
+    bottom: 0;
+    height: 3px;
+    background: #ff6b8b;
+    border-radius: 3px 3px 0 0;
+    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+}
 .sub-tab {
     padding: 8px 20px;
     background: transparent;
@@ -29,13 +39,14 @@
     white-space: nowrap;
     flex-shrink: 0;
     margin-bottom: -1px;
+    position: relative;
 }
 .sub-tab:hover {
     color: #ff6b8b;
 }
 .sub-tab.active {
     color: #ff6b8b;
-    border-bottom-color: #ff6b8b;
+    border-bottom-color: transparent;
 }
 
 /* ============ 日历 & 纪念日弹窗 ============ */

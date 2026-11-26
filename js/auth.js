@@ -164,6 +164,7 @@
         if (document.getElementById("calendarBtn")) document.getElementById("calendarBtn").classList.remove("hidden");
         // 首页默认子 Tab 初始化
         initHomePage();
+        initAllSubTabIndicators();
         // 当天未签到 → 自动弹出日历（延迟等页面渲染完成）
         setTimeout(() => {
             if (window.autoOpenCalendarIfNotCheckedIn) window.autoOpenCalendarIfNotCheckedIn();
@@ -356,6 +357,48 @@
         window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
+    // 子 Tab 滑动下划线指示器
+    function updateSubTabIndicator(barSelector) {
+        const bar = document.querySelector(barSelector);
+        if (!bar) return;
+        const active = bar.querySelector('.sub-tab.active');
+        if (!active) return;
+        let indicator = bar.querySelector('.sub-tab-indicator');
+        if (!indicator) {
+            indicator = document.createElement('div');
+            indicator.className = 'sub-tab-indicator';
+            bar.appendChild(indicator);
+        }
+        const barRect = bar.getBoundingClientRect();
+        const actRect = active.getBoundingClientRect();
+        indicator.style.left = (actRect.left - barRect.left) + 'px';
+        indicator.style.width = actRect.width + 'px';
+    }
+    function initAllSubTabIndicators() {
+        document.querySelectorAll('.sub-tab-bar').forEach(bar => {
+            const active = bar.querySelector('.sub-tab.active');
+            if (!active) return;
+            const indicator = document.createElement('div');
+            indicator.className = 'sub-tab-indicator';
+            bar.appendChild(indicator);
+            const barRect = bar.getBoundingClientRect();
+            const actRect = active.getBoundingClientRect();
+            indicator.style.left = (actRect.left - barRect.left) + 'px';
+            indicator.style.width = actRect.width + 'px';
+        });
+        window.addEventListener('resize', () => {
+            document.querySelectorAll('.sub-tab-bar').forEach(bar => {
+                const active = bar.querySelector('.sub-tab.active');
+                const indicator = bar.querySelector('.sub-tab-indicator');
+                if (!active || !indicator) return;
+                const barRect = bar.getBoundingClientRect();
+                const actRect = active.getBoundingClientRect();
+                indicator.style.left = (actRect.left - barRect.left) + 'px';
+                indicator.style.width = actRect.width + 'px';
+            });
+        });
+    }
+
     // 首页内子 Tab 切换
     const _subTabInited = {};
     function switchSubTab(sub) {
@@ -371,6 +414,8 @@
         document.querySelectorAll('.sub-tab[data-sub]').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.sub === sub);
         });
+
+        updateSubTabIndicator('.sub-tab-bar');
 
         // 切换内容：除了当前 sub，其它都隐藏
         const targetId = 'subTab-' + sub;
@@ -441,6 +486,7 @@
         document.querySelectorAll('#page-journal .trip-tab-content').forEach(el => {
             el.classList.toggle('hidden', el.id !== 'tripTab-' + tab);
         });
+        updateSubTabIndicator('#page-journal .sub-tab-bar');
         if (tab === 'location' && window.refreshLocations) window.refreshLocations();
         if (tab === 'history' && window.loadTripHistory) window.loadTripHistory();
     }
